@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+.venv_backup/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+/migration_backup/
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+test_db.sqlite3
+
+# Frontend generated output
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.turbo/
+frontend/.vercel/
+frontend/playwright-report/
+frontend/test-results/
+frontend/tsconfig.tsbuildinfo
+
+# Environment Variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+celery_logs/
+celerybeat-schedule.*
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Temporary files
+*.tmp
+temp/
+tmp/
+
+
+# Temporary recordings from test sessions
+# Temporary recordings from test sessions
+temp_recordings/
+
+# Cursor
+.cursor/
+.cursorrules
+
+# Node
+node_modules/

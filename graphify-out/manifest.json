@@ -1,0 +1,1117 @@
+{
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/manage.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "85bf464f8b6df89a2cc7bf0d6e42ebd2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/test_production_flow.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "32cbf8d484ad1f754d98d596e2e3a9e3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/start.sh": {
+    "mtime": 1772912901.0,
+    "ast_hash": "010fd06e4ff60514b864ae96bc10c875",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/next.config.js": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d44a043bfd3d906e81af1cc810eaf476",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/tailwind.config.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "46201f436df8eb4e71cb559fa10bb979",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/package.json": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a948e032339ca508083bc19f2adf01b6",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/components.json": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4ef964e3489c2030641431bf33f38900",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/tsconfig.json": {
+    "mtime": 1772912901.0,
+    "ast_hash": "930d31ac6c8fbd83056fd4a3cb9023fe",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/postcss.config.js": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d6d5b4aa626ebc16cce79e34a68611ef",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/eslint.config.mjs": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f71de8f3b9c3ede31c59732a91adba1a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/types/index.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "325b2470e9197a753fb706add6b8d3cb",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/robots.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0ffd11803945596ab4b6fb7c88dedfed",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/sitemap.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7cc33cc36d4e42a3722a446f0c65b430",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/layout.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4b98cf701df0781e2a6c6d46c8113cef",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/error.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c33c3519a951a432e3a0dc702c31520d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/loading.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c5f6db871aa65c0e4a00bcca1653d1ac",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "09263e6651689b3c2f803b461d5e00d8",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/not-found.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7ebefed1e9cd152008fe414e9416b6dc",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/providers.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9e0e3cee1ce96db20e45858cb46ad628",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/privacy/layout.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "77393f919cb9ae065e6a7611737f9e06",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/privacy/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4d9888a746198bbeff3037ed6b073947",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/terms/layout.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "fe02b22bf01914d297654e0e547dd166",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/terms/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "45292ed5b405e2448700c77de6621472",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/admin/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "66e095de230b7ba56aa40ac306d79859",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/admin/processing/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4be634d29ed9194160c3fb5a878e66ed",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/admin/users/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "85bbf793bbb65a750541049f2ad03083",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/admin/questions/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9a2876b2dc6cd519407ed884c3e10617",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/layout.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "75c3ecb76675eba5373b035d6fae4f58",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/settings/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f1dc6bb4a64fb16f5d733cd501ae2ba1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/record/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1edc817d5d0687e16184b50827801110",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/chat/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "119b3d10dd23042de8b7c1e5e8e13192",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/chat/[aiId]/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b7bd7b3643ac8c058226723cae9f1304",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/processing/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ac8250948876ddcc63162c926db8dd0d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/family/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "868e083cd9be4126642c44525fe4468e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(user)/dashboard/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "03123fc6e814370270a8a54b9c3783c0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(auth)/signup/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6507c35b26fcd47cb55fa6eff89c0305",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(auth)/checkout/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9a6fb9a204b71c923383e45eb830ce43",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(auth)/accept-invite/[token]/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0a61052257b6dd6150a84d68172303f9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/(auth)/login/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "88bcb8772c17f7c1d308ecd13f269c7f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/pricing/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "749dffadad7b5d3ee800a073db61c53f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/pricing/success/page.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5b03d04e55553d103f08cec68b85a13e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/alert-dialog.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7ea51ecae01882dedbbf317c61624f4a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/tabs.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2dbb55bc73557d9794b1f166bb7e903b",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/card.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "bb70b0e0450c0181f1b9cabee253de57",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/slider.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6920b37928705eb8de5ca91ba528225d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/progress.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c9b8cec4eb0c3abc18e3622f0f4eb26e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/scroll-area.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3205f3686c10fa46810af9db517d72dd",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/label.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "571c88a6a3745832ca819a4e6a2a6587",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/alert.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "48dac79c18e0c3ff687c320c6fcf1590",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/avatar.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0008445bf0b90f231d702bcd9141726c",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/dialog.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a53d683509d3bf682bb7e509d6331319",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/badge.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f1963e4f0ae6df717b325fb4d61a0834",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/table.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "efdbaeb9710b2f60de7c0e18bd4e3528",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/separator.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "85fd1a835601a122f1f226ccb31a0d67",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/button.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b35d972d06c3c038b6acd744ee1f88e5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/dropdown-menu.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d0dcc892733b2a2bf644e5e0a634fe80",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/select.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a3e67022a356770c24a77cec681059b2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/textarea.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6eb8633e9e461056b9bf88dfaf25fc6d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/input.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "305a5fa2a8aaa6a7dc516e98d5054ac4",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/ui/skeleton.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7160e602d0873f54fc6eaf0105a98647",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/home/TypewriterHeading.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b82a0f1a44fc808950df741d1fae4441",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/home/HeroBackground.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c07d00630b63367c2101d5a1efafac13",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/chat/ChatInterface.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ab4546823602bff7ae026747ff029eb9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/chat/StreamingText.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "81708f117b7e5a22f029cf40a7857fa3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/chat/VoicePlayerComponent.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4a2c136a7313905cb0d9d836aeb42f6b",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/chat/ChatMessage.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a8e3b9954239bc3219a917eae2d98bf3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/chat/ChatInput.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2ec825d58ae20f92cf8b693fa362c001",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/auth/ProtectedRoute.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "40ed623c00356b52dd46dd9f7832f6f0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/auth/PasswordStrengthMeter.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b57ecaeb98696ddf118256cfbb10a4b9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/processing/ProcessingTimeline.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b1c65c496703c5ea820f0a4110dc618f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/processing/ProcessingStatusMonitor.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f4f4f88c6b09835da44b78a86851dc84",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/processing/ProcessingComplete.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2872381894f5f8bab52beb0970a6a48a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/processing/ProcessingStepCard.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a5c78c767af1b0a9fa4fb70a7990fcec",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/SiteFooter.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "384094821ed688ab3dfaaa82bac18a33",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/OnboardingHeader.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "cddf183e8d086fb15d2dc0cbf0ff5568",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/DashboardLayout.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4cc85d7d403ca9f19438aff854b9ae64",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/Header.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "afa6c6609699bf4ce2ce8d44a28a2e9c",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/Sidebar.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a24cea960588a41a383ac21b40151a0a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/layout/index.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3eccdc1d407b4a3917f68e248e8aa61d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/ReviewStep.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5b1828eeec0ffc801ed0bf8c0ee19cf5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/QuestionCard.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "383c0049b2ca21b53aa78641b75306fa",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/RecordingControls.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ab7a0a6fed680841e5adec527df75685",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/UploadProgress.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1d07f6c6be9ee6ddf0c93b667d487a39",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/UploadStep.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "38ce208e884c143b1bfc4ab2ca6d45f2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/QuestionStepper.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "af5b3cc692d96452b250e63d2b688ecb",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/RecordingStep.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "863a738cef45bb414ce6f361d114ec3e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/AudioRecorder.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "75abf5bd3ec0c0aed06509a13e3af452",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/recording/IntroStep.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2a71a081a5592ab715e2d120031e920a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/family/InviteFamilyDialog.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7c73994d862235148b4ea7d7b9907172",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/family/FamilyMemberCard.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0ba9d8d3efa632f7b2e571a6f51217ed",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/admin/AdminRoute.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "e6b6efd91d5c07cca2c6e89b468c99c7",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/admin/QuestionDialog.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "bc6e3bf4f030b9c258a6759f2513e1b9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/admin/QuestionManager.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "74a8a6c097562552c347843de0fd0691",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/AnalyticsWrapper.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "39e1ba50dac268b6e1d220cda9a7f89d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/LazyWrapper.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ff5f92bf94728da234accf711d89ab79",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/SEO.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4f302248331f580facb4caf6fe9142ec",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/Analytics.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3eda2af3b15ece1f87e79b4d388b6e50",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/LoadingSkeleton.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "462127fa499708855ffb8c0789894a67",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/FadeIn.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6815566be185bd74e61e669df0baeb63",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/components/shared/ErrorBoundary.tsx": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3e8ab969e2f5a0e0d905a23944a56c25",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/accessibility.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1a9050048a9816a3566120a15c073616",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/analytics.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3d0c9d136fa76765bb5f84c528ac87f7",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/utils.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "264130ec374f711d95310d57a5417fd3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/email-templates.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6b5efd8f5eedfb016aacf21e7c8c6179",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/animations.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9595969a392914ad5d1e8bb4fce6ad54",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/auth/session.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "dce51f3c9c86b4107cc0f57804a28a6a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/validations/auth.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "308d219c4efb8c2b4d77cf7139362343",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/audio/storage.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "42cdf8b9d108d951ecd8bcc734e2a0a1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/audio/player.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "20f5e3750757e067351813666c641635",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/audio/recorder.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d5c50a454894b689c168eeba4fcb12db",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/audio/compression.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "20a95ab1549571cb8d99da35112facba",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/audio/waveform.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "973bfeb89bf08462a58836fe1f1c0d7b",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/hooks/useProcessingStatus.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "95482286151d797ad7c76a0d24c21172",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/processing.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "81b3d2eb0277aa3501aa6e6fa8b71432",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/family.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3d16897164b0e93afbab7738fe2145f2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/admin.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5844f1d771b50efb8bcfa8836ccb9ee3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/chat.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d2229f4ed268e50b27fbbc7d51e874da",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/questions.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2d8055a4f159b0448a76ee7ad3fd31ef",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/client.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "eb7f5cc5ce32631f2f4160fb511eaf42",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/payments.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b9d29ec2eac0dbe15d1ea3ee5505de80",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/recordings.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a13625b0d44d71fdb62e3edbcf9b0f7c",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/lib/api/auth.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "11b4a8550f2db5b3c2dc250be492550f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/store/family.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ca89200722cf8aa4e07113519c1984a1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/store/admin.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0163ac908624a2408e3dca8d1ce1dfd5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/store/chat.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6b14c2df4fceff37019932d6cc7a61f7",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/store/recording.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "10117e58545c94a4b6e1fe5ab65f3a15",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/store/auth.ts": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6811e994e94a4895ac368d574991bff5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/settings_test.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4f8b8f5717a97bc6b9b63fe0f9bb6f04",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/asgi.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3e957f7b278ef6b24b0754b3ea70e4b1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "cd5ea3846f2c5feefda343e272bef366",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/celery.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3692192a0d2337be2319c699f409a1f0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/settings.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "35240b7ece8cbfd71264fc95a2949e66",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7c9deb2f7ed56f19a8f630d46c468b57",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/config/wsgi.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "302c481c250f2b72518bf349ba515e9d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/supabase_auth.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "38f771129e5285962b1086f4b24cf32c",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/throttling.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "8ce9c835add658df0d810d7256e82b59",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2487b6a0a44ebc947c97ed25c905634d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/email_service.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1e24ab7088f67566915755369a4c87f5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/supabase_client.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9ac7797f345b2c11ed0e7692de55358e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/audio_recorder.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7024c929ea0e414e2c2762c5ffbe9460",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/exceptions.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d274eabeb1d4729fdb3973ba59e3e7b9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/db_middleware.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "06bbd8d3ace0d88c5869b23918ef30f1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/utils/invitation_tokens.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5040ee5a384225b931c6d2c1f2ab3ae6",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/.devcontainer/.devcontainer/devcontainer.json": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2edb9a3ae1258d4b510f4b040c014ad2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "50464eabdb64172bfa5e11afd84502ba",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/models.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a078563782e90a302006104a5a663ca3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "74bcc2fc621604249b0d26e5f6a67e7e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/apps.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "16f356fa7695412dfa6958992092fc20",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/admin.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "01f2dcc9a987319786173d9ff28f0b33",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "085a5d6d5d89c828d6ca3dd91eeaf57e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/views.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "54dd44ad0398398768ba5d1f89ee4ef1",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/migrations/0002_single_membership_plan.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ce1d0a8d5f81874418b6483ae42f5763",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/migrations/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/payments/migrations/0001_initial.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "96aaad085e772e09fb1970ca82c70063",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/questions_model.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "8283b6a27bbe22e3c320efc7e6af5d88",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/models.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6c4005f248984cef74c3d769a3c8feaa",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/serializers.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "30f3b68bf1621c98a58d54b8e84e655a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4dfcc364cf56f05abb6d0aceef5df23c",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/urls_questions.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "7f130ee17d56deea64147326622f7066",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/apps.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "3d5d992384da00ae1c6deadfb72ab361",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/views_questions.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4fe2f2915ad62d48b085651cae1f7f12",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/admin.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "12b0b5506f066955ff46d4bf17268588",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "210f43a9158f753168b74d0f073500f0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/views.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "53d90c982f265dd1c0f2a5b3430241ff",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/migrations/0003_alter_audiorecording_domain.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "4ea70667e655692f926d0129f9c238bc",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/migrations/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/migrations/0001_initial.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ebd9a8237812079e3fbe4325fcf43911",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/recordings/migrations/0002_recordingquestion.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "dc57e25c25adceab4b93faeb872b440f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/tasks.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "da44c9374e4e3cf7f7393f9618e3874d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/models.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a2fd6aa304701572a972ea2e3ae504e2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5ce122377090a10d42b8ec1a36334de4",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/views_voice.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c74210825e689960f68ef9f4a3d0ff50",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/apps.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f8fb69fb1ad4d6f75750cbe60acde3c2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/admin.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "72d602bdf69c70d85a58cfb8a9ce3e36",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/utils.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2f38508725ab2d3404f86e491c3477c9",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "29d08bb7a03bbc9a7a1d68a028f401fd",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/views.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "154dd95a70ebc410d1e93854801c0364",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/migrations/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/chat/migrations/0001_initial.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "de208eb4007232ecfb2603d2277c9a7d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/tasks.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6e1daf65fbc9d4f1b88848f3dacbfefe",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/models.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "5c9fa2add9c2720a5a5e2216da3ef879",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "af5d5a8bfd752434d3c0abae09e54622",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/apps.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0e3dfe9fc3010b42316e3ed0fd58d61a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/admin.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2146610b5d04ae5fa0421c923ee884bd",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "9e24688d8b153ddc1ccaacb4b947057a",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/views.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "46a5fa55e2b2efd3ea1df0967d4e6e73",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/migrations/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/ai_processing/migrations/0001_initial.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "f3cbe9bcc72123b3b8ee0cab48c9118b",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/models.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "2c15f8f1a8c46c1bcfdf34547475c571",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/serializers.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "dd7165c91103cf37163b00a5ec27d2d7",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "e604dd186f656fa00250f07d73937e0f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/views_auth.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c4f9a9a1c370238f36145c7e9cf5ac7d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/apps.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "822a8cfa02c7bfb61639f2b6508d7889",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/urls_family.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1763220cb9ff0ea5a209f68ac5eba61e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/admin.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d58b51340bbf347e96508600ca9bbb31",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/views_family.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "b383a16006ff0cbe096ffe83645715f5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/urls.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "feedabe71a9ef860554f66c67b82fb1d",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/views.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a671bba0d50cd8c0b19e5af91beddd26",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/migrations/__init__.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/migrations/0002_add_password_hash.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "17c3c3d88a931705640c87da8a85c4f3",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/migrations/0003_single_membership_plan.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "51e6c19427f6ef3e7a173269c37a5cc8",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/apps/users/migrations/0001_initial.py": {
+    "mtime": 1772912901.0,
+    "ast_hash": "83ad88a68db050e4209a6219282f996f",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/render.yaml": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c2d8979a4851ce57eac37959f4c592bc",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/requirements.txt": {
+    "mtime": 1772912901.0,
+    "ast_hash": "aa417feaf6ecab3f7f201fcb9cdb7ba5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/setup.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "062cd5d9f7113319bf679d3d1da3cfb5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/DEPLOYMENT_RAILWAY.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "284e776faa91da01a33bb82348961f80",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/README.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "0ed271f330b45c4ed91300d3dbda7ac2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/docker-compose.yml": {
+    "mtime": 1772912901.0,
+    "ast_hash": "26e7a4f98f90356b661e90f81bef00c5",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/testing_reports/MODULE2_TEST_SUMMARY.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "68f8d80662a6f66d98fddf0ed4f43342",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/testing_reports/MODULE4_COMPLETE.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a8445ea50f7e00fe4f10e40e14684a23",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/testing_reports/MODULE1_TEST_REPORT.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "07674b95bc86cc6d12a1877081bc3233",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/testing_reports/MODULE3_COMPLETE.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "ab58ad65c7963c0bb104b903ee41e0b8",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/testing_reports/MODULE2_TEST_REPORT.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "62b28af46a933ad610c5f96c85fc4bd2",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/README.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "297f1342b43ccab89daa71d0efec6b91",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/docs/API_DOCUMENTATION.md": {
+    "mtime": 1772912901.0,
+    "ast_hash": "c0f05ba2f5e751d1e9d3905381c05594",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/4.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "6a52cc8b1e7708fcb8bf7547dd0ed006",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/5.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "313ad6b7434739dc20004a742197d766",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/6.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "948234d15c14f9319b3a06c5a5716be0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/1.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "a75821002f4258fa24aa30c62d05cc92",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/public/icon.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "948234d15c14f9319b3a06c5a5716be0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/public/logo.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "948234d15c14f9319b3a06c5a5716be0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/icon.png": {
+    "mtime": 1772912901.0,
+    "ast_hash": "948234d15c14f9319b3a06c5a5716be0",
+    "semantic_hash": ""
+  },
+  "/Users/mujeebrathore/Desktop/Freelancing/voice_vault/frontend/src/app/icon.svg": {
+    "mtime": 1772912901.0,
+    "ast_hash": "1f62f27c960d7ec3a05ff1873f50094a",
+    "semantic_hash": ""
+  }
+}

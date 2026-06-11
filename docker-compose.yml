@@ -1,0 +1,152 @@
+# Docker Compose for local development and end-to-end testing.
+#
+# Postgres and Redis are published on non-default host ports to avoid conflicts
+# with local services. Containers still talk to them on the internal ports.
+
+services:
+  # PostgreSQL Database (for local testing, production uses Supabase)
+  postgres:
+    image: postgres:15-alpine
+    container_name: voicevault-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: voicevault
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for Celery
+  redis:
+    image: redis:7-alpine
+    container_name: voicevault-redis
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django + Next.js Web Service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BACKEND_API_URL: http://localhost:8000/api
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    container_name: voicevault-web
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:-18000}:8000"
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-13000}:3000"
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ALLOWED_HOSTS=localhost,127.0.0.1
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
+      - DB_SSL_REQUIRE=False
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - FRONTEND_URL=http://127.0.0.1:${FRONTEND_HOST_PORT:-13000}
+      - STRIPE_MODE=${STRIPE_MODE:-test}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_PREMIUM_ONE_TIME_PRICE_ID:-}
+      - STRIPE_TEST_SECRET_KEY=${STRIPE_TEST_SECRET_KEY:-}
+      - STRIPE_TEST_PUBLISHABLE_KEY=${STRIPE_TEST_PUBLISHABLE_KEY:-}
+      - STRIPE_TEST_WEBHOOK_SECRET=${STRIPE_TEST_WEBHOOK_SECRET:-}
+      - STRIPE_TEST_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_TEST_PREMIUM_ONE_TIME_PRICE_ID:-}
+      - STRIPE_LIVE_SECRET_KEY=${STRIPE_LIVE_SECRET_KEY:-}
+      - STRIPE_LIVE_PUBLISHABLE_KEY=${STRIPE_LIVE_PUBLISHABLE_KEY:-}
+      - STRIPE_LIVE_WEBHOOK_SECRET=${STRIPE_LIVE_WEBHOOK_SECRET:-}
+      - STRIPE_LIVE_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_LIVE_PREMIUM_ONE_TIME_PRICE_ID:-}
+      - STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS=${STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS:-14999}
+      - STRIPE_PREMIUM_CURRENCY=${STRIPE_PREMIUM_CURRENCY:-usd}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - NEXTJS_PORT=3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+    command: /app/start.sh
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BACKEND_API_URL: http://localhost:8000/api
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    container_name: voicevault-celery-worker
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ALLOWED_HOSTS=localhost
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
+      - DB_SSL_REQUIRE=False
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: /app/start.sh celery-worker
+
+  # Celery Beat (Scheduler)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BACKEND_API_URL: http://localhost:8000/api
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    container_name: voicevault-celery-beat
+    environment:
+      - DEBUG=True
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - ALLOWED_HOSTS=localhost
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
+      - DB_SSL_REQUIRE=False
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
+      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_KEY=${SUPABASE_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: /app/start.sh celery-beat
+
+volumes:
+  postgres_data:
+  redis_data:
