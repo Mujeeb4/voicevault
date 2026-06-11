@@ -46,8 +46,8 @@ services:
         NEXT_PUBLIC_SITE_URL: http://localhost:3000
     container_name: voicevault-web
     ports:
-      - "127.0.0.1:${BACKEND_HOST_PORT:-18000}:8000"
-      - "127.0.0.1:${FRONTEND_HOST_PORT:-13000}:3000"
+      - "${HOST_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-18000}:8000"
+      - "${HOST_BIND_IP:-127.0.0.1}:${FRONTEND_HOST_PORT:-13000}:3000"
     environment:
       - DEBUG=True
       - SECRET_KEY=dev-secret-key-change-in-production
