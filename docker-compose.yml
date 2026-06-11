@@ -79,6 +79,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
       - NEXTJS_PORT=3000
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,10 +113,9 @@ services:
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
+      - RUN_MIGRATIONS=false
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      web:
         condition: service_healthy
     command: /app/start.sh celery-worker
 
@@ -140,10 +140,9 @@ services:
       - SUPABASE_URL=${SUPABASE_URL:-}
       - SUPABASE_KEY=${SUPABASE_KEY:-}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - RUN_MIGRATIONS=false
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
+      web:
         condition: service_healthy
     command: /app/start.sh celery-beat
 

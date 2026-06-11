@@ -4,7 +4,16 @@ set -eu
 ROLE="${1:-web}"
 
 run_migrations() {
-  if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+  SHOULD_RUN="${RUN_MIGRATIONS:-}"
+  if [ -z "$SHOULD_RUN" ]; then
+    if [ "$ROLE" = "web" ]; then
+      SHOULD_RUN="true"
+    else
+      SHOULD_RUN="false"
+    fi
+  fi
+
+  if [ "$SHOULD_RUN" = "true" ]; then
     python manage.py migrate --noinput
   fi
 }
