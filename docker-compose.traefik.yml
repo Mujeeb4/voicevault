@@ -1,9 +1,14 @@
 # Optional Traefik integration for Hostinger or any external Traefik container.
 #
-# Usage:
-#   TRAEFIK_DOMAIN=your-temp-domain.example \
+# HTTP/IP usage, for example Hostinger's temporary URL:
+#   TRAEFIK_HOST=72.61.76.103 \
 #   TRAEFIK_NETWORK=traefik-yuy7_default \
 #   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+#
+# HTTPS/domain usage:
+#   TRAEFIK_HOST=voicevault.example.com \
+#   TRAEFIK_NETWORK=traefik-yuy7_default \
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
 #
 # Find the Traefik network with:
 #   docker network ls | grep traefik
@@ -14,16 +19,12 @@ services:
       - default
       - traefik
     labels:
-      - traefik.enable=true
-      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik-yuy7_default}
-      - traefik.http.routers.voicevault-http.rule=Host(`${TRAEFIK_DOMAIN:-voicevault.localhost}`)
-      - traefik.http.routers.voicevault-http.entrypoints=web
-      - traefik.http.routers.voicevault-http.middlewares=voicevault-redirect-https
-      - traefik.http.routers.voicevault.rule=Host(`${TRAEFIK_DOMAIN:-voicevault.localhost}`)
-      - traefik.http.routers.voicevault.entrypoints=websecure
-      - traefik.http.routers.voicevault.tls=true
-      - traefik.http.services.voicevault.loadbalancer.server.port=3000
-      - traefik.http.middlewares.voicevault-redirect-https.redirectscheme.scheme=https
+      traefik.enable: "true"
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik-yuy7_default}
+      traefik.http.routers.voicevault.rule: Host(`${TRAEFIK_HOST:-voicevault.localhost}`)
+      traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault.tls: "${TRAEFIK_TLS:-false}"
+      traefik.http.services.voicevault.loadbalancer.server.port: "3000"
 
 networks:
   traefik:

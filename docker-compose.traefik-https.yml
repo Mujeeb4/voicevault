@@ -1,0 +1,22 @@
+# HTTPS overlay for Traefik deployments with a real DNS hostname.
+#
+# Use this together with docker-compose.traefik.yml only after TRAEFIK_HOST is
+# a domain that resolves to this server. Let's Encrypt cannot issue a normal
+# certificate for a bare IP address.
+#
+# Example:
+#   TRAEFIK_HOST=voicevault.example.com \
+#   TRAEFIK_NETWORK=traefik-yuy7_default \
+#   TRAEFIK_CERT_RESOLVER=letsencrypt \
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
+
+services:
+  web:
+    labels:
+      traefik.http.routers.voicevault-http.rule: Host(`${TRAEFIK_HOST:-voicevault.localhost}`)
+      traefik.http.routers.voicevault-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault-http.middlewares: voicevault-redirect-https
+      traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_HTTPS_ENTRYPOINT:-websecure}
+      traefik.http.routers.voicevault.tls: "true"
+      traefik.http.routers.voicevault.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      traefik.http.middlewares.voicevault-redirect-https.redirectscheme.scheme: https

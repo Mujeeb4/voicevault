@@ -20,6 +20,18 @@ function getOrigin(value?: string): string | null {
   }
 }
 
+function getProtocol(value?: string): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new URL(value).protocol;
+  } catch {
+    return null;
+  }
+}
+
 function compact(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }
@@ -30,6 +42,7 @@ function buildContentSecurityPolicy(nonce: string): string {
     || getOrigin(process.env.NEXT_PUBLIC_API_URL)
     || 'https://voicevault-backend-production.up.railway.app';
   const siteOrigin = getOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+  const shouldUpgradeInsecureRequests = getProtocol(process.env.NEXT_PUBLIC_SITE_URL) === 'https:';
 
   const scriptSrc = compact([
     "'self'",
@@ -59,7 +72,7 @@ function buildContentSecurityPolicy(nonce: string): string {
     ...ANALYTICS_ORIGINS,
   ]);
 
-  return [
+  return compact([
     "default-src 'self'",
     `script-src ${scriptSrc.join(' ')}`,
     `style-src ${styleSrc.join(' ')}`,
@@ -74,8 +87,8 @@ function buildContentSecurityPolicy(nonce: string): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'self'",
-    "upgrade-insecure-requests",
-  ].join('; ');
+    shouldUpgradeInsecureRequests ? "upgrade-insecure-requests" : null,
+  ]).join('; ');
 }
 
 export function middleware(request: NextRequest): NextResponse {

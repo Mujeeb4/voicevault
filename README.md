@@ -311,6 +311,33 @@ npm run build
 npm start
 ```
 
+### Docker + Traefik on Hostinger
+
+For Hostinger's temporary IP URL, run Traefik in HTTP mode and match the IP host:
+
+```bash
+TRAEFIK_HOST=72.61.76.103 \
+TRAEFIK_NETWORK=traefik-yuy7_default \
+NEXT_PUBLIC_SITE_URL=http://72.61.76.103:13000 \
+FRONTEND_URL=http://72.61.76.103:13000 \
+docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+```
+
+For a real domain with HTTPS, point DNS at the server first, then add the HTTPS overlay:
+
+```bash
+TRAEFIK_HOST=voicevault.example.com \
+TRAEFIK_NETWORK=traefik-yuy7_default \
+TRAEFIK_CERT_RESOLVER=letsencrypt \
+NEXT_PUBLIC_SITE_URL=https://voicevault.example.com \
+FRONTEND_URL=https://voicevault.example.com \
+docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
+```
+
+Use the certificate resolver name from Traefik's static config. If Traefik logs
+`Router uses a nonexistent certificate resolver ... mytlschallenge`, replace that
+label/env value with the resolver that exists, such as `letsencrypt`.
+
 ---
 
 ## 📚 API Documentation
