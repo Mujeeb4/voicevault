@@ -336,6 +336,16 @@ FRONTEND_URL=https://voicevault.example.com \
 docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
 ```
 
+If the Traefik container uses host networking, use the host-mode overlay instead:
+
+```bash
+TRAEFIK_RULE='Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
+TRAEFIK_CERT_RESOLVER=letsencrypt \
+NEXT_PUBLIC_SITE_URL=https://voicevault-web.srv1183929.hstgr.cloud \
+FRONTEND_URL=https://voicevault-web.srv1183929.hstgr.cloud \
+docker compose -f docker-compose.yml -f docker-compose.traefik-host.yml -f docker-compose.traefik-https.yml up -d --build
+```
+
 Use the certificate resolver name from Traefik's static config. If Traefik logs
 `Router uses a nonexistent certificate resolver ... mytlschallenge`, replace that
 label/env value with the resolver that exists, such as `letsencrypt`.

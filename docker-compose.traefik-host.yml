@@ -1,0 +1,25 @@
+# Traefik integration for Hostinger-style Traefik containers running with
+# network_mode: host.
+#
+# Use this when:
+#   docker inspect traefik-dala-traefik-1 --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}'
+# prints:
+#   host
+#
+# This file intentionally does not declare or attach an external Traefik network.
+# Traefik's Docker provider can discover this container through labels and route
+# to the web service port.
+#
+# HTTPS usage:
+#   TRAEFIK_RULE='Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
+#   TRAEFIK_CERT_RESOLVER=letsencrypt \
+#   docker compose -f docker-compose.yml -f docker-compose.traefik-host.yml -f docker-compose.traefik-https.yml up -d --build
+
+services:
+  web:
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.voicevault.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
+      traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault.tls: "${TRAEFIK_TLS:-false}"
+      traefik.http.services.voicevault.loadbalancer.server.port: "3000"
