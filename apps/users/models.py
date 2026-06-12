@@ -78,6 +78,12 @@ class User(models.Model):
         self.ai_processing_completed_at = timezone.now()
         self.save(update_fields=['ai_ready', 'ai_processing_completed_at'])
 
+    def reset_ai_ready(self):
+        """Reset AI status when starting processing pipeline."""
+        self.ai_ready = False
+        self.ai_processing_started_at = timezone.now()
+        self.save(update_fields=['ai_ready', 'ai_processing_started_at'])
+
     def activate_premium(self, payment_intent_id=None, customer_id=None, amount_cents=None):
         """Grant lifetime Premium access for this vault."""
         self.plan_type = 'premium'

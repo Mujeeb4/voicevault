@@ -39,6 +39,7 @@ function RecordingContent() {
     setUploadProgress,
     reset: resetRecording,
     loadSavedRecordings,
+    clearAllRecordingsData,
   } = useRecordingStore();
 
   const [currentStep, setCurrentStep] = useState<Step>('intro');
@@ -74,6 +75,13 @@ function RecordingContent() {
 
     loadData();
   }, [setQuestions, loadSavedRecordings]);
+
+  // Redirect to processing if recordings are completed but AI is not ready yet
+  useEffect(() => {
+    if (user && user.recording_completed && !user.ai_ready) {
+      router.replace('/processing');
+    }
+  }, [user, router]);
 
   const handleStartRecording = () => {
     setCurrentStep('recording');
@@ -159,7 +167,12 @@ function RecordingContent() {
       toast.success('Upload complete!');
 
       // Cleanup and redirect
-      setTimeout(() => {
+      setTimeout(async () => {
+        try {
+          await clearAllRecordingsData();
+        } catch (e) {
+          console.error('Failed to clear recordings from IndexedDB:', e);
+        }
         resetRecording();
         router.push('/processing');
       }, 2000);

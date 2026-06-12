@@ -150,6 +150,28 @@ class ConsentRecordView(APIView):
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
         )
 
+        if consent_type == 'voice_cloning' and accepted and user.is_premium:
+            try:
+                from apps.ai_processing.tasks import clone_voice_task, finalize_ai_task
+                from apps.ai_processing.models import ProcessingQueue
+                from celery import chain
+
+                has_recordings = user.audio_recordings.filter(upload_status='complete').exists()
+                is_cloning = ProcessingQueue.objects.filter(
+                    user=user,
+                    task_type='clone_voice',
+                    status__in=['processing', 'complete']
+                ).exists()
+
+                if has_recordings and not is_cloning:
+                    pipeline = chain(
+                        clone_voice_task.si(str(user.id)).set(queue='voice'),
+                        finalize_ai_task.si(str(user.id)).set(queue='default')
+                    )
+                    pipeline.apply_async()
+            except Exception:
+                logger.warning('Could not queue post-consent voice processing for user %s', user.id, exc_info=True)
+
         return Response({
             'id': str(consent.id),
             'consent_type': consent.consent_type,

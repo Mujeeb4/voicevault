@@ -225,23 +225,28 @@ class AudioRecordingUploadView(APIView):
                         task_type__in=['transcribe', 'analyze_personality', 'clone_voice']
                     ).exists()
                     
+                    if is_final_chunk:
+                        user.mark_recording_complete()
+                        logger.info(f"Marked user {user.id} recording as completed")
+
                     if is_final_chunk and not existing_tasks:
                         # Start the full processing pipeline
                         logger.info(f"Triggering full AI processing pipeline for user {user.id}")
+                        user.reset_ai_ready()
                         # Use immutable signatures (.si()) to pass user_id explicitly
                         # This avoids passing previous task result as first argument
                         if can_clone_voice(user).allowed:
                             pipeline = chain(
-                                transcribe_audio_task.si(str(user.id)),
-                                analyze_personality_task.si(str(user.id)),
-                                clone_voice_task.si(str(user.id)),
-                                finalize_ai_task.si(str(user.id))
+                                transcribe_audio_task.si(str(user.id)).set(queue='transcription'),
+                                analyze_personality_task.si(str(user.id)).set(queue='analysis'),
+                                clone_voice_task.si(str(user.id)).set(queue='voice'),
+                                finalize_ai_task.si(str(user.id)).set(queue='default'),
                             )
                         else:
                             pipeline = chain(
-                                transcribe_audio_task.si(str(user.id)),
-                                analyze_personality_task.si(str(user.id)),
-                                finalize_ai_task.si(str(user.id))
+                                transcribe_audio_task.si(str(user.id)).set(queue='transcription'),
+                                analyze_personality_task.si(str(user.id)).set(queue='analysis'),
+                                finalize_ai_task.si(str(user.id)).set(queue='default'),
                             )
                         result = pipeline.apply_async()
                         logger.info(f"Full pipeline queued for user {user.id}: {result.id}")

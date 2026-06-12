@@ -6,7 +6,7 @@ from apps.users.models import User, ConsentRecord
 from apps.recordings.models import AudioRecording, Transcript
 from apps.ai_processing.models import APIUsageTracking, ProcessingQueue
 from apps.ai_processing.tasks import _recording_processing_order, transcribe_audio_task
-from apps.ai_processing.views import TranscribeAudioView, RunFullPipelineView
+from apps.ai_processing.views import CloneVoiceView, TranscribeAudioView, RunFullPipelineView
 from utils.supabase_auth import SupabaseUser
 
 class AIProcessingViewsTestCase(TestCase):
@@ -200,6 +200,70 @@ class AIProcessingViewsTestCase(TestCase):
         ordered = sorted(recordings, key=_recording_processing_order)
 
         self.assertEqual([recording.question_number for recording in ordered], [-1, -2, 1])
+
+    @patch('apps.ai_processing.views.clone_voice_task')
+    @patch('apps.ai_processing.views.finalize_ai_task')
+    @patch('celery.chain')
+    def test_clone_voice_view_accepts_60_second_audio_threshold(self, mock_chain, mock_finalize, mock_clone):
+        """Voice clone trigger should use the same 60-second minimum as the worker task."""
+        self.user.is_premium = True
+        self.user.plan_type = 'premium'
+        self.user.save()
+        ConsentRecord.objects.create(user=self.user, consent_type='voice_cloning', accepted=True)
+
+        AudioRecording.objects.create(
+            user=self.user,
+            storage_path='test/short.mp3',
+            public_url='http://example.com/short.mp3',
+            file_size_bytes=1000,
+            format='mp3',
+            question_number=1,
+            question_text='Short clip',
+            domain='childhood',
+            upload_status='complete',
+            duration_seconds=60,
+        )
+
+        request = self.factory.post(f'/api/admin/process/voice-clone/{self.user.id}/')
+        request.supabase_user = self.supabase_user
+
+        response = CloneVoiceView.as_view()(request, user_id=self.user.id)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_chain.assert_called_once()
+        mock_clone.si.assert_called_once_with(str(self.user.id))
+        mock_finalize.si.assert_called_once_with(str(self.user.id))
+
+    @patch('apps.ai_processing.views.clone_voice_task')
+    @patch('apps.ai_processing.views.finalize_ai_task')
+    @patch('celery.chain')
+    def test_clone_voice_view_requires_consent_for_premium_users(self, mock_chain, mock_finalize, mock_clone):
+        """Voice clone trigger should reject premium users who have not accepted consent."""
+        self.user.is_premium = True
+        self.user.plan_type = 'premium'
+        self.user.save()
+
+        AudioRecording.objects.create(
+            user=self.user,
+            storage_path='test/long.mp3',
+            public_url='http://example.com/long.mp3',
+            file_size_bytes=1000,
+            format='mp3',
+            question_number=1,
+            question_text='Long clip',
+            domain='childhood',
+            upload_status='complete',
+            duration_seconds=120,
+        )
+
+        request = self.factory.post(f'/api/admin/process/voice-clone/{self.user.id}/')
+        request.supabase_user = self.supabase_user
+
+        response = CloneVoiceView.as_view()(request, user_id=self.user.id)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['error'], 'voice_cloning_consent')
+        mock_chain.assert_not_called()
 
     @patch('apps.ai_processing.tasks.transcribe_single_file')
     def test_transcribe_audio_task_processes_chunked_combined_uploads_in_sequence(self, mock_transcribe_single_file):

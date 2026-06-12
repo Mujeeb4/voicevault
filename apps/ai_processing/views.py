@@ -212,27 +212,45 @@ class CloneVoiceView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Check premium and consent before queueing the task.
+            clone_limit = can_clone_voice(user)
+            if not clone_limit.allowed:
+                return Response(
+                    {
+                        'error': clone_limit.limit_key or 'voice_cloning_not_allowed',
+                        'message': clone_limit.message,
+                        'upgrade_required': clone_limit.upgrade_required,
+                    },
+                    status=status.HTTP_403_FORBIDDEN if clone_limit.limit_key == 'voice_cloning_consent' or clone_limit.upgrade_required else status.HTTP_400_BAD_REQUEST,
+                )
+
             # Calculate total duration
             total_duration = sum(r.duration_seconds or 0 for r in recordings)
-            
-            if total_duration < 600:  # 10 minutes
+
+            # Match the worker task requirement: 60 seconds minimum.
+            if total_duration < 60:
                 return Response(
                     {
                         'error': 'insufficient_audio',
-                        'message': f'Only {total_duration:.1f} seconds of audio (minimum 600s required)'
+                        'message': f'Only {total_duration:.1f} seconds of audio (minimum 60s required)'
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
-            # Queue the voice cloning task
-            task = clone_voice_task.delay(str(user_id))
+            # Queue the voice cloning task followed by finalization in sequence
+            from celery import chain
+            pipeline = chain(
+                clone_voice_task.si(str(user_id)).set(queue='voice'),
+                finalize_ai_task.si(str(user_id)).set(queue='default'),
+            )
+            result = pipeline.apply_async()
             
-            logger.info(f"Voice cloning task queued for user {user_id}: {task.id}")
+            logger.info(f"Voice cloning task queued for user {user_id}: {result.id}")
             
             return Response(
                 {
                     'message': 'Voice cloning task started',
-                    'task_id': task.id,
+                    'task_id': result.id,
                     'user_id': str(user_id),
                     'recordings_count': recordings.count(),
                     'total_duration_seconds': total_duration,
@@ -340,6 +358,11 @@ class ProcessingStatusView(APIView):
                 user=user,
                 upload_status='complete'
             ).exists()
+            
+            # Auto-correct recording completion status if recordings exist but DB flag is missing
+            if has_recordings and not user.recording_completed:
+                user.mark_recording_complete()
+                logger.info(f"Auto-marked user {user_id} as recording_completed after detecting completed recordings")
             
             has_transcript = Transcript.objects.filter(user=user).exists()
             has_ai_config = AIConfiguration.objects.filter(user=user).exists()
@@ -534,6 +557,9 @@ class RunFullPipelineView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
+            # Reset user AI status before enqueuing processing pipeline
+            user.reset_ai_ready()
+            
             # Chain tasks in sequence
             from celery import chain
             
@@ -541,16 +567,16 @@ class RunFullPipelineView(APIView):
             # This avoids passing previous task result as first argument
             if can_clone_voice(user).allowed:
                 pipeline = chain(
-                    transcribe_audio_task.si(str(user_id)),
-                    analyze_personality_task.si(str(user_id)),
-                    clone_voice_task.si(str(user_id)),
-                    finalize_ai_task.si(str(user_id))
+                    transcribe_audio_task.si(str(user_id)).set(queue='transcription'),
+                    analyze_personality_task.si(str(user_id)).set(queue='analysis'),
+                    clone_voice_task.si(str(user_id)).set(queue='voice'),
+                    finalize_ai_task.si(str(user_id)).set(queue='default'),
                 )
             else:
                 pipeline = chain(
-                    transcribe_audio_task.si(str(user_id)),
-                    analyze_personality_task.si(str(user_id)),
-                    finalize_ai_task.si(str(user_id))
+                    transcribe_audio_task.si(str(user_id)).set(queue='transcription'),
+                    analyze_personality_task.si(str(user_id)).set(queue='analysis'),
+                    finalize_ai_task.si(str(user_id)).set(queue='default'),
                 )
             
             result = pipeline.apply_async()

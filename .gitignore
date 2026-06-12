@@ -47,7 +47,16 @@ frontend/.vercel/
 frontend/playwright-report/
 frontend/test-results/
 frontend/tsconfig.tsbuildinfo
-
+graphify-out/
+graphify-out/.graphify_root
+graphify-out/GRAPH_REPORT.md
+graphify-out/manifest.json
+graphify-out/graphify.json
+graphify-out/graphify.json.gz
+graphify-out/graphify.json.gz.part
+graphify-out/graphify.json.gz.part.1
+graphify-out/graphify.json.gz.part.2
+graphify-out/graphify.json.gz.part.3
 # Environment Variables
 .env
 .env.local

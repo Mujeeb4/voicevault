@@ -1026,16 +1026,16 @@ def start_ai_pipeline_task(self, user_id: str) -> Dict:
         clone_limit = can_clone_voice(user)
         if clone_limit.allowed:
             workflow = chain(
-                transcribe_audio_task.s(user_id),
-                analyze_personality_task.s(),
-                clone_voice_task.s(),
-                finalize_ai_task.s()
+                transcribe_audio_task.s(user_id).set(queue='transcription'),
+                analyze_personality_task.s(user_id).set(queue='analysis'),
+                clone_voice_task.s(user_id).set(queue='voice'),
+                finalize_ai_task.s(user_id).set(queue='default'),
             )
         else:
             workflow = chain(
-                transcribe_audio_task.s(user_id),
-                analyze_personality_task.s(),
-                finalize_ai_task.s()
+                transcribe_audio_task.s(user_id).set(queue='transcription'),
+                analyze_personality_task.s(user_id).set(queue='analysis'),
+                finalize_ai_task.s(user_id).set(queue='default'),
             )
         
         # Execute the chain
