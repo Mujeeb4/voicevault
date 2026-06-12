@@ -27,11 +27,24 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     stepsData.personality_analysis?.status === 'complete' &&
     stepsData.voice_cloning?.status === 'complete';
 
-  // Show "Generating Voice" as main step, with transcription hidden but accessible
+  // Show transcription while it is active or failed. Once complete, keep it tucked
+  // behind the voice step as a transcript viewer to reduce visual clutter.
   const transcriptionComplete = stepsData.transcription?.status === 'complete';
+  const shouldShowTranscriptionStep = !transcriptionComplete;
   const transcriptionText = stepsData.transcription?.result?.transcript ?? '';
   
   const steps = [
+    ...(shouldShowTranscriptionStep
+      ? [
+          {
+            key: 'transcription' as const,
+            title: 'Transcribing Audio',
+            description: 'Turning your recording into text with OpenAI Whisper',
+            icon: <Sparkles className="w-6 h-6 text-primary-600" />,
+            stepData: stepsData.transcription || { status: 'pending' },
+          },
+        ]
+      : []),
     {
       key: 'voice_cloning' as const,
       title: 'Generating Voice',
@@ -117,4 +130,3 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     </div>
   );
 }
-
