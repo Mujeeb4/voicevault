@@ -53,7 +53,7 @@ function buildContentSecurityPolicy(nonce: string): string {
   ]);
   const styleSrc = compact([
     "'self'",
-    isDevelopment ? "'unsafe-inline'" : `'nonce-${nonce}'`,
+    "'unsafe-inline'",
   ]);
   const connectSrc = compact([
     "'self'",

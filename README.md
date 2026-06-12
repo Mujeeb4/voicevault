@@ -317,6 +317,7 @@ For Hostinger's temporary IP URL, run Traefik in HTTP mode and match the IP host
 
 ```bash
 TRAEFIK_HOST=72.61.76.103 \
+TRAEFIK_RULE='Host(`72.61.76.103`) || Host(`web.srv1183929.hstgr.cloud`) || Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
 TRAEFIK_NETWORK=traefik-yuy7_default \
 NEXT_PUBLIC_SITE_URL=http://72.61.76.103:13000 \
 FRONTEND_URL=http://72.61.76.103:13000 \
@@ -327,6 +328,7 @@ For a real domain with HTTPS, point DNS at the server first, then add the HTTPS 
 
 ```bash
 TRAEFIK_HOST=voicevault.example.com \
+TRAEFIK_RULE='Host(`voicevault.example.com`)' \
 TRAEFIK_NETWORK=traefik-yuy7_default \
 TRAEFIK_CERT_RESOLVER=letsencrypt \
 NEXT_PUBLIC_SITE_URL=https://voicevault.example.com \
