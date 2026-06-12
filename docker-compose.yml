@@ -119,6 +119,8 @@ services:
         condition: service_healthy
     volumes:
       - ./media:/app/media
+    healthcheck:
+      disable: true
     command: /app/start.sh celery-worker
 
   # Celery Beat (Scheduler)
@@ -145,6 +147,8 @@ services:
     depends_on:
       web:
         condition: service_healthy
+    healthcheck:
+      disable: true
     command: /app/start.sh celery-beat
 
 volumes:

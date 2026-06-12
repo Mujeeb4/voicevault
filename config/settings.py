@@ -30,6 +30,9 @@ ALLOWED_HOSTS = [host.strip() for host in config(
     'ALLOWED_HOSTS',
     default='localhost,127.0.0.1',
 ).split(',') if host.strip()]
+for internal_host in ('localhost', '127.0.0.1'):
+    if internal_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(internal_host)
 
 # Comma-separated list of emails allowed to use admin-only API endpoints.
 ADMIN_EMAILS = config(
