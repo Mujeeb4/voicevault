@@ -87,14 +87,13 @@ class HealthCheckView(APIView):
     
     def get(self, request):
         try:
-            # Check database connection (Disabled for debugging deployment timeouts)
-            # with connection.cursor() as cursor:
-            #     cursor.execute("SELECT 1")
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
             
             return Response({
                 'status': 'healthy',
                 'service': 'voicevault',
-                'database': 'skipped_check'
+                'database': 'connected'
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error("Health check failed: %s", e.__class__.__name__)
