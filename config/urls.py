@@ -17,7 +17,9 @@ urlpatterns = [
     path('api/payments/', include('apps.payments.urls')),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
+# Serve media files in development, and in single-container local-storage deployments.
+if settings.DEBUG or getattr(settings, 'STORAGE_BACKEND', '') == 'local':
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

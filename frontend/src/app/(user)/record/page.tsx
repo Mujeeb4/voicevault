@@ -15,9 +15,16 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { useRecordingStore } from '@/store/recording';
 import { Button } from '@/components/ui/button';
+import { getApiErrorMessage } from '@/lib/utils';
 import { questionsApi } from '@/lib/api/questions';
 import { recordingsApi } from '@/lib/api/recordings';
-import { combineAudioFiles, compressToMP3, blobToFile, getAudioFormat } from '@/lib/audio/compression';
+import {
+  combineAudioFiles,
+  compressToMP3,
+  splitAudioToMP3Chunks,
+  blobToFile,
+  getAudioFormat,
+} from '@/lib/audio/compression';
 import { createOptionalReflectionQuestion } from '@/lib/recording/optional-question';
 
 // Step Components
@@ -27,6 +34,9 @@ import { ReviewStep } from '@/components/recording/ReviewStep';
 import { UploadStep } from '@/components/recording/UploadStep';
 
 type Step = 'intro' | 'recording' | 'review' | 'upload';
+type OrderedRecording = { questionId: string; blob: Blob; duration: number };
+type UploadChunk = { recordings: OrderedRecording[]; duration: number };
+type PreparedUploadPart = { blob: Blob; duration: number };
 
 function RecordingContent() {
   const router = useRouter();
@@ -46,11 +56,17 @@ function RecordingContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
-  const uploadChunkDurationSeconds = 20 * 60;
+  const uploadChunkDurationSeconds = 10 * 60;
+  const uploadPartMaxBytes = 22 * 1024 * 1024;
 
   // Load questions and saved recordings
   useEffect(() => {
     const loadData = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
@@ -63,7 +79,7 @@ function RecordingContent() {
         ]);
 
         // Load saved recordings from IndexedDB
-        await loadSavedRecordings();
+        await loadSavedRecordings(user.id);
 
         setIsLoading(false);
       } catch (err) {
@@ -74,7 +90,7 @@ function RecordingContent() {
     };
 
     loadData();
-  }, [setQuestions, loadSavedRecordings]);
+  }, [setQuestions, loadSavedRecordings, user?.id]);
 
   // Redirect to processing if recordings are completed but AI is not ready yet
   useEffect(() => {
@@ -99,6 +115,12 @@ function RecordingContent() {
   };
 
   const handleStartUpload = async () => {
+    if (!user?.id) {
+      toast.error('Please sign in again before uploading recordings.');
+      return;
+    }
+
+    const userId = user.id;
     setCurrentStep('upload');
     setStatus('uploading');
 
@@ -115,51 +137,62 @@ function RecordingContent() {
               }
             : null;
         })
-        .filter((recording): recording is { questionId: string; blob: Blob; duration: number } => Boolean(recording));
+        .filter((recording): recording is OrderedRecording => Boolean(recording));
 
       if (orderedRecordings.length === 0) {
         throw new Error('No recordings found');
       }
 
       const totalDuration = orderedRecordings.reduce((sum, recording) => sum + recording.duration, 0);
-      const uploadChunks = createUploadChunks(orderedRecordings, uploadChunkDurationSeconds);
+      const uploadChunks = createUploadChunks(orderedRecordings, uploadChunkDurationSeconds, uploadPartMaxBytes);
+      const totalUploadParts = uploadChunks.reduce(
+        (sum, chunk) => sum + estimatePreparedPartCount(chunk, uploadChunkDurationSeconds),
+        0
+      );
+      let uploadedPartIndex = 0;
 
       for (let index = 0; index < uploadChunks.length; index += 1) {
         const chunk = uploadChunks[index];
-        const chunkStart = index / uploadChunks.length;
-        const chunkWeight = 1 / uploadChunks.length;
+        const expectedPartCount = estimatePreparedPartCount(chunk, uploadChunkDurationSeconds);
+        const preparationStart = uploadedPartIndex / totalUploadParts;
+        const preparationWeight = expectedPartCount / totalUploadParts;
 
-        toast.info(`Preparing part ${index + 1} of ${uploadChunks.length}...`);
-        const combinedBlob = await combineAudioFiles(chunk.recordings.map((recording) => recording.blob), (progress) => {
-          setUploadProgress(Math.round((chunkStart + progress * chunkWeight * 0.3) * 100));
+        toast.info(`Preparing part ${uploadedPartIndex + 1} of ${totalUploadParts}...`);
+        const preparedParts = await prepareUploadParts(chunk, uploadPartMaxBytes, uploadChunkDurationSeconds, (progress) => {
+          setUploadProgress(Math.round((preparationStart + progress * preparationWeight * 0.45) * 100));
         });
 
-        toast.info(`Compressing part ${index + 1} of ${uploadChunks.length}...`);
-        const compressedBlob = await compressToMP3(combinedBlob, (progress) => {
-          setUploadProgress(Math.round((chunkStart + chunkWeight * 0.3 + progress * chunkWeight * 0.3) * 100));
-        });
+        if (preparedParts.length !== expectedPartCount) {
+          throw new Error('Could not prepare audio parts consistently. Please try uploading again.');
+        }
 
-        toast.info(`Uploading part ${index + 1} of ${uploadChunks.length}...`);
-        const file = blobToFile(compressedBlob, `recording-part-${index + 1}.mp3`);
-        const fileFormat = getAudioFormat(compressedBlob);
+        for (const part of preparedParts) {
+          const partNumber = uploadedPartIndex + 1;
+          const partStart = uploadedPartIndex / totalUploadParts;
+          const partWeight = 1 / totalUploadParts;
+          toast.info(`Uploading part ${partNumber} of ${totalUploadParts}...`);
+          const file = blobToFile(part.blob, `recording-part-${partNumber}.${getAudioFormat(part.blob)}`);
+          const fileFormat = getAudioFormat(part.blob);
 
-        await recordingsApi.uploadRecording(
-          file,
-          {
-            file_format: fileFormat,
-            duration_seconds: chunk.duration,
-            file_size_bytes: file.size,
-            questions_answered: orderedRecordings.length,
-            recording_date: new Date().toISOString(),
-            chunk_index: index + 1,
-            total_chunks: uploadChunks.length,
-            is_final_chunk: index === uploadChunks.length - 1,
-            total_duration_seconds: totalDuration,
-          },
-          (progress) => {
-            setUploadProgress(Math.round((chunkStart + chunkWeight * 0.6 + (progress / 100) * chunkWeight * 0.4) * 100));
-          }
-        );
+          await recordingsApi.uploadRecording(
+            file,
+            {
+              file_format: fileFormat,
+              duration_seconds: part.duration,
+              file_size_bytes: file.size,
+              questions_answered: orderedRecordings.length,
+              recording_date: new Date().toISOString(),
+              chunk_index: partNumber,
+              total_chunks: totalUploadParts,
+              is_final_chunk: partNumber === totalUploadParts,
+              total_duration_seconds: totalDuration,
+            },
+            (progress) => {
+              setUploadProgress(Math.round((partStart + (progress / 100) * partWeight) * 100));
+            }
+          );
+          uploadedPartIndex += 1;
+        }
       }
 
       setUploadProgress(100);
@@ -169,7 +202,7 @@ function RecordingContent() {
       // Cleanup and redirect
       setTimeout(async () => {
         try {
-          await clearAllRecordingsData();
+          await clearAllRecordingsData(userId);
         } catch (e) {
           console.error('Failed to clear recordings from IndexedDB:', e);
         }
@@ -178,7 +211,7 @@ function RecordingContent() {
       }, 2000);
     } catch (err) {
       setStatus('idle');
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      toast.error(getApiErrorMessage(err, err instanceof Error ? err.message : 'Upload failed'));
       console.error('Upload error');
     }
   };
@@ -233,24 +266,109 @@ function RecordingContent() {
   );
 }
 
+async function prepareUploadParts(
+  chunk: UploadChunk,
+  maxBytes: number,
+  segmentSeconds: number,
+  onProgress?: (progress: number) => void
+): Promise<PreparedUploadPart[]> {
+  if (chunk.recordings.length === 1) {
+    const recording = chunk.recordings[0];
+    if (recording.duration <= segmentSeconds && recording.blob.size <= maxBytes) {
+      await assertUploadableAudio(recording.blob);
+      onProgress?.(1);
+      return [{ blob: recording.blob, duration: recording.duration }];
+    }
+
+    const compressedBlob = await compressToMP3(recording.blob, (progress) => onProgress?.(progress * 0.5));
+    if (recording.duration <= segmentSeconds && compressedBlob.size <= maxBytes) {
+      await assertUploadableAudio(compressedBlob);
+      onProgress?.(1);
+      return [{ blob: compressedBlob, duration: recording.duration }];
+    }
+
+    const splitBlobs = await splitAudioToMP3Chunks(compressedBlob, segmentSeconds, (progress) => {
+      onProgress?.(0.5 + progress * 0.5);
+    });
+
+    await Promise.all(splitBlobs.map((blob) => assertUploadableAudio(blob)));
+    return splitBlobs.map((blob, index) => ({
+      blob,
+      duration: Math.min(segmentSeconds, Math.max(0, recording.duration - index * segmentSeconds)),
+    }));
+  }
+
+  const combinedBlob = await combineAudioFiles(chunk.recordings.map((recording) => recording.blob), (progress) => {
+    onProgress?.(progress * 0.45);
+  });
+  const compressedBlob = await compressToMP3(combinedBlob, (progress) => {
+    onProgress?.(0.45 + progress * 0.55);
+  });
+
+  if (compressedBlob.size > maxBytes) {
+    throw new Error('An upload part is still too large after compression. Please try again from a stronger connection.');
+  }
+
+  await assertUploadableAudio(compressedBlob);
+  return [{ blob: compressedBlob, duration: chunk.duration }];
+}
+
+async function assertUploadableAudio(blob: Blob): Promise<void> {
+  const header = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+  const format = getAudioFormat(blob);
+  const isWebm = format === 'webm' && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3;
+  const isWav = format === 'wav'
+    && header[0] === 0x52
+    && header[1] === 0x49
+    && header[2] === 0x46
+    && header[3] === 0x46
+    && header[8] === 0x57
+    && header[9] === 0x41
+    && header[10] === 0x56
+    && header[11] === 0x45;
+  const isMp3 = format === 'mp3'
+    && (
+      (header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33)
+      || (header[0] === 0xff && (header[1] & 0xe0) === 0xe0)
+    );
+
+  if (!isWebm && !isWav && !isMp3) {
+    throw new Error('A saved recording could not be decoded as audio. Please retake that recording before uploading.');
+  }
+}
+
+function estimatePreparedPartCount(chunk: UploadChunk, segmentSeconds: number): number {
+  if (chunk.recordings.length !== 1) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(chunk.duration / segmentSeconds));
+}
+
 function createUploadChunks(
-  recordings: Array<{ questionId: string; blob: Blob; duration: number }>,
-  maxDurationSeconds: number
-): Array<{ recordings: Array<{ questionId: string; blob: Blob; duration: number }>; duration: number }> {
-  const chunks: Array<{ recordings: Array<{ questionId: string; blob: Blob; duration: number }>; duration: number }> = [];
-  let currentChunk: Array<{ questionId: string; blob: Blob; duration: number }> = [];
+  recordings: OrderedRecording[],
+  maxDurationSeconds: number,
+  maxBytes: number
+): UploadChunk[] {
+  const chunks: UploadChunk[] = [];
+  let currentChunk: OrderedRecording[] = [];
   let currentDuration = 0;
+  let currentBytes = 0;
 
   for (const recording of recordings) {
+    const recordingBytes = recording.blob.size;
     const wouldExceedDuration = currentDuration > 0 && currentDuration + recording.duration > maxDurationSeconds;
-    if (wouldExceedDuration) {
+    const wouldExceedSize = currentBytes > 0 && currentBytes + recordingBytes > maxBytes;
+    if (wouldExceedDuration || wouldExceedSize) {
       chunks.push({ recordings: currentChunk, duration: currentDuration });
       currentChunk = [];
       currentDuration = 0;
+      currentBytes = 0;
     }
 
     currentChunk.push(recording);
     currentDuration += recording.duration;
+    currentBytes += recordingBytes;
   }
 
   if (currentChunk.length > 0) {

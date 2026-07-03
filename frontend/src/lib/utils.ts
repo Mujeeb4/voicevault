@@ -13,6 +13,6 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function getApiErrorMessage(err: unknown, fallback = 'An error occurred'): string {
   if (!err || typeof err !== 'object' || !('response' in err)) return fallback;
-  const data = (err as { response?: { data?: { error?: string; detail?: string } } }).response?.data;
-  return data?.error ?? data?.detail ?? fallback;
+  const data = (err as { response?: { data?: { error?: string; message?: string; detail?: string } } }).response?.data;
+  return data?.message ?? data?.error ?? data?.detail ?? fallback;
 }

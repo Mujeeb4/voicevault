@@ -33,6 +33,70 @@ export async function compressToMP3(
   }
 }
 
+export async function splitAudioToMP3Chunks(
+  blob: Blob,
+  segmentSeconds: number,
+  onProgress?: (progress: number) => void
+): Promise<Blob[]> {
+  const ffmpeg = await loadFFmpeg((progress) => onProgress?.(0.2 + progress * 0.7));
+  const inputFile = `input.${getAudioFormat(blob)}`;
+  const outputPattern = 'segment-%03d.mp3';
+  const ffmpegWithList = ffmpeg as typeof ffmpeg & {
+    listDir?: (path: string) => Promise<Array<{ name: string }>>;
+  };
+
+  try {
+    await ffmpeg.writeFile(inputFile, new Uint8Array(await blob.arrayBuffer()));
+    onProgress?.(0.2);
+    await ffmpeg.exec([
+      '-i',
+      inputFile,
+      '-f',
+      'segment',
+      '-segment_time',
+      String(segmentSeconds),
+      '-reset_timestamps',
+      '1',
+      '-b:a',
+      '128k',
+      outputPattern,
+    ]);
+
+    const entries = ffmpegWithList.listDir ? await ffmpegWithList.listDir('/') : [];
+    const segmentFiles = entries
+      .map((entry) => entry.name)
+      .filter((name) => /^segment-\d{3}\.mp3$/.test(name))
+      .sort();
+
+    if (segmentFiles.length === 0) {
+      throw new Error('Unable to split audio into upload parts');
+    }
+
+    const chunks: Blob[] = [];
+    for (let index = 0; index < segmentFiles.length; index += 1) {
+      const data = await ffmpeg.readFile(segmentFiles[index]);
+      const outputData = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+      const outputBuffer = outputData.buffer.slice(
+        outputData.byteOffset,
+        outputData.byteOffset + outputData.byteLength
+      ) as ArrayBuffer;
+      chunks.push(new Blob([outputBuffer], { type: 'audio/mpeg' }));
+      onProgress?.(0.9 + ((index + 1) / segmentFiles.length) * 0.1);
+    }
+
+    onProgress?.(1);
+    return chunks;
+  } finally {
+    const entries = ffmpegWithList.listDir ? await ffmpegWithList.listDir('/').catch(() => []) : [];
+    const segmentFiles = entries
+      .map((entry) => entry.name)
+      .filter((name) => /^segment-\d{3}\.mp3$/.test(name));
+    await Promise.allSettled(
+      [inputFile, ...segmentFiles].map((file) => ffmpeg.deleteFile(file))
+    );
+  }
+}
+
 export type SupportedAudioFormat = 'mp3' | 'webm' | 'wav';
 
 export function getAudioFormat(blob: Blob): SupportedAudioFormat {

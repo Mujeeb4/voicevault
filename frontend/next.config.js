@@ -91,6 +91,10 @@ const nextConfig = {
         source: '/static/:path*',
         destination: `${backendBaseUrl}/static/:path*`,
       },
+      {
+        source: '/media/:path*',
+        destination: `${backendBaseUrl}/media/:path*`,
+      },
     ];
   },
 

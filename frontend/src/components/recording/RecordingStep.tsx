@@ -65,9 +65,9 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
     try {
       const result = await stopRecording();
 
-      if (result && currentQuestion) {
+      if (result && currentQuestion && user?.id) {
         // Save recording
-        await saveCurrentRecording(currentQuestion.id, {
+        await saveCurrentRecording(user.id, currentQuestion.id, {
           blob: result.blob,
           duration: result.duration,
           timestamp: new Date(),
@@ -96,8 +96,8 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
 
   // Handle retake
   const handleRetake = async () => {
-    if (currentQuestion) {
-      await deleteRecordingForQuestion(currentQuestion.id);
+    if (currentQuestion && user?.id) {
+      await deleteRecordingForQuestion(user.id, currentQuestion.id);
       setHasRecordedCurrent(false);
       toast.info('Recording deleted. You can record again.');
     }

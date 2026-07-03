@@ -39,10 +39,10 @@ interface RecordingState {
   pauseRecording: () => void;
   resumeRecording: () => void;
 
-  saveCurrentRecording: (questionId: string, data: RecordingData) => Promise<void>;
-  deleteRecordingForQuestion: (questionId: string) => Promise<void>;
-  loadSavedRecordings: () => Promise<void>;
-  clearAllRecordingsData: () => Promise<void>;
+  saveCurrentRecording: (userId: string, questionId: string, data: RecordingData) => Promise<void>;
+  deleteRecordingForQuestion: (userId: string, questionId: string) => Promise<void>;
+  loadSavedRecordings: (userId: string) => Promise<void>;
+  clearAllRecordingsData: (userId: string) => Promise<void>;
 
   setUploadProgress: (progress: number) => void;
   setStatus: (status: RecordingStatus) => void;
@@ -161,13 +161,14 @@ export const useRecordingStore = create<RecordingState>()(
         }
       },
 
-      saveCurrentRecording: async (questionId: string, data: RecordingData) => {
+      saveCurrentRecording: async (userId: string, questionId: string, data: RecordingData) => {
         const { recordings, currentIndex } = get();
         const newRecordings = new Map(recordings);
         newRecordings.set(questionId, data);
 
         // Save to IndexedDB
         await saveRecording({
+          userId,
           questionId,
           questionNumber: currentIndex + 1,
           blob: data.blob,
@@ -178,20 +179,20 @@ export const useRecordingStore = create<RecordingState>()(
         set({ recordings: newRecordings });
       },
 
-      deleteRecordingForQuestion: async (questionId: string) => {
+      deleteRecordingForQuestion: async (userId: string, questionId: string) => {
         const { recordings } = get();
         const newRecordings = new Map(recordings);
         newRecordings.delete(questionId);
 
         // Delete from IndexedDB
-        await deleteRecording(questionId);
+        await deleteRecording(userId, questionId);
 
         set({ recordings: newRecordings });
       },
 
-      loadSavedRecordings: async () => {
+      loadSavedRecordings: async (userId: string) => {
         try {
-          const stored = await getAllRecordings();
+          const stored = await getAllRecordings(userId);
           const recordings = new Map<string, RecordingData>();
 
           for (const item of stored) {
@@ -208,8 +209,8 @@ export const useRecordingStore = create<RecordingState>()(
         }
       },
 
-      clearAllRecordingsData: async () => {
-        await clearAllRecordings();
+      clearAllRecordingsData: async (userId: string) => {
+        await clearAllRecordings(userId);
         set({ recordings: new Map() });
       },
 

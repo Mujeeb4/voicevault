@@ -220,16 +220,17 @@ class AudioRecordingUploadView(APIView):
                     
                     # Check if processing has already been started
                     from apps.ai_processing.models import ProcessingQueue
-                    existing_tasks = ProcessingQueue.objects.filter(
+                    active_tasks = ProcessingQueue.objects.filter(
                         user=user,
-                        task_type__in=['transcribe', 'analyze_personality', 'clone_voice']
+                        task_type__in=['transcribe', 'analyze_personality', 'clone_voice'],
+                        status__in=['pending', 'processing'],
                     ).exists()
                     
                     if is_final_chunk:
                         user.mark_recording_complete()
                         logger.info(f"Marked user {user.id} recording as completed")
 
-                    if is_final_chunk and not existing_tasks:
+                    if is_final_chunk and not active_tasks:
                         # Start the full processing pipeline
                         logger.info(f"Triggering full AI processing pipeline for user {user.id}")
                         user.reset_ai_ready()
@@ -253,7 +254,7 @@ class AudioRecordingUploadView(APIView):
                     elif not is_final_chunk:
                         logger.info("Combined recording chunk %s/%s uploaded; waiting for final chunk", chunk_index, total_chunks)
                     else:
-                        logger.info(f"Processing pipeline already exists for user {user.id}, skipping auto-trigger")
+                        logger.info(f"Active processing pipeline already exists for user {user.id}, skipping auto-trigger")
                 except Exception as e:
                     logger.error("Failed to trigger processing pipeline: %s", e.__class__.__name__, exc_info=True)
                     # Don't fail the upload if processing trigger fails - user can trigger manually
