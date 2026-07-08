@@ -25,7 +25,7 @@ import {
   blobToFile,
   getAudioFormat,
 } from '@/lib/audio/compression';
-import { createOptionalReflectionQuestion } from '@/lib/recording/optional-question';
+import { createOptionalReflectionQuestion, isOptionalReflectionQuestion } from '@/lib/recording/optional-question';
 
 // Step Components
 import { IntroStep } from '@/components/recording/IntroStep';
@@ -121,6 +121,17 @@ function RecordingContent() {
     }
 
     const userId = user.id;
+    const guidedQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
+    const minimumRecordedCount = Math.min(10, guidedQuestions.length);
+    const completedGuidedCount = guidedQuestions.filter((question) => recordings.has(question.id)).length;
+
+    if (completedGuidedCount < minimumRecordedCount) {
+      toast.error(`Please record at least ${minimumRecordedCount} guided answer${minimumRecordedCount === 1 ? '' : 's'} before uploading.`);
+      setCurrentStep('recording');
+      setStatus('recording');
+      return;
+    }
+
     setCurrentStep('upload');
     setStatus('uploading');
 
@@ -223,17 +234,22 @@ function RecordingContent() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="rounded-lg border border-border bg-card/55 p-5">
-        <p className="text-xs font-semibold uppercase text-primary/85">Guided recording</p>
-        <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-          Voice Recording
-        </h1>
-        <p className="mt-1 text-muted-foreground">{getStepTitle(currentStep)}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {isPremium
-            ? 'Premium includes 30+ questions and up to 5 hours of recordings.'
-            : 'Memory Starter includes 5 guided questions and 15 minutes of recording.'}
-        </p>
+      <div className="journey-hero p-5 sm:p-6">
+        <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="journey-kicker">Guided voice archive</p>
+            <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+              Voice Recording
+            </h1>
+            <p className="mt-1 text-muted-foreground">{getStepTitle(currentStep)}</p>
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              {isPremium
+                ? 'Premium includes 30+ questions, local encrypted draft saving, and up to 5 hours of recordings.'
+                : 'Memory Starter includes 5 guided questions, local encrypted draft saving, and 15 minutes of recording.'}
+            </p>
+          </div>
+          <JourneyStageRail currentStep={currentStep} />
+        </div>
       </div>
 
       {/* Main Content */}
@@ -380,6 +396,47 @@ function createUploadChunks(
 
 export default function RecordingPage() {
   return <RecordingContent />;
+}
+
+function JourneyStageRail({ currentStep }: { currentStep: Step }) {
+  const stages: Array<{ id: Step; label: string; helper: string }> = [
+    { id: 'intro', label: 'Setup', helper: 'Mic check' },
+    { id: 'recording', label: 'Record', helper: 'Save answers' },
+    { id: 'review', label: 'Review', helper: 'Listen & retake' },
+    { id: 'upload', label: 'Upload', helper: 'Start AI build' },
+  ];
+  const activeIndex = stages.findIndex((stage) => stage.id === currentStep);
+
+  return (
+    <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4 lg:max-w-xl">
+      {stages.map((stage, index) => {
+        const isActive = stage.id === currentStep;
+        const isDone = index < activeIndex;
+        return (
+          <div
+            key={stage.id}
+            className={`rounded-lg border px-3 py-2 text-sm transition ${
+              isActive
+                ? 'journey-step-active'
+                : isDone
+                ? 'border-primary/28 bg-primary/8 text-foreground'
+                : 'border-border bg-background/36 text-muted-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                isActive || isDone ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+                {isDone ? '✓' : index + 1}
+              </span>
+              <span className="font-semibold">{stage.label}</span>
+            </div>
+            <p className="mt-1 text-xs opacity-80">{stage.helper}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /**

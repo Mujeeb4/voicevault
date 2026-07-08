@@ -80,50 +80,51 @@ export function IntroStep({ onStart }: IntroStepProps) {
       className="max-w-3xl mx-auto"
     >
       {/* Hero Section */}
-      <div className="text-center mb-12">
+      <div className="journey-card p-6 text-center sm:p-8">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring' }}
-          className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6"
+          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-lg border border-primary/30 bg-primary/12 glow-amber-sm"
         >
-          <Mic className="w-12 h-12 text-primary-600" />
+          <Mic className="h-10 w-10 text-primary" />
         </motion.div>
 
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <p className="journey-kicker">Private recording session</p>
+        <h1 className="mt-2 font-heading text-4xl font-semibold text-foreground">
           Let Your Voice Live On
         </h1>
-        <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Record your answers. Preserve your story. Give your family the gift of hearing you forever. This will take about 15–30 minutes.
+        <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
+          Record your answers, leave and return safely, then upload everything when you are ready.
         </p>
       </div>
 
       {/* What to Expect */}
-      <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">What to Expect</h2>
+      <div className="journey-card mt-6 p-6 sm:p-8">
+        <h2 className="font-heading text-2xl font-semibold text-foreground">What to Expect</h2>
 
-        <div className="space-y-4">
+        <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <FeatureItem
             icon="1"
-            title="30 Questions"
-            description="Questions about your childhood, career, family, wisdom, and personality"
+            title="Guided questions"
+            description="Move question by question through family, career, wisdom, and personality prompts."
           />
           <FeatureItem
             icon="2"
-            title="Your Pace"
-            description="Take your time. You can pause, retake, or come back anytime"
+            title="Saved drafts"
+            description="Each answer is encrypted and stored on this browser until upload."
           />
           <FeatureItem
             icon="3"
-            title="Private & Secure"
-            description="Your recordings are encrypted and only accessible by you and your invited family"
+            title="Review before upload"
+            description="Listen back, retake, then upload all recordings for AI processing."
           />
         </div>
       </div>
 
       {/* Microphone Setup */}
-      <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Microphone Setup</h2>
+      <div className="journey-card mt-6 p-6 sm:p-8">
+        <h2 className="font-heading text-2xl font-semibold text-foreground">Microphone Setup</h2>
 
         <MicrophoneStatus status={micStatus} onRetry={checkMicrophone} />
 
@@ -153,19 +154,19 @@ export function IntroStep({ onStart }: IntroStepProps) {
       </div>
 
       {/* Tips */}
-      <div className="bg-primary-50 border border-primary-200 rounded-xl p-6 mb-8">
-        <h3 className="font-semibold text-primary-900 mb-3">Tips for Great Recordings</h3>
-        <ul className="space-y-2 text-sm text-primary-700">
-          <li>• Find a quiet place with minimal background noise</li>
-          <li>• Speak clearly and at a normal pace</li>
-          <li>• Use headphones to reduce echo</li>
-          <li>• Take breaks if needed - your progress is saved</li>
+      <div className="mt-6 rounded-lg border border-primary/25 bg-primary/10 p-5">
+        <h3 className="font-semibold text-foreground">Tips for Great Recordings</h3>
+        <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          <li>Find a quiet place with minimal background noise</li>
+          <li>Speak clearly and at a normal pace</li>
+          <li>Use headphones to reduce echo</li>
+          <li>Take breaks if needed; your progress is saved</li>
         </ul>
       </div>
 
       {/* Start Button */}
-      <div className="text-center">
-        <Button onClick={onStart} disabled={!canStart} size="lg" className="w-full max-w-md">
+      <div className="sticky bottom-4 z-20 mt-6 rounded-lg border border-border bg-background/86 p-3 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
+        <Button onClick={onStart} disabled={!canStart} size="lg" className="w-full shimmer-btn text-primary-foreground sm:mx-auto sm:flex sm:max-w-md">
           {canStart ? (
             <>
               <Mic className="w-5 h-5 mr-2" />
@@ -193,13 +194,13 @@ function FeatureItem({
   description: string;
 }) {
   return (
-    <div className="flex items-start gap-4">
-      <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-        <span className="text-lg font-bold text-primary-600">{icon}</span>
+    <div className="journey-card-muted flex h-full items-start gap-4 p-4">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+        <span className="text-lg font-bold text-primary">{icon}</span>
       </div>
       <div>
-        <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
-        <p className="text-sm text-gray-600">{description}</p>
+        <h3 className="mb-1 font-semibold text-foreground">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
   );
@@ -249,7 +250,7 @@ function MicrophoneStatus({
   const config = statusConfig[status];
 
   return (
-    <div className={`${config.bgColor} rounded-lg p-6`}>
+    <div className={`${config.bgColor} mt-5 rounded-lg border border-border p-5`}>
       <div className="flex items-center gap-4">
         {config.icon}
         <div className="flex-1">

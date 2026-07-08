@@ -33,6 +33,8 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
     isPaused,
     nextQuestion,
     previousQuestion,
+    setCurrentIndex,
+    skipQuestion,
     saveCurrentRecording,
     stopRecording,
     deleteRecordingForQuestion,
@@ -41,8 +43,14 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
   const [hasRecordedCurrent, setHasRecordedCurrent] = useState(false);
 
   const currentQuestion = questions[currentIndex];
-  const requiredQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
-  const allRequiredQuestionsComplete = requiredQuestions.every((question) => recordings.has(question.id));
+  const guidedQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
+  const minimumRecordedCount = Math.min(10, guidedQuestions.length);
+  const completedGuidedCount = guidedQuestions.filter((question) => recordings.has(question.id)).length;
+  const missingMinimumCount = Math.max(0, minimumRecordedCount - completedGuidedCount);
+  const canReviewRecordings = completedGuidedCount >= minimumRecordedCount;
+  const firstQuestionNeedingRecordingIndex = questions.findIndex(
+    (question) => !isOptionalReflectionQuestion(question.id) && !recordings.has(question.id)
+  );
   const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
   const isOptionalReflection = isOptionalReflectionQuestion(currentQuestion?.id);
 
@@ -88,6 +96,31 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
     setHasRecordedCurrent(false);
   };
 
+  const handleReviewRecordings = () => {
+    if (!canReviewRecordings) {
+      if (firstQuestionNeedingRecordingIndex >= 0) {
+        setCurrentIndex(firstQuestionNeedingRecordingIndex);
+      }
+      toast.error(`Record ${missingMinimumCount} more guided answer${missingMinimumCount === 1 ? '' : 's'} before review.`);
+      return;
+    }
+    onComplete();
+  };
+
+  const handleSkip = () => {
+    if (!currentQuestion || hasRecordedCurrent) return;
+
+    skipQuestion(currentQuestion.id);
+    toast.info(isOptionalReflection ? 'Optional reflection skipped.' : 'Question skipped. You can come back before uploading.');
+
+    if (currentIndex < questions.length - 1) {
+      nextQuestion();
+      return;
+    }
+
+    handleReviewRecordings();
+  };
+
   // Handle previous question
   const handlePrevious = () => {
     previousQuestion();
@@ -129,7 +162,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
       />
 
       {/* Audio Recorder */}
-      <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200">
+      <div className="journey-card p-5 sm:p-7">
         <AudioRecorder isRecording={isRecording} isPaused={isPaused} />
 
         {/* Recording Controls */}
@@ -144,8 +177,8 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
         {/* Stop Button (when recording) */}
         {isRecording && (
           <div className="mt-6 text-center">
-            <Button onClick={handleStopRecording} size="lg" variant="outline" className="w-full max-w-md">
-              Save & Continue
+            <Button onClick={handleStopRecording} size="lg" variant="outline" className="w-full max-w-md border-primary/30 bg-primary/10 text-foreground hover:bg-primary/16">
+              Save this answer
             </Button>
           </div>
         )}
@@ -154,30 +187,38 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
       {/* Question Stepper */}
       <QuestionStepper
         onNext={handleNext}
+        onSkip={handleSkip}
+        onReview={handleReviewRecordings}
         onPrevious={handlePrevious}
         onRetake={handleRetake}
-        canProceed={hasRecordedCurrent}
-        canSkip={isOptionalReflection}
+        canProceed={hasRecordedCurrent && !isRecording}
+        canSkip={!hasRecordedCurrent && !isRecording}
+        canReview={canReviewRecordings}
+        minimumRecordedCount={minimumRecordedCount}
+        completedGuidedCount={completedGuidedCount}
+        missingRequiredCount={missingMinimumCount}
       />
 
       {/* Complete All Questions Button */}
-      {allRequiredQuestionsComplete && (
+      {canReviewRecordings && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-success-500 to-success-600 rounded-xl p-8 text-white text-center shadow-lg"
         >
           <CheckCircle2 className="w-16 h-16 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold mb-2">All Questions Complete!</h3>
+          <h3 className="text-2xl font-bold mb-2">Ready to Review</h3>
           <p className="text-success-100 mb-6">
-            You&apos;ve recorded the guided questions. Add the optional final reflection if you want, then review your recordings.
+            {isOptionalReflection
+              ? 'You can add or retake the optional final reflection, or review everything now.'
+              : `You have recorded at least ${minimumRecordedCount} guided answers. Review everything before upload.`}
           </p>
           <Button
-            onClick={onComplete}
+            onClick={handleReviewRecordings}
             size="lg"
             className="bg-white text-success-600 hover:bg-gray-100"
           >
-            Review Recordings
+            Review all recordings
           </Button>
         </motion.div>
       )}

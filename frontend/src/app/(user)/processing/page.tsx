@@ -59,8 +59,8 @@ export default function ProcessingPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="rounded-lg border border-border bg-card/55 p-5">
-        <p className="text-xs font-semibold uppercase text-primary/85">AI build room</p>
+      <div className="journey-hero p-5 sm:p-6">
+        <p className="journey-kicker">AI build room</p>
         <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
           AI Processing
         </h1>
@@ -78,7 +78,7 @@ export default function ProcessingPage() {
       ) : (
         <div className="space-y-6">
           {/* Info Banner */}
-          <div className="rounded-lg border border-primary/25 bg-primary/10 p-6">
+          <div className="journey-card p-6">
             <h2 className="mb-2 text-lg font-semibold text-foreground">
               {isPremium ? 'Creating Your Premium AI Vault' : 'Creating Your Text AI Preview'}
             </h2>
@@ -88,7 +88,7 @@ export default function ProcessingPage() {
                 : 'Your free preview includes personality analysis and text chat. Premium unlocks voice cloning and voice responses.'}
             </p>
             {isPremium && !voiceConsentAccepted && (
-              <div className="mb-4 rounded-md border border-primary/25 bg-background/45 p-4">
+              <div className="mb-4 rounded-lg border border-primary/25 bg-primary/8 p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
@@ -127,7 +127,7 @@ export default function ProcessingPage() {
           />
 
           {/* Help Section */}
-          <div className="rounded-lg border border-border bg-card/55 p-6">
+          <div className="journey-card p-6">
             <h3 className="mb-2 font-semibold text-foreground">What happens next?</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">

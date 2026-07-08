@@ -55,27 +55,27 @@ export function ProcessingStepCard({
     pending: {
       icon: <Clock className="w-5 h-5 text-gray-400" />,
       badge: <Badge variant="outline">Pending</Badge>,
-      color: 'border-gray-200',
+      color: 'border-border bg-card/68',
     },
     in_progress: {
       icon: <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />,
       badge: <Badge variant="default">In Progress</Badge>,
-      color: 'border-primary-300 bg-primary-50',
+      color: 'border-primary/40 bg-primary/10',
     },
     complete: {
       icon: <CheckCircle2 className="w-5 h-5 text-success-500" />,
       badge: <Badge variant="success">Complete</Badge>,
-      color: 'border-success-200 bg-success-50',
+      color: 'border-success-500/30 bg-success-500/10',
     },
     failed: {
       icon: <AlertCircle className="w-5 h-5 text-error-500" />,
       badge: <Badge variant="error">Failed</Badge>,
-      color: 'border-error-200 bg-error-50',
+      color: 'border-error-500/30 bg-error-500/10',
     },
     recorded_and_uploaded: {
       icon: <CheckCircle2 className="w-5 h-5 text-success-500" />,
       badge: <Badge variant="success">Recorded</Badge>,
-      color: 'border-success-200 bg-success-50',
+      color: 'border-success-500/30 bg-success-500/10',
     },
   };
 
@@ -86,13 +86,13 @@ export function ProcessingStepCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`rounded-lg border-2 p-6 transition-all ${config.color}`}
+      className={`rounded-lg border p-5 transition-all sm:p-6 ${config.color}`}
     >
       {/* Header */}
       <div className="flex items-start gap-4">
         {/* Icon */}
         <div className="flex-shrink-0">
-          <div className="w-12 h-12 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-background/55">
             {icon}
           </div>
         </div>
@@ -100,14 +100,14 @@ export function ProcessingStepCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
             <div className="flex items-center gap-2">
               {config.badge}
               {config.icon}
             </div>
           </div>
 
-          <p className="text-sm text-gray-600 mb-3">{description}</p>
+          <p className="mb-3 text-sm text-muted-foreground">{description}</p>
 
           {/* Progress Bar (only show when in progress) */}
           {status === 'in_progress' && (
@@ -129,7 +129,7 @@ export function ProcessingStepCard({
 
           {/* Error Message */}
           {status === 'failed' && error && (
-            <div className="mt-3 p-3 bg-error-50 border border-error-200 rounded-lg">
+            <div className="mt-3 rounded-lg border border-error-500/25 bg-error-500/10 p-3">
               <p className="text-sm text-error-700 mb-2">{error}</p>
               {onRetry && (
                 <Button onClick={onRetry} size="sm" variant="outline">
@@ -158,7 +158,7 @@ export function ProcessingStepCard({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 max-h-64 overflow-y-auto"
+                  className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/35 p-4"
                 >
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{transcriptionText}</p>
                 </motion.div>
@@ -191,7 +191,7 @@ export function ProcessingStepCard({
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 p-4 bg-white rounded-lg border border-gray-200"
+                  className="mt-3 rounded-lg border border-border bg-background/45 p-4"
                 >
                   <dl className="space-y-2">
                     {Object.entries(result).map(([key, value]) => (
@@ -212,4 +212,3 @@ export function ProcessingStepCard({
     </motion.div>
   );
 }
-

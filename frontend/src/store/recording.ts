@@ -20,6 +20,7 @@ interface RecordingState {
   questions: Question[];
   currentIndex: number;
   recordings: Map<string, RecordingData>; // questionId -> recording
+  skippedQuestionIds: string[];
   isRecording: boolean;
   isPaused: boolean;
   currentDuration: number;
@@ -33,6 +34,8 @@ interface RecordingState {
   setCurrentIndex: (index: number) => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
+  skipQuestion: (questionId: string) => void;
+  clearSkippedQuestion: (questionId: string) => void;
 
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<{ blob: Blob; duration: number }>;
@@ -54,6 +57,7 @@ const initialState = {
   questions: [],
   currentIndex: 0,
   recordings: new Map(),
+  skippedQuestionIds: [],
   isRecording: false,
   isPaused: false,
   currentDuration: 0,
@@ -89,6 +93,22 @@ export const useRecordingStore = create<RecordingState>()(
         if (currentIndex > 0) {
           set({ currentIndex: currentIndex - 1 });
         }
+      },
+
+      skipQuestion: (questionId: string) => {
+        const { skippedQuestionIds, recordings } = get();
+        if (recordings.has(questionId)) return;
+
+        set({
+          skippedQuestionIds: Array.from(new Set([...skippedQuestionIds, questionId])),
+        });
+      },
+
+      clearSkippedQuestion: (questionId: string) => {
+        const { skippedQuestionIds } = get();
+        set({
+          skippedQuestionIds: skippedQuestionIds.filter((id) => id !== questionId),
+        });
       },
 
       startRecording: async () => {
@@ -162,7 +182,7 @@ export const useRecordingStore = create<RecordingState>()(
       },
 
       saveCurrentRecording: async (userId: string, questionId: string, data: RecordingData) => {
-        const { recordings, currentIndex } = get();
+        const { recordings, currentIndex, skippedQuestionIds } = get();
         const newRecordings = new Map(recordings);
         newRecordings.set(questionId, data);
 
@@ -176,7 +196,10 @@ export const useRecordingStore = create<RecordingState>()(
           timestamp: data.timestamp.toISOString(),
         });
 
-        set({ recordings: newRecordings });
+        set({
+          recordings: newRecordings,
+          skippedQuestionIds: skippedQuestionIds.filter((id) => id !== questionId),
+        });
       },
 
       deleteRecordingForQuestion: async (userId: string, questionId: string) => {
@@ -234,6 +257,7 @@ export const useRecordingStore = create<RecordingState>()(
         // Only persist these fields
         currentIndex: state.currentIndex,
         status: state.status,
+        skippedQuestionIds: state.skippedQuestionIds,
       }),
     }
   )

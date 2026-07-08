@@ -68,9 +68,9 @@ function FamilyManagementContent() {
   return (
     <div className="mx-auto max-w-7xl">
       {/* Header */}
-      <div className="mb-8 flex flex-col items-start justify-between gap-4 rounded-lg border border-border bg-card/55 p-5 sm:flex-row sm:items-center">
+      <div className="journey-hero mb-8 flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase text-primary/85">Family access</p>
+          <p className="journey-kicker">Family access</p>
           <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">Family Management</h1>
           <p className="mt-1 text-muted-foreground">
             {familyMembers.length} of {inviteLimit} family invitations used
@@ -89,7 +89,7 @@ function FamilyManagementContent() {
       </Alert>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

@@ -72,17 +72,17 @@ export function RecordingControls({
     <div className="space-y-4">
       {/* Timer Display */}
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 bg-gray-100 px-6 py-3 rounded-xl border border-gray-200">
-          <span className="text-3xl font-mono font-bold text-gray-900">
+        <div className="inline-flex items-center gap-3 rounded-lg border border-border bg-background/55 px-5 py-3">
+          <span className="font-mono text-3xl font-bold text-foreground">
             {formatTime(currentDuration)}
           </span>
           {maxDuration ? (
             <>
-              <span className="text-gray-400">/</span>
-              <span className="text-lg font-mono text-gray-600">{formatTime(maxDuration)}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="font-mono text-lg text-muted-foreground">{formatTime(maxDuration)}</span>
             </>
           ) : (
-            <span className="text-sm font-medium text-gray-500">open ended</span>
+            <span className="text-sm font-medium text-muted-foreground">open ended</span>
           )}
         </div>
 
@@ -114,7 +114,7 @@ export function RecordingControls({
             <Button
               onClick={handleStart}
               size="lg"
-              className="w-32 h-32 rounded-full bg-error-500 hover:bg-error-600 text-white shadow-lg"
+              className="h-32 w-32 rounded-full bg-error-500 text-white shadow-lg shadow-error-500/20 hover:bg-error-600"
             >
               <div className="flex flex-col items-center gap-2">
                 <Mic className="w-12 h-12" />
@@ -130,7 +130,7 @@ export function RecordingControls({
                 onClick={handlePauseResume}
                 size="lg"
                 variant="outline"
-                className="w-20 h-20 rounded-full border-2"
+                className="h-20 w-20 rounded-full border-2 border-primary/25 bg-background/45"
               >
                 {isPaused ? (
                   <Play className="w-8 h-8 text-primary-600" />
@@ -145,7 +145,7 @@ export function RecordingControls({
               <Button
                 onClick={handleStop}
                 size="lg"
-                className="w-32 h-32 rounded-full bg-gray-900 hover:bg-gray-800 text-white shadow-lg"
+                className="h-32 w-32 rounded-full bg-foreground text-background shadow-lg hover:bg-foreground/88"
               >
                 <div className="flex flex-col items-center gap-2">
                   <Square className="w-12 h-12 fill-white" />
@@ -158,7 +158,7 @@ export function RecordingControls({
       </div>
 
       {/* Instructions */}
-      <div className="text-center text-sm text-gray-600">
+      <div className="text-center text-sm text-muted-foreground">
         {!isRecording && <p>Click the microphone to start recording</p>}
         {isRecording && !isPaused && <p>Recording in progress... Click stop when finished</p>}
         {isRecording && isPaused && <p>Recording paused. Click play to resume</p>}
@@ -167,8 +167,8 @@ export function RecordingControls({
       {/* Keyboard Shortcuts Hint */}
       {!isRecording && (
         <div className="text-center">
-          <p className="text-xs text-gray-400">
-            Tip: Press <kbd className="px-2 py-1 bg-gray-100 rounded border">Space</kbd> to
+          <p className="text-xs text-muted-foreground">
+            Tip: Press <kbd className="rounded border border-border bg-muted px-2 py-1">Space</kbd> to
             start/stop
           </p>
         </div>

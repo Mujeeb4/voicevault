@@ -21,15 +21,15 @@ interface ReviewStepProps {
 }
 
 export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
-  const { questions, recordings } = useRecordingStore();
+  const { questions, recordings, skippedQuestionIds, setCurrentIndex } = useRecordingStore();
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   const totalDuration = Array.from(recordings.values()).reduce((sum, r) => sum + r.duration, 0);
-  const requiredQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
-  const completedRequiredCount = requiredQuestions.filter((question) => recordings.has(question.id)).length;
-  const optionalRecorded = questions.some((question) => isOptionalReflectionQuestion(question.id) && recordings.has(question.id));
-
-  const canProceed = completedRequiredCount === requiredQuestions.length;
+  const guidedQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
+  const minimumRecordedCount = Math.min(10, guidedQuestions.length);
+  const completedGuidedCount = guidedQuestions.filter((question) => recordings.has(question.id)).length;
+  const skippedGuidedCount = Math.max(0, guidedQuestions.length - completedGuidedCount);
+  const canProceed = completedGuidedCount >= minimumRecordedCount;
 
   return (
     <motion.div
@@ -39,41 +39,53 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       className="max-w-5xl mx-auto space-y-8"
     >
       {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Review Your Recordings</h1>
-        <p className="text-gray-600">
-          Review all your answers below. You can retake any question before uploading.
+      <div className="journey-card p-6 text-center sm:p-8">
+        <p className="journey-kicker">Final check</p>
+        <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground">Review Your Recordings</h1>
+        <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
+          Your answers are saved on this browser. Listen, retake anything needed, and upload once at least {minimumRecordedCount} guided answers are recorded.
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-3 gap-4">
-        <StatCard label="Guided Questions" value={`${completedRequiredCount} / ${requiredQuestions.length}`} />
+        <StatCard label="Recorded Answers" value={`${completedGuidedCount} / ${minimumRecordedCount} minimum`} />
         <StatCard label="Total Duration" value={formatDuration(totalDuration)} />
-        <StatCard label="Optional Reflection" value={optionalRecorded ? 'Recorded' : 'Skipped'} />
+        <StatCard label="Skipped Questions" value={`${skippedGuidedCount}`} />
       </div>
 
       {/* Warning if incomplete */}
       {!canProceed && (
-        <div className="bg-warning-50 border border-warning-200 rounded-lg p-4">
-          <p className="text-warning-700 font-medium">
-            ⚠️ You need to complete all {requiredQuestions.length} guided questions before uploading. Missing:{' '}
-            {requiredQuestions.length - completedRequiredCount}
+        <div className="rounded-lg border border-warning-500/30 bg-warning-500/10 p-4">
+          <p className="font-medium text-warning-200">
+            Record {minimumRecordedCount - completedGuidedCount} more guided answer{minimumRecordedCount - completedGuidedCount === 1 ? '' : 's'} before uploading.
+          </p>
+        </div>
+      )}
+
+      {canProceed && skippedGuidedCount > 0 && (
+        <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+          <p className="font-medium text-primary">
+            {skippedGuidedCount} guided question{skippedGuidedCount === 1 ? '' : 's'} will be skipped.
+          </p>
+          <p className="mt-1 text-sm text-primary/85">
+            That is okay. Only your recorded answers are uploaded and used for AI processing.
           </p>
         </div>
       )}
 
       {/* Recordings List */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">All Recordings</h2>
+      <div className="journey-card overflow-hidden">
+        <div className="border-b border-border p-5">
+          <h2 className="font-heading text-xl font-semibold text-foreground">All Recordings</h2>
         </div>
 
-        <div className="divide-y divide-gray-200">
+        <div className="divide-y divide-border">
           {questions.map((question, index) => {
             const recording = recordings.get(question.id);
             const isPlaying = playingId === question.id;
             const isOptional = isOptionalReflectionQuestion(question.id);
+            const isSkipped = skippedQuestionIds.includes(question.id) || !recording;
 
             return (
               <RecordingRow
@@ -82,10 +94,14 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
                 index={index}
                 recording={recording}
                 isOptional={isOptional}
+                isSkipped={isSkipped}
                 isPlaying={isPlaying}
                 onPlay={() => setPlayingId(question.id)}
                 onPause={() => setPlayingId(null)}
-                onRetake={() => onBack()}
+                onRetake={() => {
+                  setCurrentIndex(index);
+                  onBack();
+                }}
               />
             );
           })}
@@ -93,15 +109,15 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4">
-        <Button onClick={onBack} variant="outline" size="lg" className="flex-1">
+      <div className="sticky bottom-4 z-20 grid gap-3 rounded-lg border border-border bg-background/86 p-3 backdrop-blur-xl sm:static sm:grid-cols-2 sm:border-0 sm:bg-transparent sm:p-0">
+        <Button onClick={onBack} variant="outline" size="lg" className="w-full">
           <ChevronLeft className="w-5 h-5 mr-2" />
           Back to Recording
         </Button>
 
-        <Button onClick={onProceed} disabled={!canProceed} size="lg" className="flex-1">
+        <Button onClick={onProceed} disabled={!canProceed} size="lg" className="w-full shimmer-btn text-primary-foreground">
           <Upload className="w-5 h-5 mr-2" />
-          Upload Recordings
+          Upload all recordings
         </Button>
       </div>
     </motion.div>
@@ -113,9 +129,9 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
  */
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-lg p-6 border border-gray-200">
-      <p className="text-sm text-gray-600 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
+    <div className="journey-card p-5">
+      <p className="mb-1 text-sm text-muted-foreground">{label}</p>
+      <p className="text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
@@ -128,6 +144,7 @@ function RecordingRow({
   index,
   recording,
   isOptional,
+  isSkipped,
   isPlaying,
   onPlay,
   onPause,
@@ -137,6 +154,7 @@ function RecordingRow({
   index: number;
   recording: RecordingData | undefined;
   isOptional: boolean;
+  isSkipped: boolean;
   isPlaying: boolean;
   onPlay: () => void;
   onPause: () => void;
@@ -161,22 +179,25 @@ function RecordingRow({
   };
 
   return (
-    <div className="p-4 hover:bg-gray-50 transition">
+    <div className="p-4 transition hover:bg-muted/35">
       <div className="flex items-center gap-4">
         {/* Question Number */}
-        <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <span className="font-bold text-primary-600">{index + 1}</span>
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+          <span className="font-bold text-primary">{index + 1}</span>
         </div>
 
         {/* Question Text */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 truncate">{question.question_text}</p>
+          <p className="truncate font-medium text-foreground">{question.question_text}</p>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="outline" className="text-xs">
               {isOptional ? 'optional' : question.domain}
             </Badge>
             {recording && (
-              <span className="text-xs text-gray-500">{formatDuration(recording.duration)}</span>
+              <span className="text-xs text-muted-foreground">{formatDuration(recording.duration)}</span>
+            )}
+            {!recording && isSkipped && (
+              <span className="text-xs text-muted-foreground">Skipped</span>
             )}
           </div>
         </div>
@@ -198,8 +219,8 @@ function RecordingRow({
               </Button>
             </>
           ) : (
-            <span className={isOptional ? 'text-sm text-gray-500' : 'text-sm text-error-500'}>
-              {isOptional ? 'Skipped' : 'Not recorded'}
+            <span className="text-sm text-muted-foreground">
+              Skipped
             </span>
           )}
         </div>

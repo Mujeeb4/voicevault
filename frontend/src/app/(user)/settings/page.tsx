@@ -101,19 +101,24 @@ export default function SettingsPage() {
     };
 
     return (
-            <div className="max-w-2xl mx-auto space-y-6">
-                <div>
-                    <h1 className="text-3xl font-bold">Settings</h1>
-                    <p className="text-muted-foreground mt-1">
-                        Manage your account settings and preferences
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div className="journey-hero p-5 sm:p-7">
+                    <p className="journey-kicker mb-3">Account controls</p>
+                    <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-normal text-foreground">
+                        Settings
+                    </h1>
+                    <p className="text-muted-foreground mt-2 max-w-2xl">
+                        Manage your profile, billing, password, and AI vault readiness from one secure place.
                     </p>
                 </div>
 
                 {/* Profile Section */}
-                <Card>
+                <Card className="journey-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <User className="h-5 w-5" />
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                                <User className="h-5 w-5" />
+                            </span>
                             Profile Information
                         </CardTitle>
                         <CardDescription>
@@ -148,7 +153,7 @@ export default function SettingsPage() {
                                 </p>
                             </div>
 
-                            <Button type="submit" disabled={isSaving}>
+                            <Button type="submit" disabled={isSaving} className="shimmer-btn text-primary-foreground">
                                 {isSaving ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -166,10 +171,12 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* Password Section */}
-                <Card>
+                <Card className="journey-card">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <Lock className="h-5 w-5" />
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                                <Lock className="h-5 w-5" />
+                            </span>
                             Change Password
                         </CardTitle>
                         <CardDescription>
@@ -218,6 +225,8 @@ export default function SettingsPage() {
                             <Button
                                 type="submit"
                                 disabled={isChangingPassword || !currentPassword || !newPassword}
+                                className="border-border bg-background/70"
+                                variant="outline"
                             >
                                 {isChangingPassword ? (
                                     <>
@@ -236,10 +245,12 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* Billing & Payment */}
-                <Card id="billing">
+                <Card id="billing" className="journey-card scroll-mt-6">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <CreditCard className="h-5 w-5" />
+                            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                                <CreditCard className="h-5 w-5" />
+                            </span>
                             Billing & Payment
                         </CardTitle>
                         <CardDescription>
@@ -255,12 +266,12 @@ export default function SettingsPage() {
                         ) : billing?.is_paid ? (
                             <>
                                 {/* Paid: Plan & status */}
-                                <div className="rounded-lg border bg-primary-50/50 border-primary-200 p-4">
-                                    <div className="flex items-center gap-2 text-primary-800 font-medium">
-                                        <CheckCircle className="h-5 w-5 text-primary-600" />
+                                <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+                                    <div className="flex items-center gap-2 text-primary font-medium">
+                                        <CheckCircle className="h-5 w-5" />
                                         {billing.plan_name ?? 'VoiceVault Lifetime Subscription'}
                                     </div>
-                                    <p className="text-sm text-primary-700 mt-1">
+                                    <p className="text-sm text-primary/85 mt-1">
                                         Lifetime access · One-time payment. No subscription to cancel.
                                     </p>
                                 </div>
@@ -309,7 +320,7 @@ export default function SettingsPage() {
                                 {billing.is_lifetime && (
                                     <>
                                         <Separator />
-                                        <div className="rounded-lg border border-muted bg-muted/30 p-4">
+                                        <div className="rounded-lg border border-border bg-background/55 p-4">
                                             <p className="text-sm font-medium text-foreground">Cancel subscription</p>
                                             <p className="text-sm text-muted-foreground mt-1">
                                                 You have lifetime access. There is no recurring subscription to cancel.
@@ -328,7 +339,7 @@ export default function SettingsPage() {
                                             </a>
                                         </Button>
                                     )}
-                                    <Button variant="outline" size="sm" onClick={() => router.push('/pricing')}>
+                                        <Button variant="outline" size="sm" onClick={() => router.push('/pricing')} className="border-border bg-background/60">
                                         View plan details
                                     </Button>
                                 </div>
@@ -336,17 +347,17 @@ export default function SettingsPage() {
                         ) : (
                             /* Not paid: family member or not yet subscribed */
                             <>
-                                <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 dark:border-amber-800 p-4">
-                                    <p className="font-medium text-amber-900 dark:text-amber-100">
+                                <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+                                    <p className="font-medium text-primary">
                                         No payment methods
                                     </p>
-                                    <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                                    <p className="text-sm text-primary/85 mt-1">
                                         You don&apos;t have an active subscription. Purchase a lifetime subscription to
                                         record your voice, create your AI, and invite family members.
                                     </p>
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <Button asChild className="bg-primary-600 hover:bg-primary-700">
+                                    <Button asChild className="shimmer-btn text-primary-foreground">
                                         <Link href="/pricing" className="inline-flex items-center gap-2">
                                             <Sparkles className="h-4 w-4" />
                                             Buy lifetime subscription
@@ -362,7 +373,7 @@ export default function SettingsPage() {
                 </Card>
 
                 {/* Account / AI Status */}
-                <Card>
+                <Card className="journey-card">
                     <CardHeader>
                         <CardTitle>Account & AI Status</CardTitle>
                         <CardDescription>
@@ -370,7 +381,7 @@ export default function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex justify-between items-center">
+                        <div className="flex justify-between items-center rounded-lg border border-border bg-background/55 p-4">
                             <div>
                                 <p className="font-medium">AI Status</p>
                                 <p className="text-sm text-muted-foreground">
@@ -382,7 +393,7 @@ export default function SettingsPage() {
                                 </p>
                             </div>
                             {user?.ai_ready && (
-                                <span className="flex items-center gap-1 text-green-600">
+                                <span className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-500">
                                     <CheckCircle className="h-4 w-4" />
                                     Active
                                 </span>

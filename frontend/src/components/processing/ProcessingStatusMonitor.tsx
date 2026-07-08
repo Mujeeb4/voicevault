@@ -76,9 +76,9 @@ export function ProcessingStatusMonitor({
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
+      <div className="journey-card flex flex-col items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary-600 mb-4" />
-        <p className="text-gray-600">Loading processing status...</p>
+        <p className="text-muted-foreground">Loading processing status...</p>
       </div>
     );
   }
@@ -86,12 +86,12 @@ export function ProcessingStatusMonitor({
   // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="w-16 h-16 rounded-full bg-error-50 flex items-center justify-center mb-4">
+      <div className="journey-card flex flex-col items-center justify-center py-12">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-error-50">
           <AlertCircle className="w-8 h-8 text-error-500" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load Status</h3>
-        <p className="text-gray-600 mb-4 text-center max-w-md">
+        <h3 className="mb-2 text-lg font-semibold text-foreground">Failed to Load Status</h3>
+        <p className="mb-4 max-w-md text-center text-muted-foreground">
           {error instanceof Error ? error.message : 'An error occurred while fetching status'}
         </p>
         <Button onClick={() => refetch()} variant="outline">
@@ -105,9 +105,9 @@ export function ProcessingStatusMonitor({
   // No data state
   if (!status) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
+      <div className="journey-card flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-12 h-12 text-gray-400 mb-4" />
-        <p className="text-gray-600">No processing status found</p>
+        <p className="text-muted-foreground">No processing status found</p>
       </div>
     );
   }
@@ -116,11 +116,11 @@ export function ProcessingStatusMonitor({
   return (
     <div className="space-y-6">
       {/* Status Info */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="journey-card p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600">Last Updated</p>
-            <p className="text-lg font-semibold text-gray-900">
+            <p className="text-sm text-muted-foreground">Last Updated</p>
+            <p className="text-lg font-semibold text-foreground">
               {status?.updated_at ? new Date(status.updated_at).toLocaleString() : 'N/A'}
             </p>
           </div>
@@ -141,4 +141,3 @@ export function ProcessingStatusMonitor({
     </div>
   );
 }
-

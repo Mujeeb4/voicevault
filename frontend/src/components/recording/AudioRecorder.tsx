@@ -85,7 +85,7 @@ export function AudioRecorder({ isRecording, isPaused }: AudioRecorderProps) {
   return (
     <div className="relative">
       {/* Waveform Canvas */}
-      <div className="relative rounded-xl overflow-hidden bg-gray-800 border-2 border-gray-700">
+      <div className="relative overflow-hidden rounded-lg border border-primary/20 bg-background/72">
         <canvas
           ref={canvasRef}
           className="w-full"
@@ -100,10 +100,10 @@ export function AudioRecorder({ isRecording, isPaused }: AudioRecorderProps) {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center"
             >
-              <div className="w-16 h-16 bg-gray-700/80 rounded-full flex items-center justify-center mb-2">
-                <MicOff className="w-8 h-8 text-gray-400" />
+              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted/80">
+                <MicOff className="h-8 w-8 text-muted-foreground" />
               </div>
-              <p className="text-sm text-gray-400 font-medium">Ready to record</p>
+              <p className="text-sm font-medium text-muted-foreground">Ready to record</p>
             </motion.div>
           )}
 
@@ -113,7 +113,7 @@ export function AudioRecorder({ isRecording, isPaused }: AudioRecorderProps) {
               animate={{ opacity: 1 }}
               className="text-center"
             >
-              <div className="w-16 h-16 bg-warning-500/20 rounded-full flex items-center justify-center mb-2 border-2 border-warning-500">
+              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-lg border-2 border-warning-500 bg-warning-500/20">
                 <Mic className="w-8 h-8 text-warning-500" />
               </div>
               <p className="text-sm text-warning-500 font-medium">Paused</p>
@@ -165,11 +165,11 @@ function AudioLevelIndicator({ audioRecorder }: { audioRecorder: AudioRecorderCl
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs text-gray-400">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Audio Level</span>
         <span>{Math.round(level * 100)}%</span>
       </div>
-      <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+      <div className="h-2 overflow-hidden rounded-full bg-muted">
         <motion.div
           className="h-full bg-gradient-to-r from-success-500 to-primary-500"
           animate={{ width: `${level * 100}%` }}
@@ -179,4 +179,3 @@ function AudioLevelIndicator({ audioRecorder }: { audioRecorder: AudioRecorderCl
     </div>
   );
 }
-

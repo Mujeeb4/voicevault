@@ -18,12 +18,12 @@ interface QuestionCardProps {
 }
 
 const domainColors = {
-  childhood: 'bg-purple-100 text-purple-700 border-purple-200',
-  family: 'bg-pink-100 text-pink-700 border-pink-200',
-  career: 'bg-primary-100 text-primary-700 border-primary-200',
-  wisdom: 'bg-green-100 text-green-700 border-green-200',
-  challenges: 'bg-orange-100 text-orange-700 border-orange-200',
-  personality: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  childhood: 'bg-secondary/12 text-secondary-foreground border-secondary/25',
+  family: 'bg-accent/25 text-accent-foreground border-accent/35',
+  career: 'bg-primary/12 text-primary border-primary/25',
+  wisdom: 'bg-emerald-500/12 text-emerald-200 border-emerald-500/25',
+  challenges: 'bg-rose-500/12 text-rose-200 border-rose-500/25',
+  personality: 'bg-sky-500/12 text-sky-200 border-sky-500/25',
 };
 
 export function QuestionCard({ question, questionNumber, totalQuestions }: QuestionCardProps) {
@@ -33,18 +33,18 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
+      className="journey-card p-5 sm:p-7"
     >
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
         {/* Question Number */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-            <span className="text-xl font-bold text-primary-600">{questionNumber}</span>
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+            <span className="text-xl font-bold text-primary">{questionNumber}</span>
           </div>
           <div>
-            <p className="text-sm text-gray-500 font-medium">Question {questionNumber}</p>
-            <p className="text-xs text-gray-400">of {totalQuestions}</p>
+            <p className="text-sm font-medium text-muted-foreground">Question {questionNumber}</p>
+            <p className="text-xs text-muted-foreground">of {totalQuestions}</p>
           </div>
         </div>
 
@@ -55,8 +55,8 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
       </div>
 
       {/* Question Text */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 leading-relaxed">
+      <div className="mb-5">
+        <h2 className="font-heading text-2xl font-semibold leading-relaxed text-foreground sm:text-3xl">
           {question.question_text}
         </h2>
       </div>
@@ -67,20 +67,20 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ delay: 0.2 }}
-          className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4"
+          className="mb-4 rounded-lg border border-primary/25 bg-primary/10 p-4"
         >
           <div className="flex items-start gap-3">
-            <Lightbulb className="w-5 h-5 text-primary-600 flex-shrink-0 mt-0.5" />
+            <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
             <div>
-              <p className="text-sm font-semibold text-primary-900 mb-1">Tip</p>
-              <p className="text-sm text-primary-700">{question.tip}</p>
+              <p className="mb-1 text-sm font-semibold text-foreground">Tip</p>
+              <p className="text-sm text-muted-foreground">{question.tip}</p>
             </div>
           </div>
         </motion.div>
       )}
 
       {/* Suggested Duration */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Clock className="w-4 h-4" />
         <span>
           Suggested duration: <strong>{formatDuration(question.suggested_duration_seconds)}</strong>

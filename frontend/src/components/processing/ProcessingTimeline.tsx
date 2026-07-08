@@ -66,10 +66,10 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
   return (
     <div className="space-y-6">
       {/* Overall Progress Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-200 rounded-full">
+      <div className="mb-8 text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2">
           <Sparkles className="w-5 h-5 text-primary-600 animate-pulse" />
-          <span className="text-sm font-medium text-primary-700">
+          <span className="text-sm font-medium text-primary">
             {(status?.overall_status === 'complete' || allStepsComplete)
               ? 'Processing Complete!'
               : status?.overall_status === 'failed'
@@ -89,7 +89,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
           <div key={step.key} className="relative">
             {/* Connector Line */}
             {index < steps.length - 1 && (
-              <div className="absolute left-10 top-24 bottom-0 w-0.5 bg-gray-200 -mb-4" />
+              <div className="absolute bottom-0 left-10 top-24 -mb-4 w-0.5 bg-border" />
             )}
 
             <ProcessingStepCard

@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
+import { useRecordingStore } from '@/store/recording';
 import { familyApi } from '@/lib/api/family';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ interface AccessibleAI {
 function DashboardContent() {
   const router = useRouter();
   const { user, refreshUser } = useAuthStore();
+  const { recordings, loadSavedRecordings } = useRecordingStore();
   const [accessibleAIs, setAccessibleAIs] = useState<AccessibleAI[]>([]);
   const [familyCount, setFamilyCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,11 +68,17 @@ function DashboardContent() {
     init();
   }, [refreshUser, loadData]);
 
+  useEffect(() => {
+    if (!user?.id || user.recording_completed) return;
+    loadSavedRecordings(user.id);
+  }, [loadSavedRecordings, user?.id, user?.recording_completed]);
+
   const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
   const hasRecorded = user?.recording_completed;
   const hasAI = user?.ai_ready;
   const isFamilyMember = accessibleAIs.length > 0;
   const quota = user?.usage_quota;
+  const savedDraftCount = recordings.size;
 
   // Determine what to show based on user's status
   const getProgressStep = () => {
@@ -105,11 +113,11 @@ function DashboardContent() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative overflow-hidden rounded-lg border border-border bg-card/55 p-5 sm:p-6"
+        className="journey-hero p-5 sm:p-6"
       >
         <div className="archive-rule absolute left-0 right-0 top-0 h-px" />
-        <p className="text-xs font-semibold uppercase text-primary/85">Voice archive status</p>
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <p className="journey-kicker">Voice archive status</p>
+        <div className="relative z-10 mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="font-heading text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
               Welcome back, {user?.full_name}
@@ -124,12 +132,29 @@ function DashboardContent() {
                     : 'Start with your free Memory Starter vault and preserve the first chapter today.'}
             </p>
           </div>
-          <Button onClick={() => router.push(hasRecorded ? '/processing' : '/record')} className="w-full sm:w-auto">
-            {hasRecorded ? 'View Processing' : 'Start Recording'}
+          <Button onClick={() => router.push(hasRecorded ? '/processing' : '/record')} className="w-full shimmer-btn text-primary-foreground sm:w-auto">
+            {hasRecorded ? 'View Processing' : savedDraftCount > 0 ? `Continue Recording (${savedDraftCount} saved)` : 'Start Recording'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </motion.div>
+
+      {!hasRecorded && savedDraftCount > 0 && (
+        <Card className="journey-card border-primary/45 bg-primary/10">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-foreground">Saved recording draft found</p>
+              <p className="text-sm text-muted-foreground">
+                {savedDraftCount} answer{savedDraftCount === 1 ? '' : 's'} saved on this browser. Continue, review, then upload when ready.
+              </p>
+            </div>
+            <Button onClick={() => router.push('/record')} className="w-full sm:w-auto">
+              Continue recording
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Owner Progress - Only show if paid or has potential to create AI, AND NOT purely a family member viewing their dashboard */}
       {/* Logic: Show progress if user has started payment flow OR if they are NOT a family member (default state for new users) */}
@@ -158,8 +183,8 @@ function DashboardContent() {
               step={2}
               currentStep={progressStep}
               icon={<Mic className="h-5 w-5" />}
-              title="Record"
-              description={isPremium ? 'Answer 30 questions' : 'Answer 5 questions'}
+              title={savedDraftCount > 0 && !hasRecorded ? 'Continue' : 'Record'}
+              description={savedDraftCount > 0 && !hasRecorded ? `${savedDraftCount} saved locally` : isPremium ? 'Answer 30 questions' : 'Answer 5 questions'}
               completed={hasRecorded}
               onClick={() => router.push('/record')}
             />
@@ -355,7 +380,7 @@ function ProgressCard({
           ? 'border-primary/70 shadow-[0_0_0_1px_hsl(var(--primary)/0.16),0_16px_34px_hsl(var(--primary)/0.1)]'
           : disabled
             ? 'opacity-60 cursor-not-allowed'
-            : 'hover:border-primary/35'
+            : 'bg-card/60 hover:border-primary/35'
         }`}
       onClick={disabled ? undefined : onClick}
     >

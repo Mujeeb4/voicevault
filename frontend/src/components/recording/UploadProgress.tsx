@@ -39,21 +39,21 @@ export function UploadProgress({
     combining: {
       icon: <Loader2 className="w-12 h-12 text-primary-600 animate-spin" />,
       title: 'Combining Recordings...',
-      description: 'Merging all your answers into one file',
+      description: 'Preparing your saved answers in safe upload parts',
       color: 'text-primary-600',
       bgColor: 'bg-primary-50',
     },
     compressing: {
       icon: <Loader2 className="w-12 h-12 text-primary-600 animate-spin" />,
       title: 'Compressing Audio...',
-      description: 'Optimizing file size for upload',
+      description: 'Optimizing only the parts that need it',
       color: 'text-primary-600',
       bgColor: 'bg-primary-50',
     },
     uploading: {
       icon: <Upload className="w-12 h-12 text-primary-600 animate-pulse" />,
       title: 'Uploading...',
-      description: 'Sending your recordings to our servers',
+      description: 'Sending your recordings to secure storage for AI processing',
       color: 'text-primary-600',
       bgColor: 'bg-primary-50',
     },
@@ -81,22 +81,22 @@ export function UploadProgress({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200"
+      className="journey-card p-6 sm:p-8"
     >
       {/* Icon and Status */}
       <div className="text-center mb-6">
         <motion.div
-          className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${config.bgColor} mb-4`}
+          className={`mb-4 inline-flex h-24 w-24 items-center justify-center rounded-lg border border-border ${config.bgColor}`}
           animate={status === 'complete' ? { scale: [1, 1.2, 1] } : {}}
           transition={{ duration: 0.5 }}
         >
           {config.icon}
         </motion.div>
 
-        <h3 className={`text-2xl font-bold ${config.color} mb-2`}>{config.title}</h3>
+        <h3 className={`mb-2 font-heading text-2xl font-semibold ${config.color}`}>{config.title}</h3>
 
         {config.description && (
-          <p className="text-gray-600">{config.description}</p>
+          <p className="text-muted-foreground">{config.description}</p>
         )}
       </div>
 
@@ -121,16 +121,16 @@ export function UploadProgress({
 
       {/* File Stats */}
       {fileSize && status === 'uploading' && (
-        <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/35 p-4">
           <div>
-            <p className="text-xs text-gray-500 mb-1">File Size</p>
-            <p className="font-semibold text-gray-900">{formatBytes(fileSize)}</p>
+            <p className="mb-1 text-xs text-muted-foreground">File Size</p>
+            <p className="font-semibold text-foreground">{formatBytes(fileSize)}</p>
           </div>
 
           {uploadSpeed && (
             <div>
-              <p className="text-xs text-gray-500 mb-1">Upload Speed</p>
-              <p className="font-semibold text-gray-900">{formatBytes(uploadSpeed)}/s</p>
+              <p className="mb-1 text-xs text-muted-foreground">Upload Speed</p>
+              <p className="font-semibold text-foreground">{formatBytes(uploadSpeed)}/s</p>
             </div>
           )}
         </div>
@@ -244,4 +244,3 @@ function calculateTimeRemaining(
   const remaining = fileSize * ((100 - progress) / 100);
   return Math.ceil(remaining / uploadSpeed);
 }
-
