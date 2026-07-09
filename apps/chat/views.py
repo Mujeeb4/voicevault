@@ -149,17 +149,48 @@ def chat_streaming(request):
         # INSTANT RESPONSE! Return cached data immediately
         cache_time_ms = int((time.time() - start_time) * 1000)
         logger.info(f"Cache HIT! Response in {cache_time_ms}ms")
-        record_chat_message(ai_owner)
-        
-        return JsonResponse({
-            'conversation_id': None,
-            'response_text': cached['text'],
-            'audio_url': cached.get('audio'),
-            'cached': True,
-            'response_time_ms': cache_time_ms,
-            'original_response_time_ms': cached.get('original_response_time_ms', 0),
-            'tokens_used': cached.get('tokens', 0)
-        })
+
+        def generate_cached_response():
+            try:
+                conversation = Conversation.objects.create(
+                    ai_owner=ai_owner,
+                    family_member=family_member,
+                    question_text=question,
+                    response_text=cached['text'],
+                    audio_url=cached.get('audio'),
+                    response_time_ms=cache_time_ms,
+                    gpt_tokens_used=cached.get('tokens', 0),
+                    elevenlabs_characters_used=0,
+                )
+                conversation_id = str(conversation.id)
+                record_chat_message(ai_owner, conversation_id)
+                if family_member:
+                    family_member.increment_conversation_count()
+
+                yield f"data: {json.dumps({'type': 'text_chunk', 'content': cached['text'], 'timestamp': round(time.time() - start_time, 3), 'cached': True})}\n\n"
+                yield f"data: {json.dumps({'type': 'text_complete', 'full_text': cached['text'], 'tokens': cached.get('tokens', 0), 'stream_time_ms': cache_time_ms, 'cached': True})}\n\n"
+
+                if cached.get('audio'):
+                    yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': cached['audio'], 'conversation_id': conversation_id, 'cached': True})}\n\n"
+                else:
+                    yield f"data: {json.dumps({'type': 'audio_unavailable', 'message': 'Voice is not cached for this response', 'conversation_id': conversation_id, 'cached': True})}\n\n"
+
+                yield f"data: {json.dumps({'type': 'complete', 'conversation_id': conversation_id, 'total_time_ms': cache_time_ms, 'cached': True})}\n\n"
+            finally:
+                from django.db import connections
+                for conn_name in connections:
+                    try:
+                        connections[conn_name].close()
+                    except Exception:
+                        pass
+
+        response = StreamingHttpResponse(
+            generate_cached_response(),
+            content_type='text/event-stream'
+        )
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
     
     # STEP 2: Stream response generator
     def generate_response() -> Generator[str, None, None]:
@@ -292,18 +323,24 @@ def chat_streaming(request):
                 yield f"data: {json.dumps({'type': 'audio_unavailable', 'message': voice_limit.message, 'upgrade_required': voice_limit.upgrade_required})}\n\n"
             elif ai_owner.ai_config and ai_owner.ai_config.voice_clone_id:
                 try:
-                    # Try to queue async audio generation (requires Redis/Celery)
-                    audio_task = generate_audio_async.delay(
-                        response_text=response_text,
-                        voice_id=ai_owner.ai_config.voice_clone_id,
-                        conversation_id=conversation_id,
-                        ai_owner_id=str(ai_owner.id)
-                    )
-                    
-                    yield f"data: {json.dumps({'type': 'audio_processing', 'task_id': audio_task.id, 'conversation_id': conversation_id, 'estimated_time_ms': 600})}\n\n"
-                    
+                    if is_celery_available():
+                        # Queue async audio generation only when a worker is reachable.
+                        audio_task = generate_audio_async.apply_async(
+                            kwargs={
+                                'response_text': response_text,
+                                'voice_id': ai_owner.ai_config.voice_clone_id,
+                                'conversation_id': conversation_id,
+                                'ai_owner_id': str(ai_owner.id),
+                            },
+                            queue='voice',
+                        )
+
+                        yield f"data: {json.dumps({'type': 'audio_processing', 'task_id': audio_task.id, 'conversation_id': conversation_id, 'estimated_time_ms': 10000})}\n\n"
+                    else:
+                        raise RuntimeError('celery_worker_unavailable')
+
                 except Exception as celery_error:
-                    # Celery/Redis not available - generate audio synchronously
+                    # Celery/Redis not available - generate audio synchronously.
                     logger.warning("Celery unavailable (%s), generating audio synchronously", celery_error.__class__.__name__)
                     yield f"data: {json.dumps({'type': 'audio_generating', 'message': 'Generating voice...', 'conversation_id': conversation_id})}\n\n"
                     
@@ -582,25 +619,88 @@ def get_audio_status(request, task_id):
         }
     """
     from celery.result import AsyncResult
-    
-    task_result = AsyncResult(task_id)
-    
-    if task_result.ready():
-        if task_result.successful():
-            result = task_result.result
+
+    conversation_id = request.query_params.get('conversation_id')
+
+    def conversation_audio_response():
+        if not conversation_id:
+            return None
+
+        try:
+            conversation = Conversation.objects.only('audio_url', 'elevenlabs_characters_used').get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return None
+
+        if conversation.audio_url:
             return Response({
                 'status': 'complete',
-                'audio_url': result.get('audio_url'),
-                'generation_time_ms': result.get('generation_time_ms'),
-                'total_time_ms': result.get('total_time_ms')
+                'audio_url': conversation.audio_url,
+                'conversation_id': conversation_id,
+                'source': 'conversation',
             })
-        else:
-            return Response({
-                'status': 'failed',
-                'error': str(task_result.result)
-            })
-    else:
+
+        return None
+
+    db_response = conversation_audio_response()
+    if db_response:
+        return db_response
+
+    try:
+        task_result = AsyncResult(task_id)
+    except Exception as exc:
+        logger.warning("Could not read audio task status: %s", exc.__class__.__name__)
         return Response({
             'status': 'processing',
-            'task_id': task_id
+            'task_id': task_id,
+            'conversation_id': conversation_id,
         })
+
+    if task_result.ready():
+        if task_result.successful():
+            result = task_result.result or {}
+            if not isinstance(result, dict):
+                return Response({
+                    'status': 'failed',
+                    'error': 'Audio generation returned an invalid result',
+                    'conversation_id': conversation_id,
+                })
+
+            if not result.get('success', True):
+                return Response({
+                    'status': 'failed',
+                    'error': result.get('error', 'Audio generation failed'),
+                    'upgrade_required': result.get('upgrade_required', False),
+                    'conversation_id': conversation_id,
+                })
+
+            if result.get('audio_url'):
+                return Response({
+                    'status': 'complete',
+                    'audio_url': result.get('audio_url'),
+                    'generation_time_ms': result.get('generation_time_ms'),
+                    'total_time_ms': result.get('total_time_ms'),
+                    'conversation_id': conversation_id,
+                    'source': 'task_result',
+                })
+
+            db_response = conversation_audio_response()
+            if db_response:
+                return db_response
+
+            return Response({
+                'status': 'failed',
+                'error': 'Audio generation finished without an audio file',
+                'conversation_id': conversation_id,
+            })
+
+        return Response({
+            'status': 'failed',
+            'error': str(task_result.result),
+            'conversation_id': conversation_id,
+        })
+
+    return Response({
+        'status': 'processing',
+        'task_id': task_id,
+        'conversation_id': conversation_id,
+    })

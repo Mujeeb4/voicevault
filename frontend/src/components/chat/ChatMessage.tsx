@@ -45,7 +45,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   showAvatar = true,
   onRate,
 }) => {
-  const { rateConversation, processingAudioIds } = useChatStore();
+  const { rateConversation, processingAudioIds, currentAudioId, currentTime, duration } = useChatStore();
   const [rating, setRating] = useState(conversation.user_rating || 0);
   const [feedback, setFeedback] = useState(conversation.user_feedback || '');
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
@@ -55,6 +55,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const [messageTime, setMessageTime] = useState('');
 
   const isProcessingAudio = processingAudioIds.includes(conversation.id);
+  const isVoiceCaptionActive = !isUser && !!conversation.audio_url && currentAudioId === conversation.id && duration > 0;
+  const captionText = isVoiceCaptionActive
+    ? getWordSyncedCaption(displayText, currentTime, duration)
+    : displayText;
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -116,17 +120,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           <span className="text-xs text-muted-foreground">{messageTime}</span>
         </div>
 
-        {/* Message Text */}
-        <div className={cn('text-sm leading-relaxed', isUser && 'text-right')}>
-          {isUser ? (
-            <p>{conversation.question_text}</p>
-          ) : isStreaming ? (
-            <StreamingText text={streamingText} isComplete={false} />
-          ) : (
-            <p>{displayText}</p>
-          )}
-        </div>
-
         {/* Voice Player or Loading Indicator (AI messages only) */}
         {!isUser && !isStreaming && (
           <div className="mt-2">
@@ -144,6 +137,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             ) : null}
           </div>
         )}
+
+        {/* Message Text */}
+        <div className={cn('text-sm leading-relaxed', isUser && 'text-right')}>
+          {isUser ? (
+            <p>{conversation.question_text}</p>
+          ) : isStreaming ? (
+            <StreamingText text={streamingText} isComplete={false} />
+          ) : (
+            <p>{captionText}</p>
+          )}
+        </div>
 
         {/* Actions */}
         {!isUser && !isStreaming && (
@@ -227,3 +231,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     </div>
   );
 };
+
+function getWordSyncedCaption(text: string, currentTime: number, duration: number): string {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (!words.length || duration <= 0) return text;
+
+  const progress = Math.max(0, Math.min(1, currentTime / duration));
+  const visibleWordCount = Math.max(1, Math.ceil(words.length * progress));
+  return words.slice(0, visibleWordCount).join(' ');
+}

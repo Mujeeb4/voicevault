@@ -24,6 +24,7 @@ app.conf.task_routes = {
     'apps.ai_processing.tasks.clone_voice_*': {'queue': 'voice'},
     'apps.ai_processing.tasks.analyze_personality_*': {'queue': 'analysis'},
     'apps.ai_processing.tasks.finalize_ai_*': {'queue': 'default'},
+    'apps.chat.tasks.generate_audio_async': {'queue': 'voice'},
 }
 
 # Retry policy

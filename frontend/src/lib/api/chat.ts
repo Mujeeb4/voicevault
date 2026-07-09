@@ -153,8 +153,14 @@ export const chatApi = {
     };
   },
 
-  checkAudioStatus: async (taskId: string): Promise<{ status: string; audio_url?: string }> => {
-    const { data } = await apiClient.get(`${chatBase}/audio-status/${taskId}/`);
+  checkAudioStatus: async (
+    taskId: string,
+    conversationId?: string
+  ): Promise<{ status: string; audio_url?: string; error?: string }> => {
+    const params = new URLSearchParams();
+    if (conversationId) params.set('conversation_id', conversationId);
+    const query = params.toString() ? `?${params}` : '';
+    const { data } = await apiClient.get(`${chatBase}/audio-status/${taskId}/${query}`);
     return data;
   },
 

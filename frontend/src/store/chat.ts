@@ -10,6 +10,9 @@ import type { Conversation } from '@/types';
 import { VoicePlayer } from '@/lib/audio/player';
 import { chatApi, type StreamingConnection } from '@/lib/api/chat';
 
+const AUDIO_POLL_INTERVAL_MS = 2000;
+const AUDIO_POLL_MAX_ATTEMPTS = 30;
+
 interface ChatState {
   // State
   aiOwnerId: string | null;
@@ -97,11 +100,23 @@ export const useChatStore = create<ChatState>()(
 
       pollAudioStatus: async (taskId: string, conversationId: string) => {
         // Add to processing set
-        set(state => ({ processingAudioIds: [...state.processingAudioIds, conversationId] }));
+        set(state => ({
+          processingAudioIds: state.processingAudioIds.includes(conversationId)
+            ? state.processingAudioIds
+            : [...state.processingAudioIds, conversationId],
+        }));
 
-        const check = async () => {
+        const check = async (attempt = 1) => {
           try {
-            const status = await chatApi.checkAudioStatus(taskId);
+            const existingConversation = get().conversations.find((c) => c.id === conversationId);
+            if (existingConversation?.audio_url) {
+              set(state => ({
+                processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId),
+              }));
+              return;
+            }
+
+            const status = await chatApi.checkAudioStatus(taskId, conversationId);
 
             if (status.status === 'complete' && status.audio_url) {
               const { voicePlayer } = get();
@@ -117,10 +132,18 @@ export const useChatStore = create<ChatState>()(
                 processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId)
               }));
             } else if (status.status === 'processing' || status.status === 'pending') {
-              // Poll again in 2 seconds
-              setTimeout(check, 2000);
+              if (attempt >= AUDIO_POLL_MAX_ATTEMPTS) {
+                await get().loadConversations().catch(() => undefined);
+                set(state => ({
+                  processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId),
+                }));
+                return;
+              }
+
+              setTimeout(() => check(attempt + 1), AUDIO_POLL_INTERVAL_MS);
             } else {
               // Failed or unknown - stop processing
+              console.warn(status.error || 'Audio generation failed');
               set(state => ({ processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId) }));
             }
           } catch {
@@ -162,7 +185,7 @@ export const useChatStore = create<ChatState>()(
             onPlay: (id) => set({ isAudioPlaying: true, currentAudioId: id }),
             onTimeUpdate: (time, duration) => set({ currentTime: time, duration: duration }),
             onComplete: (_id) => set({ isAudioPlaying: false, currentAudioId: null, currentTime: 0, duration: 0 }),
-            onError: (error) => set({ error }),
+            onError: (error) => console.warn(error),
           });
           set({ voicePlayer: player });
         }
@@ -186,11 +209,19 @@ export const useChatStore = create<ChatState>()(
               player!.addToQueue(audioUrl, conversationId);
 
               // Add to audio queue
-              set((state) => ({ audioQueue: [...state.audioQueue, audioUrl] }));
+              set((state) => ({
+                audioQueue: [...state.audioQueue, audioUrl],
+                processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId),
+                conversations: state.conversations.map((c) =>
+                  c.id === conversationId ? { ...c, audio_url: audioUrl } : c
+                ),
+              }));
             },
             (taskId, conversationId) => {
               // Handle async audio processing
-              get().pollAudioStatus(taskId, conversationId);
+              if (taskId && conversationId) {
+                get().pollAudioStatus(taskId, conversationId);
+              }
             },
             (conversationId) => {
               // Streaming complete

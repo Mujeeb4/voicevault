@@ -38,8 +38,8 @@ export class VoicePlayer {
 
   addToQueue(url: string, id: string): void {
     this.queue.push({ url, id });
-    if (!this.currentId && this.queue.length === 1) {
-      this.play(url, id);
+    if (!this.currentId) {
+      this.playNext();
     }
   }
 
@@ -47,8 +47,13 @@ export class VoicePlayer {
     this.currentId = id;
     if (this.audio) {
       this.audio.src = url;
-      this.audio.play();
       this.options.onPlay?.(id);
+      const playPromise = this.audio.play();
+      if (playPromise) {
+        playPromise.catch(() => {
+          this.options.onError?.('Tap play to hear the voice response');
+        });
+      }
     }
   }
 
@@ -62,7 +67,12 @@ export class VoicePlayer {
   }
 
   resume(): void {
-    this.audio?.play();
+    const playPromise = this.audio?.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        this.options.onError?.('Tap play to hear the voice response');
+      });
+    }
   }
 
   stop(): void {

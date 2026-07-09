@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const LOCAL_API_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000'];
+const LOCAL_API_ORIGINS = [
+  'http://localhost:8000',
+  'http://127.0.0.1:8000',
+  'http://localhost:18000',
+  'http://127.0.0.1:18000',
+];
 const ANALYTICS_ORIGINS = [
   'https://www.googletagmanager.com',
   'https://www.google-analytics.com',
@@ -36,12 +41,26 @@ function compact(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }
 
+function getOrigins(value?: string): string[] {
+  if (!value) {
+    return [];
+  }
+
+  return compact(
+    value
+      .split(',')
+      .map((origin) => getOrigin(origin.trim()))
+  );
+}
+
 function buildContentSecurityPolicy(nonce: string): string {
   const isDevelopment = process.env.NODE_ENV !== 'production';
   const backendOrigin = getOrigin(process.env.BACKEND_API_URL)
     || getOrigin(process.env.NEXT_PUBLIC_API_URL)
     || 'https://voicevault-backend-production.up.railway.app';
   const siteOrigin = getOrigin(process.env.NEXT_PUBLIC_SITE_URL);
+  const storageOrigin = getOrigin(process.env.LOCAL_STORAGE_PUBLIC_URL);
+  const mediaOrigins = getOrigins(process.env.NEXT_PUBLIC_MEDIA_ORIGINS);
   const shouldUpgradeInsecureRequests = getProtocol(process.env.NEXT_PUBLIC_SITE_URL) === 'https:';
 
   const scriptSrc = compact([
@@ -58,17 +77,29 @@ function buildContentSecurityPolicy(nonce: string): string {
   const connectSrc = compact([
     "'self'",
     backendOrigin,
+    storageOrigin,
     siteOrigin,
+    ...mediaOrigins,
     ...ANALYTICS_ORIGINS,
     ...FFMPEG_ORIGINS,
     ...(isDevelopment ? [...LOCAL_API_ORIGINS, 'ws:', 'wss:'] : []),
   ]);
-  const mediaSrc = compact(["'self'", 'blob:', 'data:', backendOrigin]);
+  const mediaSrc = compact([
+    "'self'",
+    'blob:',
+    'data:',
+    backendOrigin,
+    storageOrigin,
+    ...mediaOrigins,
+    ...(isDevelopment ? LOCAL_API_ORIGINS : []),
+  ]);
   const imgSrc = compact([
     "'self'",
     'data:',
     'blob:',
     backendOrigin,
+    storageOrigin,
+    ...mediaOrigins,
     ...ANALYTICS_ORIGINS,
   ]);
 
