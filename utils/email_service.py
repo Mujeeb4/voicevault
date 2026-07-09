@@ -4,16 +4,18 @@ Handles invitation emails, confirmations, and notifications.
 """
 import logging
 from typing import Optional
+from django.conf import settings
 from django.core.mail import send_mail, EmailMultiAlternatives
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
-from decouple import config
 
 logger = logging.getLogger(__name__)
 
 # Email configuration
-FROM_EMAIL = config('EMAIL_FROM', default='VoiceVault <noreply@voicevault.com>')
-FRONTEND_URL = config('FRONTEND_URL', default='https://voicevault.com')
+FROM_EMAIL = settings.DEFAULT_FROM_EMAIL
+FRONTEND_URL = settings.FRONTEND_URL
+
+
+def _log_email_failure(email_type: str, exc: Exception) -> None:
+    logger.exception("Failed to send %s email: %s", email_type, exc.__class__.__name__)
 
 
 def send_invitation_email(
@@ -250,7 +252,7 @@ Visit VoiceVault: {FRONTEND_URL}
         return True
         
     except Exception as e:
-        logger.error("Failed to send invitation email: %s", e.__class__.__name__)
+        _log_email_failure("invitation", e)
         return False
 
 
@@ -349,7 +351,7 @@ They can start conversations anytime through VoiceVault.
         return True
         
     except Exception as e:
-        logger.error("Failed to send acceptance email: %s", e.__class__.__name__)
+        _log_email_failure("acceptance", e)
         return False
 
 
@@ -397,7 +399,7 @@ VoiceVault Team
         return True
         
     except Exception as e:
-        logger.error("Failed to send access removed email: %s", e.__class__.__name__)
+        _log_email_failure("access removed", e)
         return False
 
 
@@ -505,5 +507,5 @@ VoiceVault Team
         return True
         
     except Exception as e:
-        logger.error("Failed to send welcome email: %s", e.__class__.__name__)
+        _log_email_failure("welcome", e)
         return False

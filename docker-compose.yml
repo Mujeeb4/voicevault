@@ -45,6 +45,9 @@ services:
         BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     container_name: voicevault-web
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "${HOST_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-18000}:8000"
       - "${HOST_BIND_IP:-127.0.0.1}:${FRONTEND_HOST_PORT:-13000}:3000"
@@ -100,6 +103,9 @@ services:
         BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     container_name: voicevault-celery-worker
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=dev-secret-key-change-in-production
@@ -132,6 +138,9 @@ services:
         BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     container_name: voicevault-celery-beat
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=dev-secret-key-change-in-production
