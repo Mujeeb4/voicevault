@@ -7,7 +7,11 @@ import json
 import logging
 import time
 from typing import Generator
-from django.http import StreamingHttpResponse, JsonResponse
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+from django.conf import settings
+from django.core import signing
+from django.http import FileResponse, Http404, StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
@@ -35,6 +39,53 @@ from services.plan_limits import (
 )
 
 logger = logging.getLogger(__name__)
+
+AUDIO_PLAYBACK_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 2
+AUDIO_PLAYBACK_TOKEN_SALT = 'voicevault.chat.audio'
+
+
+def _conversation_audio_playback_url(conversation: Conversation, requesting_user: User) -> str | None:
+    """Return a short-lived same-origin URL for protected browser audio playback."""
+    if not conversation.audio_url:
+        return None
+
+    token = signing.dumps(
+        {
+            'conversation_id': str(conversation.id),
+            'user_id': str(requesting_user.id),
+        },
+        salt=AUDIO_PLAYBACK_TOKEN_SALT,
+    )
+    return f"/api/chat/audio/{conversation.id}/?token={token}"
+
+
+def _user_can_access_conversation_audio(user: User, conversation: Conversation) -> bool:
+    if conversation.ai_owner_id == user.id:
+        return True
+
+    family_member = conversation.family_member
+    if not family_member:
+        return False
+
+    if family_member.user_account_id and family_member.user_account_id == user.id:
+        return True
+
+    return family_member.has_access and family_member.email.lower() == user.email.lower()
+
+
+def _local_audio_file_path(audio_url: str) -> Path:
+    parsed = urlparse(audio_url)
+    path = unquote(parsed.path if parsed.scheme else audio_url)
+    marker = '/media/storage/'
+    if marker not in path:
+        raise ValueError('Unsupported local audio URL')
+
+    relative_storage_path = path.split(marker, 1)[1]
+    relative_path = Path(relative_storage_path)
+    if relative_path.is_absolute() or '..' in relative_path.parts:
+        raise ValueError('Invalid audio path')
+
+    return Path(settings.MEDIA_ROOT) / 'storage' / relative_path
 
 
 # ============================================================================
@@ -171,7 +222,8 @@ def chat_streaming(request):
                 yield f"data: {json.dumps({'type': 'text_complete', 'full_text': cached['text'], 'tokens': cached.get('tokens', 0), 'stream_time_ms': cache_time_ms, 'cached': True})}\n\n"
 
                 if cached.get('audio'):
-                    yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': cached['audio'], 'conversation_id': conversation_id, 'cached': True})}\n\n"
+                    audio_url = _conversation_audio_playback_url(conversation, requesting_user)
+                    yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': audio_url, 'conversation_id': conversation_id, 'cached': True})}\n\n"
                 else:
                     yield f"data: {json.dumps({'type': 'audio_unavailable', 'message': 'Voice is not cached for this response', 'conversation_id': conversation_id, 'cached': True})}\n\n"
 
@@ -353,7 +405,8 @@ def chat_streaming(request):
                     )
                     
                     if audio_result.get('success') and audio_result.get('audio_url'):
-                        yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': audio_result['audio_url'], 'conversation_id': conversation_id, 'generation_time_ms': audio_result.get('total_time_ms', 0)})}\n\n"
+                        audio_url = _conversation_audio_playback_url(conversation, requesting_user)
+                        yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': audio_url, 'conversation_id': conversation_id, 'generation_time_ms': audio_result.get('total_time_ms', 0)})}\n\n"
                     else:
                         yield f"data: {json.dumps({'type': 'audio_failed', 'error': audio_result.get('error', 'Audio generation failed'), 'conversation_id': conversation_id})}\n\n"
             else:
@@ -511,7 +564,7 @@ def get_conversation_history(request):
             } if conv.family_member else None,
             'question_text': conv.question_text,
             'response_text': conv.response_text,
-            'audio_url': conv.audio_url,
+            'audio_url': _conversation_audio_playback_url(conv, requesting_user),
             'created_at': conv.created_at.isoformat(),
             'response_time_ms': conv.response_time_ms,
             'gpt_tokens_used': conv.gpt_tokens_used,
@@ -603,6 +656,77 @@ def rate_conversation(request, conversation_id):
     })
 
 
+@require_http_methods(["GET"])
+def stream_conversation_audio(request, conversation_id):
+    """Stream a private conversation audio file after validating a short-lived token."""
+    token = request.GET.get('token', '')
+    if not token:
+        return JsonResponse(
+            {'error': 'Audio token is required'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        payload = signing.loads(
+            token,
+            salt=AUDIO_PLAYBACK_TOKEN_SALT,
+            max_age=AUDIO_PLAYBACK_TOKEN_MAX_AGE_SECONDS,
+        )
+    except signing.SignatureExpired:
+        return JsonResponse(
+            {'error': 'Audio link expired. Refresh the chat and try again.'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    except signing.BadSignature:
+        return JsonResponse(
+            {'error': 'Invalid audio token'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    if payload.get('conversation_id') != str(conversation_id):
+        return JsonResponse(
+            {'error': 'Invalid audio token'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        requesting_user = User.objects.get(id=payload.get('user_id'))
+    except (User.DoesNotExist, ValueError, TypeError):
+        return JsonResponse(
+            {'error': 'Invalid audio token'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        conversation = Conversation.objects.select_related('family_member').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        raise Http404('Audio not found')
+
+    if not _user_can_access_conversation_audio(requesting_user, conversation):
+        return JsonResponse(
+            {'error': 'You do not have access to this audio'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if not conversation.audio_url:
+        raise Http404('Audio not found')
+
+    try:
+        audio_path = _local_audio_file_path(conversation.audio_url)
+    except ValueError:
+        logger.warning("Unsupported audio storage URL for conversation %s", conversation.id)
+        raise Http404('Audio not found')
+
+    if not audio_path.exists() or not audio_path.is_file():
+        raise Http404('Audio not found')
+
+    response = FileResponse(audio_path.open('rb'), content_type='audio/mpeg')
+    response['Content-Disposition'] = f'inline; filename="voicevault_response_{conversation.id}.mp3"'
+    response['Cache-Control'] = 'private, max-age=300'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def get_audio_status(request, task_id):
@@ -621,20 +745,50 @@ def get_audio_status(request, task_id):
     from celery.result import AsyncResult
 
     conversation_id = request.query_params.get('conversation_id')
+    supabase_user = getattr(request, 'supabase_user', None)
+
+    if not supabase_user:
+        return Response(
+            {'error': 'Authentication required'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    try:
+        requesting_user = User.objects.get(id=str(supabase_user.id))
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'User not found'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
     def conversation_audio_response():
         if not conversation_id:
             return None
 
         try:
-            conversation = Conversation.objects.only('audio_url', 'elevenlabs_characters_used').get(id=conversation_id)
+            conversation = Conversation.objects.select_related('family_member').only(
+                'id',
+                'ai_owner_id',
+                'family_member_id',
+                'family_member__email',
+                'family_member__has_access',
+                'family_member__user_account_id',
+                'audio_url',
+                'elevenlabs_characters_used',
+            ).get(id=conversation_id)
         except Conversation.DoesNotExist:
             return None
+
+        if not _user_can_access_conversation_audio(requesting_user, conversation):
+            return Response(
+                {'error': 'You do not have access to this audio'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         if conversation.audio_url:
             return Response({
                 'status': 'complete',
-                'audio_url': conversation.audio_url,
+                'audio_url': _conversation_audio_playback_url(conversation, requesting_user),
                 'conversation_id': conversation_id,
                 'source': 'conversation',
             })
@@ -674,9 +828,18 @@ def get_audio_status(request, task_id):
                 })
 
             if result.get('audio_url'):
+                if conversation_id:
+                    try:
+                        conversation = Conversation.objects.get(id=conversation_id)
+                        audio_url = _conversation_audio_playback_url(conversation, requesting_user)
+                    except Conversation.DoesNotExist:
+                        audio_url = None
+                else:
+                    audio_url = None
+
                 return Response({
                     'status': 'complete',
-                    'audio_url': result.get('audio_url'),
+                    'audio_url': audio_url,
                     'generation_time_ms': result.get('generation_time_ms'),
                     'total_time_ms': result.get('total_time_ms'),
                     'conversation_id': conversation_id,

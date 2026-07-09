@@ -239,8 +239,7 @@ export const useChatStore = create<ChatState>()(
                     family_member: { id: familyMemberId, full_name: state.conversations[0]?.family_member?.full_name || '' },
                     question_text: message,
                     response_text: streamingText,
-                    // Use last audio URL if available
-                    audio_url: state.audioQueue.length > 0 ? state.audioQueue[state.audioQueue.length - 1] : undefined,
+                    audio_url: undefined,
                     created_at: new Date().toISOString(),
                     response_time_ms: 0,
                   } as Conversation,

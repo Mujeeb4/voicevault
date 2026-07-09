@@ -18,6 +18,7 @@ export class VoicePlayer {
     this.options = options;
     if (typeof window !== 'undefined') {
       this.audio = new Audio();
+      this.audio.preload = 'auto';
       this.audio.addEventListener('timeupdate', () => {
         if (this.audio && this.options.onTimeUpdate) {
           this.options.onTimeUpdate(this.audio.currentTime, this.audio.duration || 0);
@@ -30,6 +31,9 @@ export class VoicePlayer {
         this.playNext();
       });
       this.audio.addEventListener('error', () => {
+        const id = this.currentId;
+        this.currentId = null;
+        if (id && this.options.onComplete) this.options.onComplete(id);
         if (this.options.onError) this.options.onError('Playback failed');
         this.playNext();
       });
@@ -47,10 +51,13 @@ export class VoicePlayer {
     this.currentId = id;
     if (this.audio) {
       this.audio.src = url;
+      this.audio.load();
       this.options.onPlay?.(id);
       const playPromise = this.audio.play();
       if (playPromise) {
         playPromise.catch(() => {
+          this.currentId = null;
+          this.options.onComplete?.(id);
           this.options.onError?.('Tap play to hear the voice response');
         });
       }
@@ -70,6 +77,9 @@ export class VoicePlayer {
     const playPromise = this.audio?.play();
     if (playPromise) {
       playPromise.catch(() => {
+        const id = this.currentId;
+        this.currentId = null;
+        if (id) this.options.onComplete?.(id);
         this.options.onError?.('Tap play to hear the voice response');
       });
     }

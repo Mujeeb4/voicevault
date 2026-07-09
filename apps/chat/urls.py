@@ -22,5 +22,7 @@ urlpatterns = [
     
     # Check audio generation status (for frontend polling)
     path('audio-status/<str:task_id>/', views.get_audio_status, name='audio_status'),
-]
 
+    # Protected audio playback (short-lived token required)
+    path('audio/<uuid:conversation_id>/', views.stream_conversation_audio, name='conversation_audio'),
+]
