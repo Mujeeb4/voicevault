@@ -313,42 +313,55 @@ npm start
 
 ### Docker + Traefik on Hostinger
 
-For Hostinger's temporary IP URL, run Traefik in HTTP mode and match the IP host:
+The default Compose file now contains the labels required by Hostinger's
+host-network Traefik. Put the deployment values in `.env` once:
 
-```bash
-TRAEFIK_HOST=72.61.76.103 \
-TRAEFIK_RULE='Host(`72.61.76.103`) || Host(`web.srv1183929.hstgr.cloud`) || Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
-TRAEFIK_NETWORK=traefik-yuy7_default \
-NEXT_PUBLIC_SITE_URL=http://72.61.76.103:13000 \
-FRONTEND_URL=http://72.61.76.103:13000 \
-docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+```dotenv
+TRAEFIK_RULE=Host(`voicevault-web.srv1183929.hstgr.cloud`) || Host(`web.srv1183929.hstgr.cloud`)
+TRAEFIK_CERT_RESOLVER=letsencrypt
+STORAGE_BACKEND=local
+LOCAL_STORAGE_PUBLIC_URL=https://voicevault-web.srv1183929.hstgr.cloud
+BACKEND_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_SITE_URL=https://voicevault-web.srv1183929.hstgr.cloud
+ALLOWED_HOSTS=voicevault-web.srv1183929.hstgr.cloud,web.srv1183929.hstgr.cloud,localhost,127.0.0.1
+CSRF_TRUSTED_ORIGINS=https://voicevault-web.srv1183929.hstgr.cloud,https://web.srv1183929.hstgr.cloud
+CORS_ALLOWED_ORIGINS=https://voicevault-web.srv1183929.hstgr.cloud,https://web.srv1183929.hstgr.cloud
+FRONTEND_URL=https://voicevault-web.srv1183929.hstgr.cloud
 ```
 
-For a real domain with HTTPS, point DNS at the server first, then add the HTTPS overlay:
+After that, deployment is just:
 
 ```bash
-TRAEFIK_HOST=voicevault.example.com \
-TRAEFIK_RULE='Host(`voicevault.example.com`)' \
-TRAEFIK_NETWORK=traefik-yuy7_default \
-TRAEFIK_CERT_RESOLVER=letsencrypt \
-NEXT_PUBLIC_SITE_URL=https://voicevault.example.com \
-FRONTEND_URL=https://voicevault.example.com \
-docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
+docker compose up -d --build
 ```
 
-If the Traefik container uses host networking, use the host-mode overlay instead:
+`--force-recreate` is normally unnecessary: Compose recreates services when
+their image or configuration changes. Use it only when you intentionally need
+to replace unchanged containers.
 
-```bash
-TRAEFIK_RULE='Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
-TRAEFIK_CERT_RESOLVER=letsencrypt \
-NEXT_PUBLIC_SITE_URL=https://voicevault-web.srv1183929.hstgr.cloud \
-FRONTEND_URL=https://voicevault-web.srv1183929.hstgr.cloud \
-docker compose -f docker-compose.yml -f docker-compose.traefik-host.yml -f docker-compose.traefik-https.yml up -d --build
+For local development, override the URL and Traefik values in your local `.env`,
+or disable Traefik discovery with `TRAEFIK_ENABLE=false` if your environment
+uses a Traefik constraints rule.
+
+### Transactional email with Brevo
+
+VoiceVault uses Django's SMTP backend, so Brevo does not require an application
+code change. Create and verify a sender in Brevo, create an SMTP key, and put
+these values in `.env`:
+
+```dotenv
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp-relay.brevo.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-brevo-smtp-login
+EMAIL_HOST_PASSWORD=your-brevo-smtp-key
+DEFAULT_FROM_EMAIL=VoiceVault <the-verified-sender@example.com>
 ```
 
-Use the certificate resolver name from Traefik's static config. If Traefik logs
-`Router uses a nonexistent certificate resolver ... mytlschallenge`, replace that
-label/env value with the resolver that exists, such as `letsencrypt`.
+Use an SMTP key, not a Brevo API key. For short-term testing, Brevo lets you
+verify an individual sender address even when its domain is not authenticated.
+Use a custom domain with DKIM and DMARC before production for reliable delivery.
 
 ---
 

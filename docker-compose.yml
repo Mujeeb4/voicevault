@@ -1,4 +1,6 @@
-# Docker Compose for local development and end-to-end testing.
+# Docker Compose for local development, end-to-end testing, and the Hostinger
+# host-network Traefik deployment. Traefik ignores these labels when it is not
+# running, so this remains usable for local development.
 #
 # Postgres and Redis are published on non-default host ports to avoid conflicts
 # with local services. Containers still talk to them on the internal ports.
@@ -51,6 +53,17 @@ services:
     ports:
       - "${HOST_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-18000}:8000"
       - "${HOST_BIND_IP:-127.0.0.1}:${FRONTEND_HOST_PORT:-13000}:3000"
+    labels:
+      traefik.enable: "${TRAEFIK_ENABLE:-true}"
+      traefik.http.routers.voicevault-http.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
+      traefik.http.routers.voicevault-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault-http.middlewares: voicevault-redirect-https
+      traefik.http.routers.voicevault.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
+      traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_HTTPS_ENTRYPOINT:-websecure}
+      traefik.http.routers.voicevault.tls: "true"
+      traefik.http.routers.voicevault.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}
+      traefik.http.services.voicevault.loadbalancer.server.port: "3000"
+      traefik.http.middlewares.voicevault-redirect-https.redirectscheme.scheme: https
     environment:
       - DEBUG=${DEBUG:-True}
       - SECRET_KEY=dev-secret-key-change-in-production
@@ -60,7 +73,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
       - REDIS_URL=redis://redis:6379/0
       - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
       - FRONTEND_URL=${FRONTEND_URL:-http://127.0.0.1:${FRONTEND_HOST_PORT:-13000}}
       - STRIPE_MODE=${STRIPE_MODE:-test}
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
@@ -113,7 +126,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
       - REDIS_URL=redis://redis:6379/0
       - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
       - SUPABASE_URL=${SUPABASE_URL:-}
       - SUPABASE_KEY=${SUPABASE_KEY:-}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
@@ -148,7 +161,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
       - REDIS_URL=redis://redis:6379/0
       - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=http://127.0.0.1:${BACKEND_HOST_PORT:-18000}
+      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
       - SUPABASE_URL=${SUPABASE_URL:-}
       - SUPABASE_KEY=${SUPABASE_KEY:-}
       - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
