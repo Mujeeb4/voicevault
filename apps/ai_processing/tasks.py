@@ -22,6 +22,25 @@ from services.plan_limits import can_clone_voice, has_accepted_consent, record_a
 logger = logging.getLogger(__name__)
 
 
+def _personality_failure_message(exc: Exception, model: str) -> str:
+    """Return a useful, non-sensitive error suitable for the processing UI."""
+    if isinstance(exc, openai.AuthenticationError):
+        return 'OpenAI authentication failed. Check the API key used by the worker.'
+    if isinstance(exc, openai.RateLimitError):
+        return 'OpenAI rate limit or account quota reached. Check API billing and retry shortly.'
+    if isinstance(exc, openai.NotFoundError):
+        return f'OpenAI model "{model}" is unavailable for this API key.'
+    if isinstance(exc, openai.APIConnectionError):
+        return 'Could not connect to OpenAI. Check the worker network and retry.'
+    if isinstance(exc, openai.BadRequestError):
+        return f'OpenAI rejected the personality request. Check model "{model}" and its parameters.'
+    if isinstance(exc, json.JSONDecodeError):
+        return 'OpenAI returned an invalid personality response. Please retry.'
+    if isinstance(exc, ValueError):
+        return str(exc)
+    return 'Personality analysis failed. Check the Celery worker logs for the error type.'
+
+
 def _recording_processing_order(recording: AudioRecording) -> tuple[int, int]:
     """
     Keep chunked combined recordings in upload order.
@@ -354,9 +373,13 @@ def analyze_personality_task(self, previous_result=None, user_id: str = None) ->
         status='processing',
         priority=7,
         started_at=timezone.now(),
+        retry_count=self.request.retries,
         task_data={'celery_task_id': self.request.id}
     )
-    
+
+    http_client = None
+    analysis_model = settings.OPENAI_ANALYSIS_MODEL
+
     try:
         user = User.objects.get(id=user_id)
         
@@ -433,9 +456,9 @@ Be specific and quote exact phrases they use. Capture their unique voice."""
 
         start_time = time.time()
         
-        # Call GPT-4 Turbo (supports JSON mode)
+        # Use the configured model so deployments are not pinned to a retired model.
         response = client.chat.completions.create(
-            model="gpt-4-turbo",  # Use turbo for JSON support
+            model=analysis_model,
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_message}
@@ -459,7 +482,7 @@ Be specific and quote exact phrases they use. Capture their unique voice."""
             user=user,
             defaults={
                 'system_prompt': system_prompt,
-                'ai_model': 'gpt-4-turbo',  # Use turbo model
+                'ai_model': analysis_model,
                 'temperature': 0.7,
                 'max_tokens': 500,
                 'personality_data': personality_data,
@@ -508,17 +531,27 @@ Be specific and quote exact phrases they use. Capture their unique voice."""
         }
         
     except Exception as e:
-        logger.error("Personality analysis failed: %s", e.__class__.__name__)
+        failure_message = _personality_failure_message(e, analysis_model)
+        logger.error(
+            "Personality analysis failed for user %s with model %s: %s",
+            user_id,
+            analysis_model,
+            e.__class__.__name__,
+        )
         queue_entry.status = 'failed'
-        queue_entry.error_message = 'Personality analysis failed'
+        queue_entry.error_message = failure_message
+        queue_entry.retry_count = self.request.retries
         queue_entry.completed_at = timezone.now()
         queue_entry.save()
         
         # Retry logic
-        if queue_entry.retry_count < 3:
-            raise self.retry(exc=e, countdown=120 * (2 ** queue_entry.retry_count))
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=120 * (2 ** self.request.retries))
         
-        return {'success': False, 'error': 'Personality analysis failed'}
+        return {'success': False, 'error': failure_message}
+    finally:
+        if http_client:
+            http_client.close()
 
 
 def generate_system_prompt(user: User, personality_data: Dict, transcript: Transcript) -> str:

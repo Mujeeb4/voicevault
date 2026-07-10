@@ -355,6 +355,7 @@ else:
 
 # OpenAI Settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
+OPENAI_ANALYSIS_MODEL = config('OPENAI_ANALYSIS_MODEL', default='gpt-4.1-mini')
 
 # ElevenLabs Settings
 ELEVENLABS_API_KEY = config('ELEVENLABS_API_KEY', default='')

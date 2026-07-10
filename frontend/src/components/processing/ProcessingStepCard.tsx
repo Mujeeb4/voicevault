@@ -129,10 +129,15 @@ export function ProcessingStepCard({
 
           {/* Error Message */}
           {status === 'failed' && error && (
-            <div className="mt-3 rounded-lg border border-error-500/25 bg-error-500/10 p-3">
-              <p className="text-sm text-error-700 mb-2">{error}</p>
+            <div className="mt-3 rounded-lg border border-error-500/45 bg-error-500/12 p-3">
+              <p className="mb-3 text-sm font-medium text-red-100">{error}</p>
               {onRetry && (
-                <Button onClick={onRetry} size="sm" variant="outline">
+                <Button
+                  onClick={onRetry}
+                  size="sm"
+                  variant="destructive"
+                  className="border border-red-300/35 bg-error-500 px-4 text-white shadow-[0_8px_20px_rgba(239,68,68,0.24)] hover:bg-error-600 focus-visible:ring-error-500"
+                >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
                 </Button>
@@ -147,7 +152,7 @@ export function ProcessingStepCard({
                 onClick={() => setShowTranscription(!showTranscription)}
                 size="sm"
                 variant="outline"
-                className="w-full"
+                className="w-full border-primary/55 bg-primary/10 text-primary-700 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.08)] hover:border-primary/80 hover:bg-primary/20 hover:text-primary-800 dark:text-primary-200 dark:hover:text-primary-100"
               >
                 <FileText className="w-4 h-4 mr-2" />
                 {showTranscription ? 'Hide Transcribed Text' : 'View Transcribed Text'}
@@ -160,7 +165,7 @@ export function ProcessingStepCard({
                   exit={{ opacity: 0, height: 0 }}
                   className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/35 p-4"
                 >
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{transcriptionText}</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground/90">{transcriptionText}</p>
                 </motion.div>
               )}
             </div>

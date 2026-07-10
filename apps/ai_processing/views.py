@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 import logging
 
@@ -145,11 +146,15 @@ class AnalyzePersonalityView(APIView):
                 )
             
             # Check transcript length
-            if transcript.word_count < 500:
+            minimum_words = settings.AI_MIN_WORDS_FOR_PERSONALITY
+            if transcript.word_count < minimum_words:
                 return Response(
                     {
                         'error': 'transcript_too_short',
-                        'message': f'Transcript has only {transcript.word_count} words (minimum 500)'
+                        'message': (
+                            f'Transcript has only {transcript.word_count} words '
+                            f'(minimum {minimum_words})'
+                        )
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )

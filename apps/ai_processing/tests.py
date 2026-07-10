@@ -1,4 +1,4 @@
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.urls import reverse
 from unittest.mock import patch, MagicMock
 from rest_framework import status
@@ -6,7 +6,12 @@ from apps.users.models import User, ConsentRecord
 from apps.recordings.models import AudioRecording, Transcript
 from apps.ai_processing.models import APIUsageTracking, ProcessingQueue
 from apps.ai_processing.tasks import _recording_processing_order, transcribe_audio_task
-from apps.ai_processing.views import CloneVoiceView, TranscribeAudioView, RunFullPipelineView
+from apps.ai_processing.views import (
+    AnalyzePersonalityView,
+    CloneVoiceView,
+    TranscribeAudioView,
+    RunFullPipelineView,
+)
 from utils.supabase_auth import SupabaseUser
 
 class AIProcessingViewsTestCase(TestCase):
@@ -57,6 +62,25 @@ class AIProcessingViewsTestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertIn('Transcription task started', response.data['message'])
         mock_transcribe_task.delay.assert_called_once_with(str(self.user.id))
+
+    @override_settings(AI_MIN_WORDS_FOR_PERSONALITY=50)
+    @patch('apps.ai_processing.views.analyze_personality_task')
+    def test_personality_retry_uses_configured_transcript_minimum(self, mock_personality_task):
+        """The retry endpoint must use the same transcript threshold as the worker."""
+        Transcript.objects.create(
+            user=self.user,
+            full_transcript='word ' * 50,
+            word_count=50,
+        )
+        mock_personality_task.delay.return_value.id = 'personality-task-id'
+
+        request = self.factory.post(f'/api/admin/process/personality/{self.user.id}/')
+        request.supabase_user = self.supabase_user
+
+        response = AnalyzePersonalityView.as_view()(request, user_id=self.user.id)
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        mock_personality_task.delay.assert_called_once_with(str(self.user.id))
 
     @patch('apps.ai_processing.views.transcribe_audio_task')
     @patch('apps.ai_processing.views.analyze_personality_task')
