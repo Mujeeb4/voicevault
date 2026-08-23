@@ -7,16 +7,27 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
+from django.db import transaction
 from django.http import HttpResponse
 from .models import RecordingQuestion
 from .serializers import RecordingQuestionSerializer
-from apps.users.models import User
+from apps.users.models import AuditLog, User
 from services.plan_limits import FREE_LIMITS, get_limits
 from utils.admin_auth import get_authenticated_user, is_admin_user, require_admin
 import csv
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def audit_question_action(request, action, target_id=None, metadata=None):
+    AuditLog.objects.create(
+        user=request.admin_user,
+        action=action,
+        target_type='recording_question',
+        target_id=str(target_id) if target_id else None,
+        metadata=metadata or {},
+    )
 
 
 class QuestionPagination(PageNumberPagination):
@@ -144,6 +155,7 @@ def create_question(request):
         
         if serializer.is_valid():
             question = serializer.save()
+            audit_question_action(request, 'admin_question_create', question.id, {'order': question.order})
             logger.info(f"Question created: {question.id}")
             
             return Response(
@@ -232,6 +244,12 @@ def update_question(request, question_id):
         
         if serializer.is_valid():
             question = serializer.save()
+            audit_question_action(
+                request,
+                'admin_question_update',
+                question.id,
+                {'updated_fields': sorted(request.data.keys())},
+            )
             logger.info(f"Question updated: {question.id}")
             
             return Response(serializer.data)
@@ -267,8 +285,15 @@ def delete_question(request, question_id):
         }
     """
     try:
-        question = RecordingQuestion.objects.get(id=question_id)
-        question.delete()
+        with transaction.atomic():
+            question = RecordingQuestion.objects.select_for_update().get(id=question_id)
+            audit_question_action(
+                request,
+                'admin_question_delete',
+                question.id,
+                {'question_text': question.question_text[:200], 'order': question.order},
+            )
+            question.delete()
         
         logger.info(f"Question deleted: {question_id}")
         
@@ -321,20 +346,52 @@ def reorder_questions(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        updated_count = 0
-        
-        for item in questions_data:
-            question_id = item.get('id')
-            new_order = item.get('order')
-            
-            if question_id and new_order is not None:
-                try:
-                    question = RecordingQuestion.objects.get(id=question_id)
-                    question.order = new_order
-                    question.save()
-                    updated_count += 1
-                except RecordingQuestion.DoesNotExist:
-                    continue
+        if not isinstance(questions_data, list) or any(not isinstance(item, dict) for item in questions_data):
+            return Response({'error': 'questions must be a non-empty list of objects'}, status=status.HTTP_400_BAD_REQUEST)
+
+        question_ids = [str(item.get('id', '')) for item in questions_data]
+        new_orders = [item.get('order') for item in questions_data]
+        if any(not question_id for question_id in question_ids):
+            return Response({'error': 'Every question requires an id'}, status=status.HTTP_400_BAD_REQUEST)
+        if any(type(order) is not int or order < 1 for order in new_orders):
+            return Response({'error': 'Every order must be a positive integer'}, status=status.HTTP_400_BAD_REQUEST)
+        if len(set(question_ids)) != len(question_ids) or len(set(new_orders)) != len(new_orders):
+            return Response({'error': 'Question ids and orders must be unique'}, status=status.HTTP_400_BAD_REQUEST)
+
+        with transaction.atomic():
+            questions = list(RecordingQuestion.objects.select_for_update().filter(id__in=question_ids))
+            found_ids = {str(question.id) for question in questions}
+            missing_ids = sorted(set(question_ids) - found_ids)
+            if missing_ids:
+                return Response(
+                    {'error': 'Question not found', 'missing_ids': missing_ids},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+            order_by_id = dict(zip(question_ids, new_orders))
+            conflicts = []
+            for question in questions:
+                destination = order_by_id[str(question.id)]
+                if RecordingQuestion.objects.filter(domain=question.domain, order=destination).exclude(id__in=question_ids).exists():
+                    conflicts.append({'id': str(question.id), 'domain': question.domain, 'order': destination})
+            if conflicts:
+                return Response(
+                    {'error': 'order_conflict', 'conflicts': conflicts},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # Move rows out of the destination range first to avoid transient unique conflicts.
+            for offset, question in enumerate(questions, start=1):
+                question.order = -1000000 - offset
+                question.save(update_fields=['order', 'updated_at'])
+            for question in questions:
+                question.order = order_by_id[str(question.id)]
+                question.save(update_fields=['order', 'updated_at'])
+            audit_question_action(
+                request,
+                'admin_question_reorder',
+                metadata={'question_ids': question_ids, 'orders': new_orders},
+            )
+
+        updated_count = len(questions)
         
         logger.info(f"Reordered {updated_count} questions")
         
@@ -418,6 +475,8 @@ def seed_default_questions(request):
             if not existing:
                 RecordingQuestion.objects.create(**q_data)
                 created_count += 1
+
+        audit_question_action(request, 'admin_question_seed', metadata={'created_count': created_count})
         
         logger.info(f"Seeded {created_count} default questions")
         
@@ -448,7 +507,9 @@ def bulk_update_questions(request):
 
     updates = {}
     if 'is_active' in request.data:
-        updates['is_active'] = bool(request.data.get('is_active'))
+        if not isinstance(request.data.get('is_active'), bool):
+            return Response({'error': 'is_active must be a boolean'}, status=status.HTTP_400_BAD_REQUEST)
+        updates['is_active'] = request.data.get('is_active')
 
     if not updates:
         return Response(
@@ -456,7 +517,17 @@ def bulk_update_questions(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    updated_count = RecordingQuestion.objects.filter(id__in=question_ids).update(**updates)
+    questions = RecordingQuestion.objects.filter(id__in=question_ids)
+    found_ids = {str(value) for value in questions.values_list('id', flat=True)}
+    missing_ids = sorted({str(value) for value in question_ids} - found_ids)
+    if missing_ids:
+        return Response({'error': 'Question not found', 'missing_ids': missing_ids}, status=status.HTTP_404_NOT_FOUND)
+    updated_count = questions.update(**updates)
+    audit_question_action(
+        request,
+        'admin_question_bulk_update',
+        metadata={'question_ids': [str(value) for value in question_ids], 'updates': updates, 'updated_count': updated_count},
+    )
     return Response({'updated_count': updated_count})
 
 
@@ -471,8 +542,27 @@ def bulk_delete_questions(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    deleted_count, _ = RecordingQuestion.objects.filter(id__in=question_ids).delete()
-    return Response({'deleted_count': deleted_count})
+    questions = RecordingQuestion.objects.filter(id__in=question_ids)
+    found_ids = {str(value) for value in questions.values_list('id', flat=True)}
+    requested_ids = {str(value) for value in question_ids}
+    missing_ids = sorted(requested_ids - found_ids)
+    if missing_ids:
+        return Response({'error': 'Question not found', 'missing_ids': missing_ids}, status=status.HTTP_404_NOT_FOUND)
+    with transaction.atomic():
+        deleted_questions = list(questions.values('id', 'question_text', 'order'))
+        deleted_count, _ = questions.delete()
+        audit_question_action(
+            request,
+            'admin_question_bulk_delete',
+            metadata={
+                'questions': [
+                    {'id': str(item['id']), 'question_text': item['question_text'][:200], 'order': item['order']}
+                    for item in deleted_questions
+                ],
+                'deleted_count': len(deleted_questions),
+            },
+        )
+    return Response({'deleted_count': len(deleted_questions)})
 
 
 @api_view(['GET'])

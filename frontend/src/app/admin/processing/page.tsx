@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AdminRoute } from '@/components/admin/AdminRoute';
 import { useAdminStore } from '@/store/admin';
 import { Button } from '@/components/ui/button';
@@ -19,26 +20,47 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Loader2, Play, RefreshCw, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { ProcessingStatus as ProcessingStatusType } from '@/types';
 
 function AdminProcessingContent() {
-  const { processingJobs, isLoadingProcessing, loadProcessingJobs, triggerFullPipeline, batchProcessPending, batchRetryFailed } = useAdminStore();
+  const searchParams = useSearchParams();
+  const selectedUserId = searchParams.get('user') || undefined;
+  const {
+    processingJobs,
+    isLoadingProcessing,
+    loadProcessingJobs,
+    triggerFullPipeline,
+    batchProcessPending,
+    batchRetryFailed,
+  } = useAdminStore();
 
   const [statusFilter, setStatusFilter] = useState<'all' | ProcessingStatusType>('all');
 
   useEffect(() => {
-    loadProcessingJobs({ status: statusFilter === 'all' ? undefined : statusFilter });
+    loadProcessingJobs({
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      user: selectedUserId,
+    });
 
     // Auto-refresh every 10 seconds
     const interval = setInterval(() => {
-      loadProcessingJobs({ status: statusFilter === 'all' ? undefined : statusFilter });
+      loadProcessingJobs({
+        status: statusFilter === 'all' ? undefined : statusFilter,
+        user: selectedUserId,
+      });
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [loadProcessingJobs, statusFilter]);
+  }, [loadProcessingJobs, selectedUserId, statusFilter]);
 
   const handleTriggerPipeline = async (userId: string) => {
     try {
@@ -72,7 +94,10 @@ function AdminProcessingContent() {
   };
 
   const getStatusBadge = (status: ProcessingStatusType) => {
-    const variants: Record<ProcessingStatusType, { variant: 'default' | 'secondary' | 'error' | 'outline'; className: string }> = {
+    const variants: Record<
+      ProcessingStatusType,
+      { variant: 'default' | 'secondary' | 'error' | 'outline'; className: string }
+    > = {
       pending: { variant: 'secondary', className: '' },
       in_progress: { variant: 'default', className: 'bg-primary-500' },
       complete: { variant: 'default', className: 'bg-green-500' },
@@ -110,7 +135,10 @@ function AdminProcessingContent() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}>
+        <Select
+          value={statusFilter}
+          onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -123,7 +151,7 @@ function AdminProcessingContent() {
           </SelectContent>
         </Select>
         <p className="text-sm text-muted-foreground self-center">
-          Auto-refreshing every 10 seconds
+          {selectedUserId ? 'Filtered to the selected user · ' : ''}Auto-refreshing every 10 seconds
         </p>
       </div>
 
@@ -173,6 +201,7 @@ function AdminProcessingContent() {
                         size="icon"
                         onClick={() => handleTriggerPipeline(job.user_id)}
                         title="Retry"
+                        aria-label={`Retry processing for ${job.user_name || job.user_email}`}
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
@@ -182,6 +211,7 @@ function AdminProcessingContent() {
                         size="icon"
                         onClick={() => handleTriggerPipeline(job.user_id)}
                         title="Trigger"
+                        aria-label={`Trigger processing for ${job.user_name || job.user_email}`}
                       >
                         <Play className="h-4 w-4" />
                       </Button>
@@ -203,8 +233,8 @@ function AdminProcessingContent() {
           <div>
             <p className="font-semibold text-destructive">Failed Jobs Detected</p>
             <p className="text-sm text-muted-foreground">
-              Some processing jobs have failed. Click the retry button to trigger them again, or use &quot;Retry Failed&quot; to
-              process all failed jobs.
+              Some processing jobs have failed. Click the retry button to trigger them again, or use
+              &quot;Retry Failed&quot; to process all failed jobs.
             </p>
           </div>
         </div>
@@ -220,4 +250,3 @@ export default function AdminProcessingPage() {
     </AdminRoute>
   );
 }
-

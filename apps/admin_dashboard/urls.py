@@ -14,5 +14,6 @@ urlpatterns = [
     path('batch-process-pending/', views.admin_batch_process_pending, name='admin-batch-process-pending'),
     path('batch-retry-failed/', views.admin_batch_retry_failed, name='admin-batch-retry-failed'),
     path('payments/', views.admin_payments, name='admin-payments'),
+    path('payments/<uuid:payment_id>/refund/', views.admin_refund_payment, name='admin-payment-refund'),
     path('logs/', views.admin_logs, name='admin-logs'),
 ]

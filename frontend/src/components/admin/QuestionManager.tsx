@@ -53,7 +53,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   GripVertical,
   MoreVertical,
@@ -113,6 +119,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
           {...attributes}
           {...listeners}
           className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded"
+          aria-label={`Reorder question ${question.order}: ${question.question_text}`}
         >
           <GripVertical className="h-5 w-5 text-muted-foreground" />
         </button>
@@ -120,7 +127,9 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
       <TableCell className="font-medium">{question.order}</TableCell>
       <TableCell className="max-w-md">
         <p className="truncate">{question.question_text}</p>
-        {question.tip && <p className="text-xs text-muted-foreground truncate mt-1">Tip: {question.tip}</p>}
+        {question.tip && (
+          <p className="text-xs text-muted-foreground truncate mt-1">Tip: {question.tip}</p>
+        )}
       </TableCell>
       <TableCell>
         <Badge variant="secondary" className={getDomainColor(question.domain)}>
@@ -131,6 +140,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
       <TableCell>
         <button
           onClick={() => onToggleActive(question)}
+          aria-label={`${question.is_active ? 'Deactivate' : 'Activate'} question ${question.order}`}
           className={cn(
             'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
             question.is_active
@@ -146,6 +156,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon">
+              <span className="sr-only">Actions for question {question.order}</span>
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -313,7 +324,10 @@ export const QuestionManager: React.FC = () => {
           />
         </div>
 
-        <Select value={domainFilter} onValueChange={(val) => setDomainFilter(val as typeof domainFilter)}>
+        <Select
+          value={domainFilter}
+          onValueChange={(val) => setDomainFilter(val as typeof domainFilter)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by domain" />
           </SelectTrigger>
@@ -368,12 +382,21 @@ export const QuestionManager: React.FC = () => {
             ) : filteredQuestions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {searchQuery || domainFilter !== 'all' ? 'No questions match your filters' : 'No questions found'}
+                  {searchQuery || domainFilter !== 'all'
+                    ? 'No questions match your filters'
+                    : 'No questions found'}
                 </TableCell>
               </TableRow>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={filteredQuestions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={filteredQuestions.map((q) => q.id)}
+                  strategy={verticalListSortingStrategy}
+                >
                   {filteredQuestions.map((question) => (
                     <SortableQuestionRow
                       key={question.id}
@@ -401,20 +424,28 @@ export const QuestionManager: React.FC = () => {
       />
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirmQuestion} onOpenChange={() => setDeleteConfirmQuestion(null)}>
+      <AlertDialog
+        open={!!deleteConfirmQuestion}
+        onOpenChange={() => setDeleteConfirmQuestion(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Question?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this question? This action cannot be undone.
               {deleteConfirmQuestion && (
-                <p className="mt-2 font-medium text-foreground">&quot;{deleteConfirmQuestion.question_text}&quot;</p>
+                <p className="mt-2 font-medium text-foreground">
+                  &quot;{deleteConfirmQuestion.question_text}&quot;
+                </p>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -423,4 +454,3 @@ export const QuestionManager: React.FC = () => {
     </div>
   );
 };
-

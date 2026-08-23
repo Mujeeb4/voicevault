@@ -46,7 +46,12 @@ interface AdminState {
   loadStats: () => Promise<void>;
 
   // User Management Actions
-  loadUsers: (params?: { page?: number; limit?: number; search?: string; status?: string }) => Promise<void>;
+  loadUsers: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+  }) => Promise<void>;
   loadUser: (userId: string) => Promise<void>;
   updateUser: (userId: string, updates: Partial<AdminUser>) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
@@ -63,7 +68,12 @@ interface AdminState {
   exportQuestions: () => Promise<void>;
 
   // Processing Monitor Actions
-  loadProcessingJobs: (params?: { status?: string; page?: number; limit?: number }) => Promise<void>;
+  loadProcessingJobs: (params?: {
+    status?: string;
+    user?: string;
+    page?: number;
+    limit?: number;
+  }) => Promise<void>;
   loadProcessingStatus: (userId: string) => Promise<void>;
   triggerFullPipeline: (userId: string) => Promise<void>;
   triggerTranscription: (userId: string) => Promise<void>;
@@ -154,14 +164,14 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const updatedUser = await adminApi.updateUser(userId, updates);
-      
+
       // Update in list
       set((state) => ({
         users: state.users.map((u) => (u.id === userId ? updatedUser : u)),
         selectedUser: state.selectedUser?.id === userId ? updatedUser : state.selectedUser,
         isLoading: false,
       }));
-      
+
       toast.success('User updated successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update user';
@@ -175,14 +185,14 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await adminApi.deleteUser(userId);
-      
+
       // Remove from list
       set((state) => ({
         users: state.users.filter((u) => u.id !== userId),
         usersTotalCount: state.usersTotalCount - 1,
         isLoading: false,
       }));
-      
+
       toast.success('User deleted successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete user';
@@ -213,13 +223,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const newQuestion = await adminApi.createQuestion(data);
-      
+
       // Add to list
       set((state) => ({
         questions: [...state.questions, newQuestion].sort((a, b) => a.order - b.order),
         isLoading: false,
       }));
-      
+
       toast.success('Question created successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create question';
@@ -233,13 +243,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const updatedQuestion = await adminApi.updateQuestion(id, data);
-      
+
       // Update in list
       set((state) => ({
         questions: state.questions.map((q) => (q.id === id ? updatedQuestion : q)),
         isLoading: false,
       }));
-      
+
       toast.success('Question updated successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update question';
@@ -253,13 +263,13 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await adminApi.deleteQuestion(id);
-      
+
       // Remove from list
       set((state) => ({
         questions: state.questions.filter((q) => q.id !== id),
         isLoading: false,
       }));
-      
+
       toast.success('Question deleted successfully');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to delete question';
@@ -273,10 +283,10 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await adminApi.reorderQuestions({ questions });
-      
+
       // Reload questions to get updated order
       await get().loadQuestions();
-      
+
       set({ isLoading: false });
       toast.success('Questions reordered successfully');
     } catch (error) {
@@ -291,10 +301,10 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const response = await adminApi.seedQuestions();
-      
+
       // Reload questions
       await get().loadQuestions();
-      
+
       set({ isLoading: false });
       toast.success(response.message || `${response.count} questions loaded successfully`);
     } catch (error) {
@@ -309,14 +319,15 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await adminApi.bulkUpdateQuestions(questionIds, updates);
-      
+
       // Reload questions
       await get().loadQuestions();
-      
+
       set({ isLoading: false });
       toast.success(`${questionIds.length} questions updated successfully`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to bulk update questions';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to bulk update questions';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -327,16 +338,17 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       await adminApi.bulkDeleteQuestions(questionIds);
-      
+
       // Remove from list
       set((state) => ({
         questions: state.questions.filter((q) => !questionIds.includes(q.id)),
         isLoading: false,
       }));
-      
+
       toast.success(`${questionIds.length} questions deleted successfully`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to bulk delete questions';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to bulk delete questions';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -347,7 +359,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
     try {
       set({ isLoading: true, error: null });
       const blob = await adminApi.exportQuestions();
-      
+
       // Download file
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -355,7 +367,7 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       link.download = `questions_${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       window.URL.revokeObjectURL(url);
-      
+
       set({ isLoading: false });
       toast.success('Questions exported successfully');
     } catch (error) {
@@ -380,7 +392,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
         isLoadingProcessing: false,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load processing jobs';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to load processing jobs';
       set({ error: errorMessage, isLoadingProcessing: false });
       toast.error(errorMessage);
       throw error;
@@ -393,7 +406,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       const status = await adminApi.getProcessingStatus(userId);
       set({ selectedJobStatus: status, isLoading: false });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load processing status';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to load processing status';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -421,7 +435,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set({ isLoading: false });
       toast.success('Transcription triggered successfully');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to trigger transcription';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to trigger transcription';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -435,7 +450,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set({ isLoading: false });
       toast.success('Personality analysis triggered successfully');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to trigger personality analysis';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to trigger personality analysis';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -449,7 +465,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set({ isLoading: false });
       toast.success('Voice cloning triggered successfully');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to trigger voice cloning';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to trigger voice cloning';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -463,7 +480,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set({ isLoading: false });
       toast.success(`Retrying ${step} step...`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to retry processing step';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to retry processing step';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -477,7 +495,8 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
       set({ isLoading: false });
       toast.success(`Triggered processing for ${response.triggered_count} users`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to batch process pending';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to batch process pending';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;
@@ -506,4 +525,3 @@ export const useAdminStore = create<AdminState>()((set, get) => ({
 
   reset: () => set(initialState),
 }));
-

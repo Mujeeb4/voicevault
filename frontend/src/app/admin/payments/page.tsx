@@ -2,13 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { ExternalLink, Loader2, Search } from 'lucide-react';
+import { ExternalLink, Loader2, RotateCcw, Search } from 'lucide-react';
 import { AdminRoute } from '@/components/admin/AdminRoute';
 import { adminApi } from '@/lib/api/admin';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -18,6 +24,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { AdminPayment, AdminPaymentStatus } from '@/types';
+import { toast } from 'sonner';
 
 const statusVariant: Record<AdminPaymentStatus, 'secondary' | 'success' | 'error' | 'warning'> = {
   pending: 'warning',
@@ -32,6 +39,26 @@ function AdminPaymentsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | AdminPaymentStatus>('all');
+  const [refundingId, setRefundingId] = useState<string | null>(null);
+
+  const refundPayment = async (payment: AdminPayment) => {
+    if (
+      !window.confirm(
+        `Refund ${payment.amount_display} to ${payment.user_email}? This will revoke Premium if it is their only successful payment.`
+      )
+    )
+      return;
+    setRefundingId(payment.id);
+    try {
+      const updated = await adminApi.refundPayment(payment.id);
+      setPayments((current) => current.map((item) => (item.id === payment.id ? updated : item)));
+      toast.success('Payment refunded and access updated');
+    } catch {
+      toast.error('Refund failed. No local payment state was changed.');
+    } finally {
+      setRefundingId(null);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -63,7 +90,9 @@ function AdminPaymentsContent() {
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6 border-b border-border pb-5">
         <h1 className="font-heading text-3xl font-semibold">Payments</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Review Stripe payment records, receipts, and failed charges.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Review Stripe payment records, receipts, and failed charges.
+        </p>
       </div>
 
       <div className="mb-5 flex flex-col gap-3 sm:flex-row">
@@ -100,7 +129,9 @@ function AdminPaymentsContent() {
               <TableHead>Payment Intent</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-16"></TableHead>
+              <TableHead className="w-28">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -131,16 +162,43 @@ function AdminPaymentsContent() {
                   <TableCell className="max-w-[220px] truncate font-mono text-xs">
                     {payment.stripe_payment_intent_id}
                   </TableCell>
-                  <TableCell>{format(new Date(payment.created_at), 'MMM d, yyyy h:mm a')}</TableCell>
-                  <TableCell className="text-right font-semibold">{payment.amount_display}</TableCell>
                   <TableCell>
-                    {payment.receipt_url && (
-                      <Button asChild variant="ghost" size="icon">
-                        <a href={payment.receipt_url} target="_blank" rel="noreferrer" aria-label="Open receipt">
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
-                      </Button>
-                    )}
+                    {format(new Date(payment.created_at), 'MMM d, yyyy h:mm a')}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">
+                    {payment.amount_display}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      {payment.status === 'succeeded' &&
+                        payment.stripe_payment_intent_id.startsWith('pi_') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => refundPayment(payment)}
+                            disabled={refundingId === payment.id}
+                            aria-label={`Refund payment for ${payment.user_email}`}
+                          >
+                            {refundingId === payment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      {payment.receipt_url && (
+                        <Button asChild variant="ghost" size="icon">
+                          <a
+                            href={payment.receipt_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label="Open receipt"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

@@ -150,26 +150,23 @@ if DATABASE_URL:
         ssl_require=DB_SSL_REQUIRE,
     )
     
-    # Global options for stability with Supabase
-    # IMPORTANT: Increased connect_timeout for cross-region connections (Render US → Supabase Asia)
-    db_config.setdefault('OPTIONS', {})
-    db_options = {
-        'connect_timeout': 60,  # Increased to 60s for cross-region connections
-        'keepalives': 1,        # Enable TCP keepalives
-        'keepalives_idle': 30,
-        'keepalives_interval': 10,
-        'keepalives_count': 5,
-        'options': '-c statement_timeout=60000',  # 60s statement timeout
-    }
-    if DB_SSL_REQUIRE:
-        db_options['sslmode'] = 'require'  # Explicitly require SSL for Psycopg 3
-    db_config['OPTIONS'].update(db_options)
-    
-    # For transaction pooler, we need special settings
-    if is_transaction_pooler:
-        db_config['OPTIONS'].update({
-            'options': '-c statement_timeout=60000',  # Statement timeout
-        })
+    # PostgreSQL-only stability options must never leak into SQLite test URLs.
+    if db_config.get('ENGINE') == 'django.db.backends.postgresql':
+        db_config.setdefault('OPTIONS', {})
+        db_options = {
+            'connect_timeout': 60,
+            'keepalives': 1,
+            'keepalives_idle': 30,
+            'keepalives_interval': 10,
+            'keepalives_count': 5,
+            'options': '-c statement_timeout=60000',
+        }
+        if DB_SSL_REQUIRE:
+            db_options['sslmode'] = 'require'
+        db_config['OPTIONS'].update(db_options)
+
+        if is_transaction_pooler:
+            db_config['OPTIONS'].update({'options': '-c statement_timeout=60000'})
         # Transaction pooler requires prepared statements to be disabled
         # This is handled automatically by psycopg3 when using simple query mode
         

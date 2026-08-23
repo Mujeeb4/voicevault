@@ -7,12 +7,13 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { isAdmin } from '@/lib/api/admin';
 import { Loader2, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { AdminShell } from './AdminShell';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ interface AdminRouteProps {
 
 export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, isLoading, checkAuth } = useAuthStore();
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
@@ -37,9 +39,9 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (hasCheckedAuth && !isLoading && !isAuthenticated) {
-      router.push('/login?redirect=/admin');
+      router.replace(`/login?redirect=${encodeURIComponent(pathname || '/admin')}`);
     }
-  }, [hasCheckedAuth, isAuthenticated, isLoading, router]);
+  }, [hasCheckedAuth, isAuthenticated, isLoading, pathname, router]);
 
   // Still loading authentication
   if (!hasCheckedAuth || isLoading) {
@@ -75,12 +77,14 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
               <ShieldAlert className="h-6 w-6" />
               <CardTitle>Access Denied</CardTitle>
             </div>
-            <CardDescription>You don&apos;t have permission to access the admin dashboard.</CardDescription>
+            <CardDescription>
+              You don&apos;t have permission to access the admin dashboard.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This area is restricted to administrators only. If you believe you should have access, please contact
-              support.
+              This area is restricted to administrators only. If you believe you should have access,
+              please contact support.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button onClick={() => router.push('/dashboard')} className="flex-1">
@@ -97,5 +101,5 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   }
 
   // Is admin - render children
-  return <>{children}</>;
+  return <AdminShell>{children}</AdminShell>;
 };

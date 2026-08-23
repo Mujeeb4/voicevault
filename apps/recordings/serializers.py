@@ -96,6 +96,10 @@ class TranscriptSerializer(serializers.ModelSerializer):
 
 class RecordingQuestionSerializer(serializers.ModelSerializer):
     """Serializer for RecordingQuestion model."""
+    question_text = serializers.CharField(min_length=1, max_length=500, trim_whitespace=True)
+    order = serializers.IntegerField(min_value=1)
+    suggested_duration_seconds = serializers.IntegerField(min_value=10, max_value=600)
+    tip = serializers.CharField(max_length=200, required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = RecordingQuestion
@@ -111,4 +115,3 @@ class RecordingQuestionSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-

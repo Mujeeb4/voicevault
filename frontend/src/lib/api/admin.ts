@@ -31,32 +31,8 @@ export function isAdmin(user: { id?: string; email?: string; is_admin?: boolean 
 
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
-    try {
-      const { data } = await apiClient.get(`${adminBase}/stats/`);
-      return data;
-    } catch {
-      return {
-        total_users: 0,
-        total_recordings: 0,
-        total_conversations: 0,
-        ai_ready_count: 0,
-        processing_count: 0,
-        failed_count: 0,
-        recent_signups: 0,
-        active_questions: 0,
-        inactive_questions: 0,
-        payments_total: 0,
-        payments_succeeded: 0,
-        payments_failed: 0,
-        revenue_cents: 0,
-        revenue_display: '$0.00',
-        pending_processing: 0,
-        failed_processing: 0,
-        api_usage: { openai_calls: 0, elevenlabs_calls: 0, total_cost: 0 },
-        recent_payments: [],
-        recent_failures: [],
-      };
-    }
+    const { data } = await apiClient.get(`${adminBase}/stats/`);
+    return data;
   },
 
   getAllUsers: async (params?: {
@@ -65,17 +41,13 @@ export const adminApi = {
     search?: string;
     status?: string;
   }): Promise<{ count: number; results: AdminUser[] }> => {
-    try {
-      const searchParams = new URLSearchParams();
-      if (params?.page) searchParams.set('page', String(params.page));
-      if (params?.limit) searchParams.set('limit', String(params.limit));
-      if (params?.search) searchParams.set('search', params.search);
-      if (params?.status) searchParams.set('status', params.status);
-      const { data } = await apiClient.get(`${adminBase}/users/?${searchParams}`);
-      return { count: data.count ?? 0, results: data.results ?? [] };
-    } catch {
-      return { count: 0, results: [] };
-    }
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.status && params.status !== 'all') searchParams.set('status', params.status);
+    const { data } = await apiClient.get(`${adminBase}/users/?${searchParams}`);
+    return { count: data.count ?? 0, results: data.results ?? [] };
   },
 
   getUser: async (userId: string): Promise<AdminUser> => {
@@ -111,7 +83,9 @@ export const adminApi = {
     await apiClient.delete(`${recordingsQuestions}/${id}/delete/`);
   },
 
-  reorderQuestions: async (payload: { questions: Array<{ id: string; order: number }> }): Promise<void> => {
+  reorderQuestions: async (payload: {
+    questions: Array<{ id: string; order: number }>;
+  }): Promise<void> => {
     await apiClient.post(`${recordingsQuestions}/reorder/`, payload);
   },
 
@@ -124,7 +98,10 @@ export const adminApi = {
     questionIds: string[],
     updates: { is_active: boolean }
   ): Promise<void> => {
-    await apiClient.post(`${recordingsQuestions}/bulk-update/`, { question_ids: questionIds, ...updates });
+    await apiClient.post(`${recordingsQuestions}/bulk-update/`, {
+      question_ids: questionIds,
+      ...updates,
+    });
   },
 
   bulkDeleteQuestions: async (questionIds: string[]): Promise<void> => {
@@ -140,19 +117,17 @@ export const adminApi = {
 
   getAllProcessingJobs: async (params?: {
     status?: string;
+    user?: string;
     page?: number;
     limit?: number;
   }): Promise<{ count: number; results: AdminProcessingJob[] }> => {
-    try {
-      const searchParams = new URLSearchParams();
-      if (params?.status) searchParams.set('status', params.status);
-      if (params?.page) searchParams.set('page', String(params.page));
-      if (params?.limit) searchParams.set('limit', String(params.limit));
-      const { data } = await apiClient.get(`${adminBase}/processing/?${searchParams}`);
-      return { count: data.count ?? 0, results: data.results ?? [] };
-    } catch {
-      return { count: 0, results: [] };
-    }
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.user) searchParams.set('user', params.user);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    const { data } = await apiClient.get(`${adminBase}/processing/?${searchParams}`);
+    return { count: data.count ?? 0, results: data.results ?? [] };
   },
 
   getProcessingStatus: async (userId: string): Promise<ProcessingStatusResponse> => {
@@ -187,21 +162,13 @@ export const adminApi = {
   },
 
   batchProcessPending: async (): Promise<{ triggered_count: number }> => {
-    try {
-      const { data } = await apiClient.post(`${adminBase}/batch-process-pending/`);
-      return { triggered_count: data.triggered_count ?? 0 };
-    } catch {
-      return { triggered_count: 0 };
-    }
+    const { data } = await apiClient.post(`${adminBase}/batch-process-pending/`);
+    return { triggered_count: data.triggered_count ?? 0 };
   },
 
   batchRetryFailed: async (): Promise<{ triggered_count: number }> => {
-    try {
-      const { data } = await apiClient.post(`${adminBase}/batch-retry-failed/`);
-      return { triggered_count: data.triggered_count ?? 0 };
-    } catch {
-      return { triggered_count: 0 };
-    }
+    const { data } = await apiClient.post(`${adminBase}/batch-retry-failed/`);
+    return { triggered_count: data.triggered_count ?? 0 };
   },
 
   getPayments: async (params?: {
@@ -217,6 +184,11 @@ export const adminApi = {
     if (params?.limit) searchParams.set('limit', String(params.limit));
     const { data } = await apiClient.get(`${adminBase}/payments/?${searchParams}`);
     return { count: data.count ?? 0, results: data.results ?? [] };
+  },
+
+  refundPayment: async (paymentId: string): Promise<AdminPayment> => {
+    const { data } = await apiClient.post(`${adminBase}/payments/${paymentId}/refund/`);
+    return data.payment;
   },
 
   getLogs: async (params?: {

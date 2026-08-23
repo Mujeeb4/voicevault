@@ -11,7 +11,13 @@ import { AdminRoute } from '@/components/admin/AdminRoute';
 import { useAdminStore } from '@/store/admin';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -28,9 +34,11 @@ import { useRouter } from 'next/navigation';
 function AdminUsersContent() {
   const router = useRouter();
   const { users, isLoadingUsers, usersTotalCount, loadUsers } = useAdminStore();
-  
+
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'processing' | 'failed'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'processing' | 'failed'>(
+    'all'
+  );
 
   useEffect(() => {
     loadUsers({ search: searchQuery, status: statusFilter });
@@ -56,7 +64,10 @@ function AdminUsersContent() {
           />
         </div>
 
-        <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}>
+        <Select
+          value={statusFilter}
+          onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
@@ -110,10 +121,20 @@ function AdminUsersContent() {
                   </TableCell>
                   <TableCell>
                     <Badge
-                      variant={user.ai_ready ? 'default' : user.ai_processing_started_at ? 'secondary' : 'outline'}
+                      variant={
+                        user.ai_ready
+                          ? 'default'
+                          : user.ai_processing_started_at
+                            ? 'secondary'
+                            : 'outline'
+                      }
                       className={user.ai_ready ? 'bg-green-500' : ''}
                     >
-                      {user.ai_ready ? 'Ready' : user.ai_processing_started_at ? 'Processing' : 'Not Started'}
+                      {user.ai_ready
+                        ? 'Ready'
+                        : user.ai_processing_started_at
+                          ? 'Processing'
+                          : 'Not Started'}
                     </Badge>
                   </TableCell>
                   <TableCell>{user.family_members_count || 0}</TableCell>
@@ -122,6 +143,7 @@ function AdminUsersContent() {
                       variant="ghost"
                       size="icon"
                       onClick={() => router.push(`/admin/processing?user=${user.id}`)}
+                      aria-label={`View processing for ${user.full_name || user.email}`}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -150,4 +172,3 @@ export default function AdminUsersPage() {
     </AdminRoute>
   );
 }
-

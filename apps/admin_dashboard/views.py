@@ -3,12 +3,17 @@ Admin dashboard API views.
 """
 import logging
 from decimal import Decimal
+from uuid import UUID
 
+import stripe
+from django.conf import settings
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
@@ -42,8 +47,16 @@ def cents_to_dollars(cents):
 
 
 def paginate_queryset(queryset, request, default_limit=20, max_limit=100):
-    page = max(int(request.GET.get('page', 1) or 1), 1)
-    limit = min(max(int(request.GET.get('limit', default_limit) or default_limit), 1), max_limit)
+    try:
+        page = int(request.GET.get('page', 1) or 1)
+        limit = int(request.GET.get('limit', default_limit) or default_limit)
+    except (TypeError, ValueError):
+        raise ValidationError({'error': 'invalid_pagination', 'message': 'page and limit must be integers'})
+    if page < 1 or limit < 1 or limit > max_limit:
+        raise ValidationError({
+            'error': 'invalid_pagination',
+            'message': f'page must be at least 1 and limit must be between 1 and {max_limit}',
+        })
     paginator = Paginator(queryset, limit)
     current_page = paginator.get_page(page)
     return paginator.count, list(current_page.object_list)
@@ -233,6 +246,11 @@ def admin_user_detail(request, user_id):
         return Response(serialize_user(user))
 
     if request.method == 'DELETE':
+        if user.id == request.admin_user.id:
+            return Response(
+                {'error': 'self_delete_forbidden', 'message': 'Administrators cannot delete their own active account'},
+                status=status.HTTP_409_CONFLICT,
+            )
         AuditLog.objects.create(
             user=request.admin_user,
             action='admin_user_delete',
@@ -261,17 +279,38 @@ def admin_user_detail(request, user_id):
     if not updates:
         return Response({'error': 'validation_error', 'message': 'No supported fields provided'}, status=status.HTTP_400_BAD_REQUEST)
 
-    for key, value in updates.items():
-        setattr(user, key, value)
-    user.save(update_fields=list(updates.keys()) + ['updated_at'])
+    boolean_fields = {
+        'is_premium', 'lifetime_access', 'recording_completed', 'ai_ready', 'payment_completed'
+    }
+    for field in boolean_fields.intersection(updates):
+        if not isinstance(updates[field], bool):
+            return Response(
+                {'error': 'validation_error', 'message': f'{field} must be a boolean'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+    valid_tiers = {choice[0] for choice in User.PACKAGE_CHOICES}
+    valid_plans = {choice[0] for choice in User.PLAN_CHOICES}
+    if 'package_tier' in updates and updates['package_tier'] not in valid_tiers:
+        return Response({'error': 'validation_error', 'message': 'Invalid package_tier'}, status=status.HTTP_400_BAD_REQUEST)
+    if 'plan_type' in updates and updates['plan_type'] not in valid_plans:
+        return Response({'error': 'validation_error', 'message': 'Invalid plan_type'}, status=status.HTTP_400_BAD_REQUEST)
+    if 'full_name' in updates and (
+        not isinstance(updates['full_name'], str) or not updates['full_name'].strip() or len(updates['full_name']) > 255
+    ):
+        return Response({'error': 'validation_error', 'message': 'full_name must be 1-255 characters'}, status=status.HTTP_400_BAD_REQUEST)
 
-    AuditLog.objects.create(
-        user=request.admin_user,
-        action='admin_user_update',
-        target_type='user',
-        target_id=str(user.id),
-        metadata={'updated_fields': sorted(updates.keys())},
-    )
+    with transaction.atomic():
+        user = User.objects.select_for_update().get(id=user.id)
+        for key, value in updates.items():
+            setattr(user, key, value.strip() if key == 'full_name' else value)
+        user.save(update_fields=list(updates.keys()) + ['updated_at'])
+        AuditLog.objects.create(
+            user=request.admin_user,
+            action='admin_user_update',
+            target_type='user',
+            target_id=str(user.id),
+            metadata={'updated_fields': sorted(updates.keys())},
+        )
     return Response(serialize_user(user))
 
 
@@ -280,6 +319,13 @@ def admin_user_detail(request, user_id):
 @require_admin
 def admin_processing_jobs(request):
     users = User.objects.all().order_by('-updated_at')
+    requested_user = request.GET.get('user')
+    if requested_user:
+        try:
+            requested_user = str(UUID(requested_user))
+        except (TypeError, ValueError):
+            raise ValidationError({'error': 'invalid_user', 'message': 'user must be a valid UUID'})
+        users = users.filter(id=requested_user)
     requested_status = request.GET.get('status')
     rows = []
 
@@ -302,11 +348,8 @@ def admin_processing_jobs(request):
             'error_message': error_message,
         })
 
-    page = max(int(request.GET.get('page', 1) or 1), 1)
-    limit = min(max(int(request.GET.get('limit', 20) or 20), 1), 100)
-    paginator = Paginator(rows, limit)
-    current_page = paginator.get_page(page)
-    return Response({'count': paginator.count, 'results': list(current_page.object_list)})
+    count, paginated_rows = paginate_queryset(rows, request)
+    return Response({'count': count, 'results': paginated_rows})
 
 
 @api_view(['POST'])
@@ -409,6 +452,64 @@ def admin_payments(request):
     return Response({'count': count, 'results': [serialize_payment(payment) for payment in payments]})
 
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+@require_admin
+def admin_refund_payment(request, payment_id):
+    """Refund a succeeded Stripe payment and record the admin action."""
+    try:
+        payment = Payment.objects.select_related('user').get(id=payment_id)
+    except Payment.DoesNotExist:
+        return Response({'error': 'not_found', 'message': 'Payment not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if payment.status != 'succeeded':
+        return Response(
+            {'error': 'invalid_payment_status', 'message': 'Only succeeded payments can be refunded'},
+            status=status.HTTP_409_CONFLICT,
+        )
+    if not payment.stripe_payment_intent_id.startswith('pi_'):
+        return Response(
+            {'error': 'refund_unavailable', 'message': 'This record has no refundable Stripe payment intent'},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    stripe.api_key = settings.STRIPE_SECRET_KEY
+    try:
+        refund = stripe.Refund.create(
+            payment_intent=payment.stripe_payment_intent_id,
+            metadata={'voicevault_payment_id': str(payment.id), 'admin_user_id': str(request.admin_user.id)},
+        )
+    except stripe.error.StripeError as exc:
+        logger.warning('Stripe refund failed for %s: %s', payment.id, exc.__class__.__name__)
+        return Response(
+            {'error': 'stripe_refund_failed', 'message': 'Stripe could not complete the refund'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().get(id=payment.id)
+        payment.status = 'refunded'
+        payment.save(update_fields=['status', 'updated_at'])
+        user = User.objects.select_for_update().get(id=payment.user_id)
+        has_other_payment = Payment.objects.filter(user=user, status='succeeded').exclude(id=payment.id).exists()
+        if not has_other_payment:
+            user.package_tier = 'free'
+            user.plan_type = 'free'
+            user.is_premium = False
+            user.lifetime_access = False
+            user.payment_completed = False
+            user.save(update_fields=['package_tier', 'plan_type', 'is_premium', 'lifetime_access', 'payment_completed', 'updated_at'])
+        AuditLog.objects.create(
+            user=request.admin_user,
+            action='admin_payment_refund',
+            target_type='payment',
+            target_id=str(payment.id),
+            metadata={'stripe_refund_id': refund.id, 'payment_intent_id': payment.stripe_payment_intent_id},
+        )
+
+    return Response({'payment': serialize_payment(payment), 'refund_id': refund.id})
+
+
 def build_failure_logs(limit=None):
     logs = []
 
@@ -457,7 +558,12 @@ def build_failure_logs(limit=None):
 @require_admin
 def admin_logs(request):
     log_type = request.GET.get('type', 'failures')
-    limit = min(max(int(request.GET.get('limit', 50) or 50), 1), 100)
+    try:
+        limit = int(request.GET.get('limit', 50) or 50)
+    except (TypeError, ValueError):
+        raise ValidationError({'error': 'invalid_pagination', 'message': 'limit must be an integer'})
+    if limit < 1 or limit > 100:
+        raise ValidationError({'error': 'invalid_pagination', 'message': 'limit must be between 1 and 100'})
 
     if log_type == 'audit':
         logs = [

@@ -53,7 +53,9 @@ export default function LoginPage() {
       await login(data);
       toast.success('Welcome back!');
       const redirect = searchParams.get('redirect');
-      router.push(redirect || '/dashboard');
+      const safeRedirect =
+        redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+      router.replace(safeRedirect);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Invalid email or password'));
     }
@@ -69,107 +71,118 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-        <div className="mb-6 sm:mb-8">
-          <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-            Welcome back
-          </h1>
-          <p className="mt-2 text-muted-foreground">Sign in to your account</p>
-        </div>
+          <div className="mb-6 sm:mb-8">
+            <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+              Welcome back
+            </h1>
+            <p className="mt-2 text-muted-foreground">Sign in to your account</p>
+          </div>
 
-        {logoutReason && (
-          <Alert className="mb-6 border-primary/20 bg-primary/5 text-foreground">
-            <AlertCircle className="h-4 w-4 text-primary" />
-            <AlertDescription>{logoutReason}</AlertDescription>
-          </Alert>
-        )}
+          {logoutReason && (
+            <Alert className="mb-6 border-primary/20 bg-primary/5 text-foreground">
+              <AlertCircle className="h-4 w-4 text-primary" />
+              <AlertDescription>{logoutReason}</AlertDescription>
+            </Alert>
+          )}
 
-        <motion.div
-          className="archive-panel rounded-lg p-5 sm:p-8"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
-            <div>
-              <Label htmlFor="email" className="text-foreground">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                error={errors.email?.message}
-                {...register('email')}
-                className="mt-1.5 h-11"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-foreground">Password</Label>
-              <div className="relative mt-1.5">
+          <motion.div
+            className="archive-panel rounded-lg p-5 sm:p-8"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+              <div>
+                <Label htmlFor="email" className="text-foreground">
+                  Email
+                </Label>
                 <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  error={errors.password?.message}
-                  {...register('password')}
-                  className="pr-11 h-11"
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  error={errors.email?.message}
+                  {...register('email')}
+                  className="mt-1.5 h-11"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
-                />
-                <span className="text-sm text-muted-foreground">Remember me</span>
-              </label>
-              <Link
-                href="/forgot-password"
-                className="text-sm font-medium text-primary hover:text-primary/90 transition-colors"
+              <div>
+                <Label htmlFor="password" className="text-foreground">
+                  Password
+                </Label>
+                <div className="relative mt-1.5">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    error={errors.password?.message}
+                    {...register('password')}
+                    className="pr-11 h-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                  />
+                  <span className="text-sm text-muted-foreground">Remember me</span>
+                </label>
+                <Link
+                  href="/forgot-password"
+                  className="text-sm font-medium text-primary hover:text-primary/90 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="h-11 w-full font-semibold sm:h-12"
+                size="lg"
               >
-                Forgot password?
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  'Sign in'
+                )}
+              </Button>
+            </form>
+
+            <p className="mt-5 text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{' '}
+              <Link
+                href="/signup"
+                className="font-medium text-primary hover:text-primary/90 transition-colors"
+              >
+                Create account
               </Link>
-            </div>
+            </p>
+          </motion.div>
 
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-11 w-full font-semibold sm:h-12"
-              size="lg"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign in'
-              )}
-            </Button>
-          </form>
-
-          <p className="mt-5 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="font-medium text-primary hover:text-primary/90 transition-colors">
-              Create account
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            <Link href="/pricing" className="hover:text-primary transition-colors">
+              Pricing
+            </Link>
+            {' · '}
+            <Link href="/" className="hover:text-primary transition-colors">
+              Home
             </Link>
           </p>
-        </motion.div>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          <Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link>
-          {' · '}
-          <Link href="/" className="hover:text-primary transition-colors">Home</Link>
-        </p>
         </motion.div>
       </main>
       <SiteFooter />

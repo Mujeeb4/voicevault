@@ -36,6 +36,7 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id',
+            'email',
             'package_tier',
             'recording_completed',
             'ai_ready',

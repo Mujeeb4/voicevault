@@ -44,6 +44,13 @@ def create_checkout_session(request):
             "session_id": "cs_..."
         }
     """
+    requested_tier = request.data.get('package_tier', 'premium')
+    if requested_tier != 'premium':
+        return Response(
+            {'error': 'invalid_package', 'message': 'Only the premium package is available'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     # Get authenticated user
     if not hasattr(request, 'supabase_user') or not request.supabase_user:
         return Response(
@@ -133,7 +140,7 @@ def create_checkout_session(request):
         logger.error("Stripe error creating checkout session: %s", e.__class__.__name__)
         return Response(
             {'error': 'Payment service error. Please try again.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_502_BAD_GATEWAY
         )
 
 
@@ -167,7 +174,7 @@ def confirm_checkout_session(request):
         logger.error("Stripe error retrieving checkout session: %s", e.__class__.__name__)
         return Response(
             {'error': 'Payment verification error. Please try again.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_502_BAD_GATEWAY
         )
 
     metadata_user_id = session.get('metadata', {}).get('user_id')
