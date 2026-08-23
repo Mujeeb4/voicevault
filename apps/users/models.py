@@ -22,6 +22,7 @@ class User(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, db_index=True)
     full_name = models.CharField(max_length=255)
+    phone_number = models.CharField(max_length=20, null=True, blank=True)
     password_hash = models.CharField(max_length=255, null=True, blank=True, help_text="Hashed password")
     package_tier = models.CharField(max_length=20, choices=PACKAGE_CHOICES, default='free')
     plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, default='free', db_index=True)

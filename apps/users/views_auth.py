@@ -101,6 +101,7 @@ class SignupView(APIView):
             user = User.objects.create(
                 email=email,
                 full_name=full_name,
+                phone_number=phone_number or None,
                 password_hash=make_password(password),  # Store hashed password
             )
             

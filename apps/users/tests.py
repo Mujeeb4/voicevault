@@ -3,6 +3,7 @@ from rest_framework.test import APIRequestFactory
 
 from apps.users.models import User
 from apps.users.views import UserProfileView
+from apps.users.views_auth import SignupView
 from utils.supabase_auth import SupabaseUser
 
 
@@ -21,3 +22,21 @@ class UserProfileRegressionTests(TestCase):
         self.assertEqual(user.email, 'owner@example.com')
         self.assertEqual(user.full_name, 'Updated Owner')
         self.assertFalse(user.is_premium)
+
+
+class SignupRegressionTests(TestCase):
+    def test_signup_persists_optional_phone_number(self):
+        request = APIRequestFactory().post('/api/users/signup/', {
+            'email': 'new-owner@example.com',
+            'password': 'strong-pass-123',
+            'full_name': 'New Owner',
+            'phone_number': '+1 202 555 0199',
+        }, format='json')
+
+        response = SignupView.as_view()(request)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            User.objects.get(email='new-owner@example.com').phone_number,
+            '+1 202 555 0199',
+        )

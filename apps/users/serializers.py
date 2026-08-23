@@ -16,6 +16,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id',
             'email',
             'full_name',
+            'phone_number',
             'package_tier',
             'plan_type',
             'is_premium',
