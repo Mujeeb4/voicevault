@@ -6,6 +6,9 @@ import jwt
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+from django.db import IntegrityError
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.views import APIView
@@ -77,10 +80,18 @@ class SignupView(APIView):
                     {'error': 'email_required', 'message': 'Email is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            if not password or len(password) < 8:
+
+            try:
+                validate_email(email)
+            except ValidationError:
                 return Response(
-                    {'error': 'invalid_password', 'message': 'Password must be at least 8 characters'},
+                    {'error': 'invalid_email', 'message': 'Enter a valid email address'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            
+            if not password or len(password) < 8 or len(password) > 128:
+                return Response(
+                    {'error': 'invalid_password', 'message': 'Password must be between 8 and 128 characters'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
             
@@ -88,6 +99,18 @@ class SignupView(APIView):
                 return Response(
                     {'error': 'full_name_required', 'message': 'Full name is required'},
                     status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if len(full_name) > 255:
+                return Response(
+                    {'error': 'invalid_full_name', 'message': 'Full name must be 255 characters or fewer'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if len(phone_number) > 20:
+                return Response(
+                    {'error': 'invalid_phone_number', 'message': 'Phone number must be 20 characters or fewer'},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
             
             # Check if user already exists
@@ -98,12 +121,18 @@ class SignupView(APIView):
                 )
             
             # Create user
-            user = User.objects.create(
-                email=email,
-                full_name=full_name,
-                phone_number=phone_number or None,
-                password_hash=make_password(password),  # Store hashed password
-            )
+            try:
+                user = User.objects.create(
+                    email=email,
+                    full_name=full_name,
+                    phone_number=phone_number or None,
+                    password_hash=make_password(password),  # Store hashed password
+                )
+            except IntegrityError:
+                return Response(
+                    {'error': 'email_exists', 'message': 'An account with this email already exists'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             
             # Update last login
             user.last_login_at = timezone.now()

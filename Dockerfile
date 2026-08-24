@@ -62,8 +62,9 @@ COPY --from=frontend-builder /app/frontend/.next/standalone ./nextjs/
 COPY --from=frontend-builder /app/frontend/.next/static ./nextjs/.next/static/
 COPY --from=frontend-builder /app/frontend/public ./nextjs/public/
 
-# Collect Django static files
-RUN python manage.py collectstatic --noinput || true
+# Collect Django static files with build-only settings. Runtime secrets are
+# supplied by Compose and are never baked into the image.
+RUN SECRET_KEY=voicevault-build-only-secret DEBUG=True python manage.py collectstatic --noinput
 
 # Copy supervisord config and startup script
 COPY supervisord.conf /app/supervisord.conf

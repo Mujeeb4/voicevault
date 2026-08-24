@@ -34,3 +34,13 @@ class CheckoutRegressionTests(TestCase):
         response = views.create_checkout_session(self.request({'package_tier': 'premium'}))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['session_id'], 'cs_test')
+
+    def test_packages_use_checkout_price_configuration(self):
+        request = self.factory.get('/api/payments/packages/')
+        with patch.dict(views.PREMIUM_PRICE, {'amount': 14999, 'currency': 'usd'}):
+            response = views.get_packages(request)
+
+        premium = next(item for item in response.data['packages'] if item['tier'] == 'premium')
+        self.assertEqual(premium['price'], 149.99)
+        self.assertEqual(premium['price_display'], '$149.99')
+        self.assertEqual(premium['currency'], 'USD')

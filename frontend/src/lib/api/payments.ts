@@ -24,7 +24,7 @@ interface ApiPackage {
 }
 
 function normalizePackage(raw: ApiPackage): Package {
-  const price = raw.price ?? 99;
+  const price = raw.price ?? (raw.tier === 'free' ? 0 : 149.99);
   const tier = raw.tier === 'free' ? 'free' : 'premium';
   return {
     id: tier,
@@ -46,7 +46,9 @@ export const paymentsApi = {
   },
 
   createCheckoutSession: async (): Promise<{ checkout_url: string }> => {
-    const { data } = await apiClient.post('/payments/create-checkout/', { package_tier: 'premium' });
+    const { data } = await apiClient.post('/payments/create-checkout/', {
+      package_tier: 'premium',
+    });
     return {
       checkout_url: data.checkout_url ?? data.url ?? '',
     };

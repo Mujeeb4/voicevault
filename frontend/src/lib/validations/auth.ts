@@ -11,7 +11,10 @@ export const loginSchema = z.object({
 export const signupSchema = z
   .object({
     email: z.string().email('Valid email is required'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(128, 'Password must be 128 characters or fewer'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     full_name: z.string().min(1, 'Full name is required'),
     phone_number: z.string().optional(),
@@ -24,9 +27,11 @@ export const signupSchema = z
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type SignupFormData = z.infer<typeof signupSchema>;
 
-export function getPasswordStrength(
-  password: string
-): { score: number; label: string; color: string } {
+export function getPasswordStrength(password: string): {
+  score: number;
+  label: string;
+  color: string;
+} {
   let score = 0;
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;

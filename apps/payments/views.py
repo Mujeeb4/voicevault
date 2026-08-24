@@ -428,6 +428,13 @@ def get_packages(request):
             ]
         }
     """
+    premium_amount_cents = PREMIUM_PRICE['amount']
+    premium_price = premium_amount_cents / 100
+    currency = PREMIUM_PRICE['currency'].upper()
+    currency_symbols = {'USD': '$', 'CAD': 'C$', 'GBP': '£', 'EUR': '€'}
+    symbol = currency_symbols.get(currency, f'{currency} ')
+    premium_price_display = f'{symbol}{premium_price:,.2f}'
+
     packages = [
         {
             'tier': 'free',
@@ -448,8 +455,9 @@ def get_packages(request):
         {
             'tier': 'premium',
             'name': 'VoiceVault Premium',
-            'price': 149.99,
-            'price_display': '$149.99',
+            'price': premium_price,
+            'price_display': premium_price_display,
+            'currency': currency,
             'features': [
                 '30+ guided questions',
                 'Up to 5 hours of memories',
