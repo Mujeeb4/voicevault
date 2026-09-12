@@ -1,16 +1,16 @@
-# Graph Report - voice_vault  (2026-07-09)
+# Graph Report - voice_vault  (2026-08-05)
 
 ## Corpus Check
-- 230 files · ~107,427 words
+- 230 files · ~108,518 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2523 nodes · 5110 edges · 221 communities (178 shown, 43 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 220 edges (avg confidence: 0.54)
+- 2583 nodes · 5204 edges · 224 communities (183 shown, 41 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 234 edges (avg confidence: 0.53)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b4581959`
+- Built from commit: `f5984435`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -207,18 +207,21 @@
 - [[_COMMUNITY_Community 203|Community 203]]
 - [[_COMMUNITY_Community 219|Community 219]]
 - [[_COMMUNITY_Community 220|Community 220]]
+- [[_COMMUNITY_Community 221|Community 221]]
+- [[_COMMUNITY_Community 222|Community 222]]
+- [[_COMMUNITY_Community 223|Community 223]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `cn()` - 80 edges
 2. `Button` - 79 edges
 3. `User` - 70 edges
 4. `useAuthStore` - 65 edges
-5. `ProcessingQueue` - 34 edges
-6. `AIConfiguration` - 31 edges
-7. `AudioRecording` - 31 edges
-8. `compilerOptions` - 31 edges
-9. `FamilyMember` - 30 edges
-10. `Transcript` - 26 edges
+5. `ProcessingQueue` - 35 edges
+6. `AIConfiguration` - 32 edges
+7. `APIUsageTracking` - 31 edges
+8. `AudioRecording` - 31 edges
+9. `compilerOptions` - 31 edges
+10. `FamilyMember` - 30 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `transcribe_single_file()` --calls--> `download_file_stream_to_temp()`  [INFERRED]
@@ -235,15 +238,15 @@
 ## Import Cycles
 - None detected.
 
-## Communities (221 total, 43 thin omitted)
+## Communities (224 total, 41 thin omitted)
 
 ### Community 0 - "Community 0"
-Cohesion: 0.16
+Cohesion: 0.17
 Nodes (11): MiddlewareMixin, str, Supabase JWT authentication middleware for Django., Verify a Supabase JWT token and return a SupabaseUser object.     Used for SSE e, Verify a Supabase JWT token and return a SupabaseUser object.     Used for SSE e, Custom user object for Supabase authenticated users., Middleware to verify Supabase JWT tokens and attach user to request., Process incoming request and verify JWT token. (+3 more)
 
 ### Community 1 - "Community 1"
-Cohesion: 0.12
-Nodes (10): AIProcessingViewsTestCase, Verify that full pipeline view includes clone_voice_task for premium users with, Chunked combined uploads use negative question numbers but must process part 1 f, The task should call Whisper on combined chunks in upload order., Voice clone trigger should use the same 60-second minimum as the worker task., Voice clone trigger should reject premium users who have not accepted consent., The task should call Whisper on combined chunks in upload order., Verify that free users can trigger transcription (can_clone_voice limit bypassed (+2 more)
+Cohesion: 0.07
+Nodes (18): AIProcessingViewsTestCase, Verify that full pipeline view includes clone_voice_task for premium users with, Verify that full pipeline view includes clone_voice_task for premium users with, Chunked combined uploads use negative question numbers but must process part 1 f, Chunked combined uploads use negative question numbers but must process part 1 f, The task should call Whisper on combined chunks in upload order., Voice clone trigger should use the same 60-second minimum as the worker task., Voice clone trigger should use the same 60-second minimum as the worker task. (+10 more)
 
 ### Community 2 - "Community 2"
 Cohesion: 0.05
@@ -254,8 +257,8 @@ Cohesion: 0.08
 Nodes (24): code:block100, code:block101, code:block102, code:block103, code:block104, code:block105, code:block106, code:block107 (+16 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.07
-Nodes (28): URL routing for AI processing admin endpoints., AnalyzePersonalityView, authorize_processing_access(), CloneVoiceView, FinalizeAIView, ProcessingStatusView, Admin views for triggering AI processing tasks., POST /api/admin/process/personality/<user_id>/     Trigger personality analysis (+20 more)
+Cohesion: 0.08
+Nodes (31): clone_voice_task(), Create voice clone using ElevenLabs API.          Args:         previous_result:, Create voice clone using ElevenLabs API.          Args:         previous_result:, Create voice clone using ElevenLabs API.          Args:         previous_result:, URL routing for AI processing admin endpoints., AnalyzePersonalityView, CloneVoiceView, FinalizeAIView (+23 more)
 
 ### Community 5 - "Community 5"
 Cohesion: 0.05
@@ -266,12 +269,12 @@ Cohesion: 0.05
 Nodes (38): ✅ All Celery Tasks, ✅ All Database Models, ✅ All Error Scenarios, ✅ All Helper Functions, code:bash (cd /Users/mujeebrathore/Desktop/Freelancing/voice_vault), code:block10 (Status: COMPLETE), code:block2 (✅ Tests Passed: 41/41), code:python (✅ calculate_whisper_cost(300) == 0.006      # 1 minute) (+30 more)
 
 ### Community 7 - "Community 7"
-Cohesion: 0.16
-Nodes (20): accept_invitation(), Accept an invitation to access an AI.          URL Parameter:         token: Inv, Accept an invitation to access an AI.          URL Parameter:         token: Inv, Remove a family member's access to the AI.          URL Parameter:         membe, Remove a family member's access to the AI.          URL Parameter:         membe, Resend invitation email to a family member.          URL Parameter:         memb, Resend invitation email to a family member.          URL Parameter:         memb, remove_family_member() (+12 more)
+Cohesion: 0.08
+Nodes (39): accept_invitation(), accessible_ais(), get_invitation_details(), invite_family_member(), list_family_members(), Family management views - Invitation system and member management., Get invitation details for preview before accepting.     This is a public endpoi, Get invitation details for preview before accepting.     This is a public endpoi (+31 more)
 
 ### Community 8 - "Community 8"
-Cohesion: 0.09
-Nodes (24): AuditLogAdmin, ConsentRecordAdmin, FamilyMemberAdmin, UsageQuotaAdmin, UserAdmin, AuditLog, ConsentRecord, Meta (+16 more)
+Cohesion: 0.12
+Nodes (22): date, next_month_start(), AuditLogAdmin, ConsentRecordAdmin, FamilyMemberAdmin, UsageQuotaAdmin, UserAdmin, AuditLog (+14 more)
 
 ### Community 9 - "Community 9"
 Cohesion: 0.05
@@ -286,52 +289,52 @@ Cohesion: 0.06
 Nodes (33): 🧩 Adding shadcn/ui Components, 📝 Available Scripts, Border Radius, code:bash (# Install dependencies), code:bash (npm run dev), code:block3 (frontend/), code:bash (npx shadcn-ui@latest add button), code:bash (NEXT_PUBLIC_API_URL=http://localhost:8000/api) (+25 more)
 
 ### Community 12 - "Community 12"
-Cohesion: 0.14
-Nodes (31): AdminRouteProps, AIOwnerInfo, ChatWithAIPage(), familyApi, Error(), AuthInitializer(), Providers(), ProtectedRoute() (+23 more)
+Cohesion: 0.18
+Nodes (26): AdminRouteProps, AIOwnerInfo, ChatWithAIPage(), familyApi, Error(), ChatInterface(), AccessibleAI, ChatPage() (+18 more)
 
 ### Community 13 - "Community 13"
-Cohesion: 0.16
-Nodes (28): AdminRoute(), AdminDashboardContent(), AdminDashboardPage(), compactNumber(), statusVariant, AdminProcessingContent(), AdminProcessingPage(), useAdminStore (+20 more)
+Cohesion: 0.09
+Nodes (56): AdminRoute(), AdminDashboardContent(), AdminDashboardPage(), compactNumber(), QuestionManager(), SortableQuestionRow(), SortableQuestionRowProps, FamilyMemberCardProps (+48 more)
 
 ### Community 14 - "Community 14"
-Cohesion: 0.11
-Nodes (27): ChatInput(), ChatInputProps, ChatInterfaceProps, ChatMessage(), ChatMessageProps, StreamingText(), StreamingTextProps, VoicePlayerComponent() (+19 more)
+Cohesion: 0.14
+Nodes (21): ChatInput(), ChatInputProps, ChatInterfaceProps, StreamingText(), StreamingTextProps, VoicePlayerComponent(), VoicePlayerComponentProps, DashboardLayout() (+13 more)
 
 ### Community 15 - "Community 15"
-Cohesion: 0.09
-Nodes (29): AnonRateThrottle, APIView, User, Serializer for User model., Serializer for User model., UserSerializer, URL routing for users app., generate_jwt_token() (+21 more)
+Cohesion: 0.15
+Nodes (19): AnonRateThrottle, APIView, User, Serializer for User model., Serializer for User model., UserSerializer, generate_jwt_token(), LoginView (+11 more)
 
 ### Community 16 - "Community 16"
-Cohesion: 0.17
-Nodes (25): QuestionManager(), SortableQuestionRow(), SortableQuestionRowProps, FamilyMemberCardProps, HeaderProps, AdminQuestionsContent(), AdminQuestionsPage(), AlertDialogAction (+17 more)
+Cohesion: 0.11
+Nodes (14): compat, __dirname, eslintConfig, __filename, Path, AudioRecorder, Audio Recording Utility Records audio from microphone for VoiceVault, Record audio for a single question with visual feedback                  Args: (+6 more)
 
 ### Community 17 - "Community 17"
 Cohesion: 0.14
-Nodes (29): QuestionDialog(), QuestionDialogProps, questionSchema, FamilyMemberCard(), InviteFamilyDialog(), InviteFamilyDialogProps, relationshipOptions, FamilyManagementContent() (+21 more)
+Nodes (29): QuestionDialog(), QuestionDialogProps, questionSchema, ChatMessage(), ChatMessageProps, getWordSyncedCaption(), FamilyMemberCard(), InviteFamilyDialog() (+21 more)
 
 ### Community 18 - "Community 18"
-Cohesion: 0.07
-Nodes (40): AudioRecordingAdmin, TranscriptAdmin, AudioRecording, get_active_questions(), get_questions_by_domain(), Meta, Audio recordings and transcripts models., Questions that users answer during voice recording session (+32 more)
+Cohesion: 0.10
+Nodes (26): AudioRecording, Mark this recording as transcribed., Extract duration from audio file metadata.         This would require additional, Model for storing audio recordings metadata.     Actual audio files are stored i, AudioRecordingSerializer, AudioRecordingUploadSerializer, Meta, DRF Serializers for recordings app. (+18 more)
 
 ### Community 19 - "Community 19"
-Cohesion: 0.21
-Nodes (9): dmSans, metadata, playfair, RootLayout(), syne, trackPageView(), Window, Analytics() (+1 more)
+Cohesion: 0.12
+Nodes (20): dmSans, metadata, playfair, RootLayout(), syne, AuthInitializer(), Providers(), clearTokens() (+12 more)
 
 ### Community 20 - "Community 20"
-Cohesion: 0.17
-Nodes (9): close_db_connection(), DatabaseConnectionMiddleware, Database connection middleware for Supabase free tier optimization.  This middle, Middleware to manage database connections for Supabase free tier.          Key f, Close any stale connections at the start of a request.         This prevents "co, Close all database connections after each request.         Critical for Supabase, Close connections even if an exception occurred., Close all database connections. (+1 more)
+Cohesion: 0.14
+Nodes (10): OnboardingHeader(), pageLinks, SiteFooter(), PrivacyPage(), Section(), SECTIONS, Section(), SECTIONS (+2 more)
 
 ### Community 21 - "Community 21"
 Cohesion: 0.04
-Nodes (46): 🙏 Acknowledgments, Admin Pages, AI Processing, 📚 API Documentation, 🏗️ Architecture, Authentication, Backend, Backend Deployment (+38 more)
+Nodes (47): 🙏 Acknowledgments, Admin Pages, AI Processing, 📚 API Documentation, 🏗️ Architecture, Authentication, Backend, Backend Deployment (+39 more)
 
 ### Community 22 - "Community 22"
-Cohesion: 0.12
-Nodes (20): BaseException, Exception, AccessDeniedException, AINotReadyException, APIFailureException, custom_exception_handler(), InsufficientAudioException, Custom exception handler for Django REST Framework. Optimized for Supabase free (+12 more)
+Cohesion: 0.05
+Nodes (36): BaseException, Exception, close_db_connection(), ConnectionLimitThrottler, DatabaseConnectionMiddleware, bool, float, int (+28 more)
 
 ### Community 23 - "Community 23"
-Cohesion: 0.07
-Nodes (35): PageNumberPagination, create_question(), delete_question(), get_question(), get_questions(), QuestionPagination, Admin endpoints for managing recording questions, Create a new recording question          Request Body:         {             "qu (+27 more)
+Cohesion: 0.09
+Nodes (29): PageNumberPagination, Serializer for RecordingQuestion model., RecordingQuestionSerializer, create_question(), delete_question(), get_question(), get_questions(), QuestionPagination (+21 more)
 
 ### Community 24 - "Community 24"
 Cohesion: 0.11
@@ -342,20 +345,20 @@ Cohesion: 0.11
 Nodes (18): Backend 502 / fails to start, code:bash (celery -A config worker --loglevel=info --concurrency=2 -Q d), code:bash (celery -A config beat --loglevel=info), Deploying VoiceVault to Railway (GitHub), Frontend can't reach API, Migrations, Post-Deploy Checklist, Prerequisites (+10 more)
 
 ### Community 26 - "Community 26"
-Cohesion: 0.19
+Cohesion: 0.15
 Nodes (16): UserRateThrottle, BurstRateThrottle, ChatThrottle, no_throttle(), ProcessingThrottle, ProfileThrottle, Custom throttling classes for VoiceVault. Provides granular rate limiting to bal, Allows burst of requests but limits sustained high-rate usage.     Good for page (+8 more)
 
 ### Community 27 - "Community 27"
-Cohesion: 0.06
-Nodes (64): adminApi, isAdmin(), authApi, AuthResponse, client, rawEnvBase, token, processingApi (+56 more)
+Cohesion: 0.05
+Nodes (67): adminApi, isAdmin(), authApi, AuthResponse, chatApi, getStreamBaseUrl(), SendMessageParams, StreamingConnection (+59 more)
 
 ### Community 28 - "Community 28"
-Cohesion: 0.06
-Nodes (48): BinaryIO, bytes, Client, compat, __dirname, eslintConfig, __filename, Path (+40 more)
+Cohesion: 0.12
+Nodes (35): BinaryIO, bytes, Client, delete_file_from_supabase(), download_file_from_supabase(), download_file_stream_to_temp(), get_file_url(), get_signed_url() (+27 more)
 
 ### Community 29 - "Community 29"
-Cohesion: 0.16
-Nodes (20): blobToFile(), combineAudioFiles(), compressToMP3(), getAudioFormat(), loadFFmpeg(), replaceAudioExtension(), splitAudioToMP3Chunks(), SupportedAudioFormat (+12 more)
+Cohesion: 0.14
+Nodes (19): recordingsApi, ErrorState(), getStepTitle(), LoadingState(), OrderedRecording, PreparedUploadPart, RecordingContent(), RecordingPage() (+11 more)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.14
@@ -378,16 +381,16 @@ Cohesion: 0.12
 Nodes (21): confirm_checkout_session(), create_checkout_session(), get_billing_details(), get_packages(), get_payment_status(), handle_checkout_completed(), Stripe payment views for VoiceVault. Handles checkout sessions, webhooks, and pa, Handle Stripe webhooks.          Listens for:         - checkout.session.complet (+13 more)
 
 ### Community 35 - "Community 35"
-Cohesion: 0.26
-Nodes (11): createOptionalReflectionQuestion(), isOptionalReflectionQuestion(), QuestionDots(), QuestionStepper(), QuestionStepperProps, formatTime(), RecordingControls(), RecordingControlsProps (+3 more)
+Cohesion: 0.18
+Nodes (13): drawWaveform(), WaveformOptions, AudioLevelIndicator(), AudioRecorder(), AudioRecorderProps, QuestionDots(), QuestionStepper(), QuestionStepperProps (+5 more)
 
 ### Community 36 - "Community 36"
 Cohesion: 0.14
 Nodes (14): 2.1 User → Recordings (One-to-Many), 2.2 User → FamilyMembers (One-to-Many), 2.3 User → Conversations (One-to-Many), 2.4 User → Payments (One-to-Many), 2. Database Relationships Testing ✅, 3.1 Unique Constraints, 3.2 Foreign Key Constraints, 3. Database Constraints Testing ✅ (+6 more)
 
 ### Community 37 - "Community 37"
-Cohesion: 0.14
-Nodes (13): accessible_ais(), get_invitation_details(), invite_family_member(), list_family_members(), Family management views - Invitation system and member management., Get invitation details for preview before accepting.     This is a public endpoi, Get invitation details for preview before accepting.     This is a public endpoi, List all family members for the authenticated AI owner.          Query Parameter (+5 more)
+Cohesion: 0.17
+Nodes (18): bool, Path, str, User, RAGContextBuilder, Builds optimized context for GPT-4o chat responses.     Implements smart section, _conversation_audio_playback_url(), get_audio_status() (+10 more)
 
 ### Community 38 - "Community 38"
 Cohesion: 0.19
@@ -414,20 +417,20 @@ Cohesion: 0.15
 Nodes (13): ⚡ ADDITIONAL OPTIMIZATIONS, code:python (# apps/chat/utils.py), code:python (# config/settings.py), code:python (# apps/chat/tasks.py), code:python (def retrieve_relevant_context(question, transcript):), code:python (import asyncio), code:javascript (// Stream response display), Optimization 1: Implement Response Caching (+5 more)
 
 ### Community 44 - "Community 44"
-Cohesion: 0.35
-Nodes (7): PasswordStrengthMeter(), PasswordStrengthMeterProps, getPasswordStrength(), LoginFormData, loginSchema, SignupFormData, signupSchema
+Cohesion: 0.22
+Nodes (11): PasswordStrengthMeter(), PasswordStrengthMeterProps, LoginPage(), SignupPage(), Label, labelVariants, getPasswordStrength(), LoginFormData (+3 more)
 
 ### Community 45 - "Community 45"
 Cohesion: 0.21
-Nodes (24): can_generate_voice_response(), can_invite_family_member(), can_send_chat_message(), can_upload_recording(), get_limits(), get_or_create_quota(), has_accepted_consent(), is_premium() (+16 more)
+Nodes (25): can_clone_voice(), can_generate_voice_response(), can_invite_family_member(), can_send_chat_message(), can_upload_recording(), get_limits(), get_or_create_quota(), has_accepted_consent() (+17 more)
 
 ### Community 46 - "Community 46"
-Cohesion: 0.11
-Nodes (18): chatApi, getStreamBaseUrl(), SendMessageParams, StreamingConnection, VoicePlayer, VoicePlayerOptions, clearTokens(), decodeTokenExpiry() (+10 more)
+Cohesion: 0.16
+Nodes (10): URL routing for users app., ConsentRecordView, HealthCheckView, POST /api/users/consent/     Store explicit consent for sensitive VoiceVault act, POST /api/users/consent/     Store explicit consent for sensitive VoiceVault act, GET /api/users/profile/     Get or create user profile based on Supabase auth., GET /api/users/profile/     Get or create user profile based on Supabase auth., GET /api/users/health/     Health check endpoint for monitoring and load balance (+2 more)
 
 ### Community 47 - "Community 47"
-Cohesion: 0.21
-Nodes (7): ConnectionLimitThrottler, bool, float, int, Simple in-memory throttler to prevent too many concurrent database operations., Try to acquire a slot for a database operation.         Returns True if acquired, Release a slot after operation completes.
+Cohesion: 0.13
+Nodes (11): authorize_processing_access(), Get processing status., Get processing status., Get processing status., Get processing status., POST /api/admin/process/full-pipeline/<user_id>/     Run the complete AI process, POST /api/admin/process/full-pipeline/<user_id>/     Run the complete AI process, POST /api/admin/process/full-pipeline/<user_id>/     Run the complete AI process (+3 more)
 
 ### Community 48 - "Community 48"
 Cohesion: 0.15
@@ -442,20 +445,20 @@ Cohesion: 0.15
 Nodes (28): authenticatedMetadata(), bufferToHex(), clearAllRecordings(), clearLegacyRecordings(), decryptRecording(), deleteRecording(), draftId(), DraftKeyRecord (+20 more)
 
 ### Community 51 - "Community 51"
-Cohesion: 0.11
-Nodes (32): analyze_personality_task(), calculate_gpt4_cost(), calculate_whisper_cost(), clone_voice_task(), finalize_ai_task(), generate_system_prompt(), Celery tasks for AI processing pipeline. Handles transcription, personality anal, Orchestrate the full AI pipeline using Celery Chain.          Order: Transcribe (+24 more)
+Cohesion: 0.07
+Nodes (41): analyze_personality_task(), calculate_gpt4_cost(), calculate_whisper_cost(), finalize_ai_task(), generate_system_prompt(), _personality_failure_message(), Celery tasks for AI processing pipeline. Handles transcription, personality anal, Calculate cost for GPT-4 API calls.     GPT-4 pricing (approximate):     - Input (+33 more)
 
 ### Community 52 - "Community 52"
-Cohesion: 0.10
-Nodes (28): bool, float, int, str, User, cache_response(), calculate_elevenlabs_turbo_cost(), calculate_gpt4o_cost() (+20 more)
+Cohesion: 0.16
+Nodes (18): float, int, str, cache_response(), calculate_elevenlabs_turbo_cost(), calculate_gpt4o_cost(), get_cache_key(), get_cached_response() (+10 more)
 
 ### Community 53 - "Community 53"
 Cohesion: 0.15
 Nodes (11): code:block7 (apps/chat/), Conclusion, Cost Comparison, Current Implementation:, File Structure, Known Limitations, Module 3 Completion Summary, Overview (+3 more)
 
 ### Community 54 - "Community 54"
-Cohesion: 0.09
-Nodes (24): ApiPackage, normalizePackage(), Package, paymentsApi, CheckoutPage(), OnboardingHeader(), pageLinks, SiteFooter() (+16 more)
+Cohesion: 0.10
+Nodes (26): ApiPackage, normalizePackage(), Package, paymentsApi, ProtectedRoute(), ProtectedRouteProps, CheckoutPage(), fetchProcessingStatus() (+18 more)
 
 ### Community 55 - "Community 55"
 Cohesion: 0.17
@@ -466,8 +469,8 @@ Cohesion: 0.12
 Nodes (6): AiProcessingConfig, AppConfig, ChatConfig, PaymentsConfig, RecordingsConfig, UsersConfig
 
 ### Community 57 - "Community 57"
-Cohesion: 0.12
-Nodes (17): FamilyMember, Grant access to this family member., Increment conversation count after a chat., Family members who have access to chat with an AI., Family members who have access to chat with an AI., Grant access to this family member., Grant access to this family member., Increment conversation count after a chat. (+9 more)
+Cohesion: 0.27
+Nodes (8): FamilyInviteSerializer, FamilyMemberSerializer, Meta, DRF Serializers for users app., Serializer for FamilyMember model., Serializer for family member invitation., Serializer for FamilyMember model., Serializer for family member invitation.
 
 ### Community 58 - "Community 58"
 Cohesion: 0.18
@@ -482,8 +485,8 @@ Cohesion: 0.32
 Nodes (10): buttonTap, cardHover, fadeIn, getAnimationVariants(), pageTransition, scaleIn, shouldReduceMotion(), slideDown (+2 more)
 
 ### Community 61 - "Community 61"
-Cohesion: 0.11
-Nodes (10): AudioRecorder, drawWaveform(), WaveformOptions, AudioLevelIndicator(), AudioRecorder(), AudioRecorderProps, FeatureItem(), IntroStep() (+2 more)
+Cohesion: 0.15
+Nodes (5): AudioRecorder, FeatureItem(), IntroStep(), IntroStepProps, MicrophoneStatus()
 
 ### Community 62 - "Community 62"
 Cohesion: 0.17
@@ -534,12 +537,12 @@ Cohesion: 0.20
 Nodes (10): 3.1 USER-SPECIFIC RAG IMPLEMENTATION, 3.2 CHAT ENDPOINT - THE CORE FEATURE ⚡ OPTIMIZED FOR <1 SECOND RESPONSE, code:python (Class: RAGContextBuilder), code:python (1. Get AI Configuration:), Core Concept:, Implementation Structure:, 💬 MODULE 3: PERSONALIZED RAG & CHAT SYSTEM (13,000 PKR), Performance Targets: (+2 more)
 
 ### Community 74 - "Community 74"
-Cohesion: 0.07
-Nodes (35): bool, int, str, cleanup_old_audio_files(), generate_audio_async(), generate_audio_sync(), is_celery_available(), Celery tasks for chat system - Async audio generation. Generates voice audio in (+27 more)
+Cohesion: 0.15
+Nodes (15): bool, int, str, cleanup_old_audio_files(), generate_audio_async(), generate_audio_sync(), is_celery_available(), Celery tasks for chat system - Async audio generation. Generates voice audio in (+7 more)
 
 ### Community 75 - "Community 75"
-Cohesion: 0.15
-Nodes (14): close_db_connections_after_task(), close_db_connections_before_task(), close_db_connections_on_failure(), debug_task(), Celery configuration for VoiceVault project. Optimized for Supabase free tier co, Close any stale connections before task execution., Close any stale connections before task execution., Close any stale connections before task execution. (+6 more)
+Cohesion: 0.12
+Nodes (17): close_db_connections_after_task(), close_db_connections_before_task(), close_db_connections_on_failure(), debug_task(), Celery configuration for VoiceVault project. Optimized for Supabase free tier co, Close any stale connections before task execution., Close any stale connections before task execution., Close any stale connections before task execution. (+9 more)
 
 ### Community 76 - "Community 76"
 Cohesion: 0.22
@@ -574,8 +577,8 @@ Cohesion: 0.39
 Nodes (7): announceToScreenReader(), createFocusTrap(), createSkipToContentLink(), generateAriaId(), getContrastRatio(), prefersReducedMotion(), useKeyboardShortcut()
 
 ### Community 84 - "Community 84"
-Cohesion: 0.50
-Nodes (6): formatBytes(), formatDuration(), RecordingRow(), ReviewStep(), ReviewStepProps, StatCard()
+Cohesion: 0.12
+Nodes (16): ConversationPagination, get_conversation_history(), rate_conversation(), Chat API views - Streaming responses with <1s performance. Implements optimized, Custom pagination for conversations., Get conversation history for an AI owner.          Query Parameters:         ai_, Custom pagination for conversations., Custom pagination for conversations. (+8 more)
 
 ### Community 85 - "Community 85"
 Cohesion: 0.31
@@ -587,7 +590,7 @@ Nodes (6): get_active_questions(), get_questions_by_domain(), Meta, Questions Mo
 
 ### Community 87 - "Community 87"
 Cohesion: 0.22
-Nodes (7): Code Quality Checks, Django Best Practices ✅, Module 1 Test Report, Python Code Standards ✅, Security ✅, Test Summary, VoiceVault Backend - Foundation, Auth & Database Testing
+Nodes (7): Achievements, Conclusion, Module 1 Test Report, Quality Metrics, Test Statistics, Test Summary, VoiceVault Backend - Foundation, Auth & Database Testing
 
 ### Community 88 - "Community 88"
 Cohesion: 0.25
@@ -618,7 +621,7 @@ Cohesion: 0.29
 Nodes (7): code:python (- Query AudioRecordings.filter(user=user_id, transcribed=Fal), code:python (OpenAI API Call:), code:block23 (Question 1 (Personality): What's your full name?), code:python (childhood_section = combine all answers where domain='childh), code:python (Create or Update Transcript record:), code:python (- user = user_id), Task: `transcribe_audio_task(user_id)`
 
 ### Community 96 - "Community 96"
-Cohesion: 0.15
+Cohesion: 0.16
 Nodes (21): AIConfigurationAdmin, APIUsageTrackingAdmin, ProcessingQueueAdmin, AIConfiguration, APIUsageTracking, Meta, ProcessingQueue, AI processing models for personality analysis and voice cloning. (+13 more)
 
 ### Community 97 - "Community 97"
@@ -647,15 +650,15 @@ Nodes (9): code:python (def calculate_gpt4o_cost(total_tokens):), code:python (S
 
 ### Community 103 - "Community 103"
 Cohesion: 0.29
-Nodes (9): ANALYTICS_ORIGINS, buildContentSecurityPolicy(), compact(), config, FFMPEG_ORIGINS, getOrigin(), getProtocol(), LOCAL_API_ORIGINS (+1 more)
+Nodes (10): ANALYTICS_ORIGINS, buildContentSecurityPolicy(), compact(), config, FFMPEG_ORIGINS, getOrigin(), getOrigins(), getProtocol() (+2 more)
 
 ### Community 104 - "Community 104"
 Cohesion: 0.22
 Nodes (9): Chat Endpoint Tests:, Conversation History Tests:, 💰 COST & PERFORMANCE BENEFITS, Cost Savings:, Integration Tests:, MODULE 3 TESTING CHECKLIST, Performance Gains:, Performance Tests: (+1 more)
 
 ### Community 105 - "Community 105"
-Cohesion: 0.16
-Nodes (10): _database_ssl_default(), _first_non_empty_config(), bool, str, Django settings for VoiceVault project., # IMPORTANT: Increased connect_timeout for cross-region connections (Render US →, Require SSL by default except for local Docker/dev database hosts., # IMPORTANT: Increased connect_timeout for cross-region connections (Render US → (+2 more)
+Cohesion: 0.15
+Nodes (11): _database_ssl_default(), _first_non_empty_config(), bool, str, Django settings for VoiceVault project., # IMPORTANT: Increased connect_timeout for cross-region connections (Render US →, Require SSL by default except for local Docker/dev database hosts., # IMPORTANT: Increased connect_timeout for cross-region connections (Render US → (+3 more)
 
 ### Community 106 - "Community 106"
 Cohesion: 0.47
@@ -674,8 +677,8 @@ Cohesion: 0.40
 Nodes (5): code:json ({), code:json ({), Get Current User Profile, Update Profile, Users & Profile
 
 ### Community 111 - "Community 111"
-Cohesion: 0.60
-Nodes (4): domainColors, formatDuration(), QuestionCard(), QuestionCardProps
+Cohesion: 0.15
+Nodes (12): bool, User, Build optimized system message for GPT-4o.         Reduced from 5000+ tokens to, Build complete system message with full transcript.         Use this for complex, Initialize RAG context builder for a specific AI owner.                  Args:, Validate that a user has access to chat with an AI.          Args:         ai_ow, validate_chat_access(), chat_streaming() (+4 more)
 
 ### Community 113 - "Community 113"
 Cohesion: 0.40
@@ -769,6 +772,10 @@ Nodes (4): 🏗️ Architecture, code:block1 (┌──────────�
 Cohesion: 0.50
 Nodes (4): Backend, Frontend, Infrastructure, 🛠️ Tech Stack
 
+### Community 138 - "Community 138"
+Cohesion: 0.22
+Nodes (9): AudioRecordingAdmin, TranscriptAdmin, get_active_questions(), get_questions_by_domain(), Meta, Audio recordings and transcripts models., Questions that users answer during voice recording session, # TODO: Implement using mutagen or similar library (+1 more)
+
 ### Community 142 - "Community 142"
 Cohesion: 0.67
 Nodes (3): 1. Helper Functions (4/4 Passed), code:python (# Whisper: $0.006 per minute (~300 tokens)), ✅ Cost Calculation Functions
@@ -830,28 +837,44 @@ Cohesion: 0.67
 Nodes (3): Cost Impact, Email Costs (Example with SendGrid), Storage Costs
 
 ### Community 219 - "Community 219"
+Cohesion: 0.33
+Nodes (11): blobToFile(), combineAudioFiles(), compressToMP3(), getAudioFormat(), loadFFmpeg(), replaceAudioExtension(), splitAudioToMP3Chunks(), SupportedAudioFormat (+3 more)
+
+### Community 220 - "Community 220"
+Cohesion: 0.13
+Nodes (10): Main user model for AI owners and family members., Compatibility helper while old code still checks payment_completed., Compatibility helper while old code still checks payment_completed., Mark that user has completed recording all audio., Mark that AI is fully processed and ready for chat., Mark that user has completed recording all audio., Mark that AI is fully processed and ready for chat., Reset AI status when starting processing pipeline. (+2 more)
+
+### Community 221 - "Community 221"
+Cohesion: 0.29
+Nodes (8): get_admin_emails(), is_admin_email(), is_admin_user(), bool, str, User, Server-side admin authorization helpers., require_admin()
+
+### Community 222 - "Community 222"
+Cohesion: 0.29
+Nodes (5): Grant access to this family member., Increment conversation count after a chat., Grant access to this family member., Grant access to this family member., Increment conversation count after a chat.
+
+### Community 223 - "Community 223"
 Cohesion: 0.50
-Nodes (4): Achievements, Conclusion, Quality Metrics, Test Statistics
+Nodes (4): Code Quality Checks, Django Best Practices ✅, Python Code Standards ✅, Security ✅
 
 ## Knowledge Gaps
-- **685 isolated node(s):** `ghcr.io/devcontainers/features/docker-in-docker:2`, `Migration`, `Migration`, `Migration`, `Migration` (+680 more)
+- **688 isolated node(s):** `ghcr.io/devcontainers/features/docker-in-docker:2`, `Migration`, `Migration`, `Migration`, `Migration` (+683 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **43 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `User` connect `Community 8` to `Community 96`, `Community 66`, `Community 34`, `Community 4`, `Community 7`, `Community 74`, `Community 45`, `Community 15`, `Community 81`, `Community 18`, `Community 51`, `Community 52`, `Community 220`, `Community 23`, `Community 57`, `Community 92`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `Button` connect `Community 12` to `Community 32`, `Community 35`, `Community 13`, `Community 14`, `Community 16`, `Community 17`, `Community 61`, `Community 84`, `Community 85`, `Community 54`, `Community 27`, `Community 29`?**
-  _High betweenness centrality (0.014) - this node is a cross-community bridge._
-- **Why does `VoiceVault Backend Development Guide` connect `Community 72` to `Community 104`, `Community 9`, `Community 10`, `Community 43`, `Community 73`, `Community 88`, `Community 122`?**
+- **Why does `User` connect `Community 220` to `Community 0`, `Community 4`, `Community 7`, `Community 8`, `Community 138`, `Community 15`, `Community 18`, `Community 23`, `Community 34`, `Community 37`, `Community 45`, `Community 46`, `Community 47`, `Community 51`, `Community 52`, `Community 57`, `Community 66`, `Community 74`, `Community 81`, `Community 84`, `Community 92`, `Community 221`, `Community 96`?**
+  _High betweenness centrality (0.032) - this node is a cross-community bridge._
+- **Why does `Button` connect `Community 12` to `Community 32`, `Community 35`, `Community 44`, `Community 13`, `Community 14`, `Community 17`, `Community 61`, `Community 85`, `Community 54`, `Community 27`, `Community 29`?**
   _High betweenness centrality (0.011) - this node is a cross-community bridge._
+- **Why does `useAuthStore` connect `Community 54` to `Community 35`, `Community 12`, `Community 13`, `Community 44`, `Community 14`, `Community 17`, `Community 19`, `Community 29`?**
+  _High betweenness centrality (0.008) - this node is a cross-community bridge._
 - **Are the 40 inferred relationships involving `User` (e.g. with `AIConfiguration` and `APIUsageTracking`) actually correct?**
   _`User` has 40 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `ghcr.io/devcontainers/features/docker-in-docker:2`, `Admin dashboard API routes.`, `Admin dashboard API views.` to the rest of the system?**
-  _962 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1007 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Community 1` be split into smaller, more focused modules?**
-  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07407407407407407 - nodes in this community are weakly interconnected._
 - **Should `Community 2` be split into smaller, more focused modules?**
   _Cohesion score 0.047619047619047616 - nodes in this community are weakly interconnected._

@@ -1,0 +1,71 @@
+{
+  "summary": {
+    "total": 10,
+    "display": "6 core routes and 4 focused interactions checked",
+    "confidence": "High for safe read-only UI behavior; destructive and paid actions deferred",
+    "failed": 3
+  },
+  "results": [
+    {
+      "route": "/admin",
+      "title": "Operations dashboard",
+      "result": "Pass",
+      "observation": "Authenticated dashboard loaded and remained on /admin after a hard reload. KPI cards showed users, revenue, recordings and failures, with links to all administrator areas."
+    },
+    {
+      "route": "/admin/users",
+      "title": "User management",
+      "result": "Pass",
+      "observation": "User table loaded, the dedicated administrator was found by email search, and the route remained authenticated after reload."
+    },
+    {
+      "route": "/admin/users",
+      "title": "User-row processing link",
+      "result": "Fail",
+      "observation": "The row action navigated to /admin/processing?user=<uuid>, but Processing Monitor still displayed all users; the user query parameter was ignored."
+    },
+    {
+      "route": "/admin/questions",
+      "title": "Question management and search",
+      "result": "Pass",
+      "observation": "Question table loaded, search for 'earliest childhood' returned the expected single active question, and the route survived reload."
+    },
+    {
+      "route": "/admin/questions",
+      "title": "Create-question dialog",
+      "result": "Pass",
+      "observation": "Add Question opened a labeled modal with question text, domain, order, duration, status and optional tip fields plus Cancel/Create/Close controls. The dialog was closed without creating data."
+    },
+    {
+      "route": "/admin/questions and /admin/users",
+      "title": "Icon-button accessibility",
+      "result": "Fail",
+      "observation": "Multiple row-action and drag-handle buttons exposed no accessible name, preventing reliable screen-reader identification and weakening keyboard/automation semantics."
+    },
+    {
+      "route": "/admin/processing",
+      "title": "Processing monitor",
+      "result": "Pass",
+      "observation": "Monitor loaded with status controls, failed-job warning, auto-refresh controls and per-user rows; it remained authenticated after reload. Process, retry and trigger actions were deliberately not invoked in production."
+    },
+    {
+      "route": "/admin/payments",
+      "title": "Payments search and controls",
+      "result": "Fail",
+      "observation": "Payment search filtered john@example.com to the expected succeeded Premium payment and the route survived reload, but no refund control or refund workflow is present in the administrator UI."
+    },
+    {
+      "route": "/admin/logs",
+      "title": "Operational logs",
+      "result": "Pass",
+      "observation": "Logs loaded with failure/audit type control and populated failure records, and remained authenticated after reload. Mutation audit coverage is separately disproved by the API verification."
+    },
+    {
+      "route": "All six administrator routes",
+      "title": "Desktop layout and route persistence",
+      "result": "Pass",
+      "observation": "At a 1280-pixel viewport, all six routes showed the expected H1 after direct navigation and reload, and no route produced document-level horizontal overflow."
+    }
+  ],
+  "console_errors": []
+}

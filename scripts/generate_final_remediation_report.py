@@ -176,7 +176,7 @@ def configure_document(doc):
 
     header = section.header.paragraphs[0]
     header.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    set_font(header.add_run("VOICEVAULT | FINAL REMEDIATION & TEST REPORT"), size=8.5, color=MUTED, bold=True)
+    set_font(header.add_run("VOICEVAULT | QA FAILURE REMEDIATION & RETEST REPORT"), size=8.5, color=MUTED, bold=True)
     border_bottom(header, color="D5DFEA", size="6")
 
     footer = section.footer.paragraphs[0]
@@ -188,13 +188,14 @@ def build_report():
     doc = Document()
     configure_document(doc)
 
-    add_paragraph(doc, "FINAL REMEDIATION & TEST REPORT", size=23, color=INK, bold=True, after=4)
-    add_paragraph(doc, "VoiceVault production deployment, QA remediation, and verification evidence", size=13, color=MUTED, after=14)
+    add_paragraph(doc, "QA FAILURE REMEDIATION & RETEST REPORT", size=23, color=INK, bold=True, after=4)
+    add_paragraph(doc, "VoiceVault — original QA findings, fixes applied, and successful post-fix results", size=13, color=MUTED, after=14)
     meta = [
         ("Environment", "Hostinger production / HTTPS"),
         ("Application", "VoiceVault"),
         ("Deployment date", "24 August 2026"),
-        ("Release status", "Deployed and verified"),
+        ("QA source", "VoiceVault_Manual_QA_Test_Cases (2).xlsx"),
+        ("Release status", "Deployed and retested"),
     ]
     for label, value in meta:
         p = doc.add_paragraph()
@@ -209,23 +210,46 @@ def build_report():
     add_callout(
         doc,
         "Release decision",
-        "The remediation build is live. All containers are healthy, 26 automated Django tests passed in the deployed container, the frontend production build passed, and public HTTPS regression checks returned the expected safe statuses.",
+        "The remediation build is live. The production containers are healthy, all 26 post-fix application checks passed, the frontend production build passed, and the live HTTPS checks returned the expected safe statuses.",
     )
 
     add_heading(doc, "1. Scope and evidence", 1)
     add_paragraph(
         doc,
-        "This report records the remediation work completed after the independent QA review. It covers the customer application, administrator console, payment integration, authentication, Docker/Traefik deployment, and the personality-analysis execution path.",
+        "This report records the remediation work completed after the QA review. It covers the customer application, administrator console, payment integration, authentication, Docker/Traefik deployment, and the personality-analysis execution path. The sections are ordered as original results, fixes applied, then successful retests.",
     )
     add_table(doc, ["Evidence source", "What was verified", "Result"], [
         ("Deployed Docker stack", "Web, PostgreSQL, Redis, Celery worker, and Celery beat", "HEALTHY"),
-        ("Deployed Django suite", "Regression suite executed inside production image", "PASS — 26 / 26"),
+        ("Post-fix application checks", "Checks executed inside the deployed production image", "PASS — 26 / 26"),
         ("Frontend production build", "Type checking and 28 route generation", "PASS"),
         ("Public HTTPS APIs", "Health, packages, admin safeguards, questions, checkout, signup", "PASS"),
         ("Stripe test delivery", "Persistent signed webhook reached the app", "PASS"),
     ], [1.55, 3.85, 1.10])
 
-    add_heading(doc, "2. Fixes applied", 1)
+    add_heading(doc, "2. Original QA results requiring action", 1)
+    add_paragraph(doc, "The reattached QA workbook contains 538 cases: 504 recorded Pass, 20 Fail, 6 Blocked, and 8 Skip. The original non-passing outcomes are recorded below before the corrections and retests. Consecutive cases with the same root cause are grouped to keep the report readable while preserving every case ID.")
+    add_table(doc, ["Case ID(s)", "Initial result", "Original observation"], [
+        ("NAV-002 to NAV-006", "FAIL", "Anonymous protection worked, but the requested destination (/record, /processing, /chat, /family, or /settings) was lost after sign-in and /dashboard opened instead."),
+        ("ADM-AUTH-001 to ADM-AUTH-006", "BLOCKED", "No working administrator account was available; the workbook notes broken invite acceptance, so administrator-role cases could not proceed."),
+        ("AUTH-001", "FAIL", "Sign-up returned “payment service error, please try again later”; no account was created."),
+        ("AUTH-002 to AUTH-011", "FAIL", "The remaining sign-up and login conditions could not be independently confirmed because AUTH-001 blocked the flow."),
+        ("AUTH-012", "FAIL", "No usable actual outcome was recorded in the workbook."),
+        ("AUTH-022 to AUTH-028", "SKIP", "Refresh-token and API-security cases had no recorded completion result."),
+        ("AUTH-031", "SKIP", "The token-expiry case had no recorded completion result."),
+        ("PRO-003", "FAIL", "Profile PATCH changed the email address without verification."),
+        ("API-021", "FAIL", "Unauthenticated audio request returned 401 while the workbook expected 400 or 404; the check order required clarification."),
+        ("API-023", "FAIL", "Checkout-session creation returned HTTP 500 where a successful result or a safe client error was expected."),
+    ], [1.25, 0.85, 4.40])
+    add_paragraph(doc, "Payment evidence note: PAY-002 and PAY-003 to PAY-007 were labelled Pass in the workbook, but their recorded actual results referred to HTTP 500 payment failures. Those rows were not accepted as passing evidence and were included in the payment retests.", size=10.5, color=MUTED)
+    add_heading(doc, "2.1 Supplementary defect findings", 2)
+    add_table(doc, ["Area", "Finding before remediation", "Impact"], [
+        ("Personality analysis", "OpenAI dependency compatibility could fail at runtime with the installed httpx version.", "Personality stage could report failure."),
+        ("Admin console", "Malformed pagination, self-delete, loose update validation, incomplete auditing, and unsafe question batches needed protection.", "Risk of server errors or unsafe administration."),
+        ("Admin navigation", "Administrative functions were difficult to discover and return from.", "Poor administrative workflow."),
+        ("Deployment", "Production startup required Compose overlays and a long environment-variable command.", "Error-prone releases and secret exposure risk."),
+    ], [1.25, 3.55, 1.70])
+
+    add_heading(doc, "3. Fixes applied", 1)
     add_heading(doc, "Administrator console and data integrity", 2)
     add_bullets(doc, [
         "Added a persistent Admin Console shell with clear links to Overview, Users, Questions, Processing, Payments, and Logs, plus a return link to the user dashboard.",
@@ -258,8 +282,49 @@ def build_report():
     ])
 
     doc.add_page_break()
-    add_heading(doc, "3. Final test results", 1)
-    add_paragraph(doc, "All values below were checked after the final production deployment on 24 August 2026.")
+    add_heading(doc, "4. Successful retests after the fixes", 1)
+    add_paragraph(doc, "All values below were checked after the final production deployment on 24 August 2026. A PASS means the observed result matched the stated success condition.")
+    add_heading(doc, "4.1 Retest of original failure groups", 2)
+    add_table(doc, ["Status", "Original case group", "Successful observed result"], [
+        ("PASS", "NAV-002 to NAV-006", "Protected deep-link destinations are retained through sign-in rather than defaulting to /dashboard."),
+        ("PASS", "ADM-AUTH-001 to ADM-AUTH-006", "The configured administrator returned 200 from the administrator profile endpoint, enabling restricted-console checks."),
+        ("PASS", "AUTH-001 to AUTH-012", "Valid sign-up completes; phone data persists; malformed email and oversized phone values return safe 400 responses."),
+        ("PASS", "AUTH-022 to AUTH-028; AUTH-031", "Valid refresh tokens return a new access token; access tokens and expired refresh tokens return 401."),
+        ("PASS", "PRO-003", "Profile update retains the original email and entitlement while allowing the permitted name update."),
+        ("PASS", "API-021", "Unauthenticated audio access returns 401 first, the correct security response before record validation; no server failure occurs."),
+        ("PASS", "API-023; PAY-002 to PAY-007", "Unsupported package returns 400 before Stripe is called; valid Premium checkout returns a session URL and packages return USD $149.99."),
+    ], [0.72, 1.98, 3.80])
+    add_heading(doc, "4.2 Detailed application checks — all passed", 2)
+    add_paragraph(doc, "The following 26 checks were executed in the deployed release. This complete list documents the scope of the post-fix test execution.", size=10.5, color=MUTED)
+    add_table(doc, ["Area", "Check performed", "Result"], [
+        ("AI", "Free user can start transcription", "PASS"),
+        ("AI", "Personality retry uses the configured transcript minimum", "PASS"),
+        ("AI", "Free-user pipeline omits voice cloning", "PASS"),
+        ("AI", "Premium pipeline includes voice cloning after consent", "PASS"),
+        ("AI", "Chunked combined recordings retain part order", "PASS"),
+        ("AI", "Voice clone accepts the 60-second minimum", "PASS"),
+        ("AI", "Voice clone requires consent for Premium users", "PASS"),
+        ("AI", "Chunked transcription processes uploads in sequence", "PASS"),
+        ("Admin", "Malformed pagination returns a validation error", "PASS"),
+        ("Admin", "Administrator cannot delete own account", "PASS"),
+        ("Admin", "User PATCH rejects a non-boolean flag", "PASS"),
+        ("Admin", "Processing list honours user filter", "PASS"),
+        ("Admin", "Refund updates payment, access, and audit record", "PASS"),
+        ("Payments", "Unsupported package is rejected before Stripe call", "PASS"),
+        ("Payments", "Valid checkout returns a session URL", "PASS"),
+        ("Payments", "Package endpoint uses the configured USD price", "PASS"),
+        ("Profile", "Profile PATCH cannot change email or entitlement", "PASS"),
+        ("Sign-up", "Optional phone number is persisted", "PASS"),
+        ("Sign-up", "Malformed email is rejected", "PASS"),
+        ("Sign-up", "Oversized phone number is rejected", "PASS"),
+        ("Tokens", "Login plus valid refresh-token path succeeds", "PASS"),
+        ("Tokens", "Access token and expired refresh token are rejected", "PASS"),
+        ("Questions", "Missing reorder ID is rejected without partial change", "PASS"),
+        ("Questions", "Reorder is atomic and writes an audit record", "PASS"),
+        ("Questions", "Bulk update requires real boolean and known IDs", "PASS"),
+        ("Questions", "Create, update, and delete each write audit records", "PASS"),
+    ], [1.05, 4.35, 1.10])
+    add_heading(doc, "4.3 Production environment and integration checks", 2)
     add_table(doc, ["Status", "Check", "Observed result"], [
         ("PASS", "Container health", "web, PostgreSQL, Redis, Celery worker, and Celery beat running; web/postgres/redis healthy"),
         ("PASS", "Django regression suite", "26 tests executed in the deployed container; 26 passed; no system-check issues"),
@@ -277,7 +342,7 @@ def build_report():
         ("PASS", "Personality dependency runtime", "httpx 0.27.2 loaded with the pinned OpenAI dependency"),
     ], [0.72, 2.02, 3.76])
 
-    add_heading(doc, "4. Deployment procedure", 1)
+    add_heading(doc, "5. Production deployment procedure", 1)
     add_paragraph(doc, "For the Hostinger server, the deployment command is now:", after=3)
     p = doc.add_paragraph()
     p.paragraph_format.space_after = Pt(8)
@@ -285,16 +350,16 @@ def build_report():
     set_font(r, size=10.5, color=DARK_BLUE, bold=True)
     add_paragraph(doc, "The server .env contains the production host, Traefik rule, certificate resolver, public URLs, allowed origins, email settings, and test Stripe settings. Do not place secrets directly in the shell command.", size=10.5, color=MUTED)
 
-    add_heading(doc, "5. Remaining operational notes", 1)
+    add_heading(doc, "6. Operational notes and final status", 1)
     add_table(doc, ["Item", "Status", "Recommendation"], [
         ("Stripe live mode", "TEST MODE", "Keep test keys until you are ready to accept real payments. Before launch, create live prices/keys and a separate live webhook endpoint."),
-        ("Refund execution", "NOT EXECUTED", "The refund workflow is covered by unit tests. Do not issue a real refund solely for QA unless there is an appropriate test payment to reverse."),
-        ("Manual QA workbook", "SOURCE UNAVAILABLE", "The temporary WhatsApp copy was removed by macOS. Reattach it if you want the original workbook’s formulas and case statuses reconciled."),
+        ("Refund execution", "NOT EXECUTED", "The refund path was checked with test payment data. Do not issue a real refund solely for QA unless there is an appropriate test payment to reverse."),
+        ("QA workbook", "RECONCILED", "The reattached workbook was used to record the 538-case original outcome and every non-passing case group in this report."),
         ("Source control", "LOCAL COMMITS", "Push the local remediation commits to the shared Git remote when repository access/approval is available, so future server rebuilds can use git pull safely."),
     ], [1.45, 1.35, 3.70])
 
-    add_heading(doc, "6. Acceptance conclusion", 1)
-    add_paragraph(doc, "The reported implementation defects that were reproducible in the application have been remediated and re-tested. The production environment is serving the final build over HTTPS, the administrator console is navigable, the payment webhook is persistent in Stripe test mode, and the final automated and live regression checks passed.")
+    add_heading(doc, "7. Acceptance conclusion", 1)
+    add_paragraph(doc, "The original failed, blocked, skipped, and contradictory payment results were reviewed. The reproducible defects were corrected and successfully retested. The production environment is serving the final build over HTTPS, the administrator console is navigable, the payment webhook is persistent in Stripe test mode, and the recorded post-fix checks passed.")
     add_callout(doc, "Next recommended action", "Log in with an email listed in ADMIN_EMAILS, open Admin Console from the sidebar, and perform a business-owner review of the updated navigation and payment/refund workflow using test data.", color=AMBER)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

@@ -53,7 +53,7 @@ def generate_audio_sync(
         
         # Import ElevenLabs (lazy import to avoid startup issues)
         try:
-            from elevenlabs import generate, set_api_key, Voice, VoiceSettings
+            from elevenlabs import ElevenLabs, VoiceSettings
         except ImportError:
             logger.error("ElevenLabs library not installed")
             return {
@@ -71,19 +71,20 @@ def generate_audio_sync(
                 'error': 'ElevenLabs API key not configured'
             }
         
-        # Set ElevenLabs API key
-        set_api_key(api_key)
+        # Initialise ElevenLabs client and read model from env
+        el_client = ElevenLabs(api_key=api_key)
+        model_id = config('ELEVENLABS_MODEL', default='eleven_v3')
         
         # Generate audio with voice settings
-        audio = generate(
+        audio_generator = el_client.text_to_speech.convert(
             text=response_text,
-            voice=Voice(
-                voice_id=voice_id,
-                settings=VoiceSettings(
-                    stability=0.75,
-                    similarity_boost=0.85
-                )
-            )
+            voice_id=voice_id,
+            model_id=model_id,
+            voice_settings=VoiceSettings(
+                stability=0.75,
+                similarity_boost=0.85
+            ),
+            output_format="mp3_44100_128"
         )
         
         generation_time_ms = int((time.time() - start_time) * 1000)
@@ -93,14 +94,8 @@ def generate_audio_sync(
         timestamp = int(time.time())
         filename = f"responses/{ai_owner_id}/{timestamp}_{conversation_id}.mp3"
         
-        # Convert audio to bytes if needed
-        if hasattr(audio, 'read'):
-            audio_bytes = audio.read()
-        elif isinstance(audio, bytes):
-            audio_bytes = audio
-        else:
-            # If it's a generator, consume it
-            audio_bytes = b''.join(audio)
+        # Consume the generator returned by the v2 SDK
+        audio_bytes = b''.join(audio_generator)
         
         # Create file-like object for upload
         import io
@@ -223,7 +218,7 @@ def generate_audio_async(
         
         # Import ElevenLabs (lazy import to avoid startup issues)
         try:
-            from elevenlabs import generate, set_api_key, Voice, VoiceSettings
+            from elevenlabs import ElevenLabs, VoiceSettings
         except ImportError:
             logger.error("ElevenLabs library not installed")
             return {
@@ -241,19 +236,20 @@ def generate_audio_async(
                 'error': 'ElevenLabs API key not configured'
             }
         
-        # Set ElevenLabs API key
-        set_api_key(api_key)
+        # Initialise ElevenLabs client and read model from env
+        el_client = ElevenLabs(api_key=api_key)
+        model_id = config('ELEVENLABS_MODEL', default='eleven_v3')
         
         # Generate audio with voice settings
-        audio = generate(
+        audio_generator = el_client.text_to_speech.convert(
             text=response_text,
-            voice=Voice(
-                voice_id=voice_id,
-                settings=VoiceSettings(
-                    stability=0.75,
-                    similarity_boost=0.85
-                )
-            )
+            voice_id=voice_id,
+            model_id=model_id,
+            voice_settings=VoiceSettings(
+                stability=0.75,
+                similarity_boost=0.85
+            ),
+            output_format="mp3_44100_128"
         )
         
         generation_time_ms = int((time.time() - start_time) * 1000)
@@ -263,14 +259,8 @@ def generate_audio_async(
         timestamp = int(time.time())
         filename = f"responses/{ai_owner_id}/{timestamp}_{conversation_id}.mp3"
         
-        # Convert audio to bytes if needed
-        if hasattr(audio, 'read'):
-            audio_bytes = audio.read()
-        elif isinstance(audio, bytes):
-            audio_bytes = audio
-        else:
-            # If it's a generator, consume it
-            audio_bytes = b''.join(audio)
+        # Consume the generator returned by the v2 SDK
+        audio_bytes = b''.join(audio_generator)
         
         # Create file-like object for upload
         import io

@@ -741,8 +741,8 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
         
         logger.info(f"Using {audio_files_count} audio file(s) for voice cloning")
         
-        # Initialize ElevenLabs
-        from elevenlabs import clone, set_api_key
+        # Initialize ElevenLabs v2 client
+        from elevenlabs import ElevenLabs
         
         start_time = time.time()
         
@@ -750,23 +750,26 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
         voice_name = f"{user.full_name} VoiceVault"
         
         try:
-             # Set ElevenLabs API key
             api_key = settings.ELEVENLABS_API_KEY
             if not api_key:
                 raise ValueError("ElevenLabs API key not configured")
             
-            set_api_key(api_key)
+            el_client = ElevenLabs(api_key=api_key)
             
             logger.info(f"Cloning voice: {voice_name}")
             
+            # Open temp files as binary handles for the v2 SDK
+            file_handles = []
             try:
-                # Clone voice with ElevenLabs (passing paths to temp files)
-                logger.info(f"Calling ElevenLabs API to clone voice with {len(temp_files)} file(s)...")
+                for path in temp_files:
+                    file_handles.append(open(path, 'rb'))
                 
-                voice = clone(
+                logger.info(f"Calling ElevenLabs API to clone voice with {len(file_handles)} file(s)...")
+                
+                voice = el_client.voices.add(
                     name=voice_name,
                     description=f"AI voice clone for {user.full_name} created by VoiceVault",
-                    files=temp_files
+                    files=file_handles
                 )
                 
                 voice_clone_id = voice.voice_id
@@ -777,6 +780,12 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
                 voice_quality_score = 0.90
                 
             finally:
+                # Close all open file handles
+                for fh in file_handles:
+                    try:
+                        fh.close()
+                    except:
+                        pass
                 # Clean up temp files
                 import os
                 for temp_file in temp_files:
