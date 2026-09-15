@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Mic, Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { Mic, Check, X, Loader2, AlertCircle, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AudioRecorder } from '@/lib/audio/recorder';
 
@@ -16,36 +16,38 @@ interface IntroStepProps {
   onStart: () => void;
 }
 
+type MicrophoneStatusValue = 'checking' | 'prompt' | 'granted' | 'denied' | 'unavailable';
+type MicrophoneTestResult = 'idle' | 'listening' | 'success' | 'silent' | 'error';
+
 export function IntroStep({ onStart }: IntroStepProps) {
-  const [micStatus, setMicStatus] = useState<'checking' | 'granted' | 'denied' | 'unavailable'>(
-    'checking'
-  );
+  const [micStatus, setMicStatus] = useState<MicrophoneStatusValue>('checking');
+  const [micMessage, setMicMessage] = useState('');
   const [isTestingMic, setIsTestingMic] = useState(false);
+  const [micLevel, setMicLevel] = useState(0);
+  const [testResult, setTestResult] = useState<MicrophoneTestResult>('idle');
 
   const checkMicrophone = useCallback(async () => {
     try {
       setMicStatus('checking');
+      setMicMessage('');
 
-      // Check if microphone is available
       const isAvailable = await AudioRecorder.checkMicrophoneAvailable();
       if (!isAvailable) {
         setMicStatus('unavailable');
+        setMicMessage(
+          window.isSecureContext
+            ? 'No microphone is available, or this browser does not support microphone recording.'
+            : 'Microphone access requires a secure HTTPS connection.'
+        );
         return;
       }
 
-      // Check permission
       const permission = await AudioRecorder.getMicrophonePermission();
-      if (permission === 'granted') {
-        setMicStatus('granted');
-      } else if (permission === 'denied') {
-        setMicStatus('denied');
-      } else {
-        // Prompt for permission
-        await requestMicrophone();
-      }
-    } catch {
-      console.error('Microphone check failed');
+      setMicStatus(permission);
+    } catch (error) {
+      console.error('Microphone check failed', error);
       setMicStatus('unavailable');
+      setMicMessage(AudioRecorder.getErrorMessage(error));
     }
   }, []);
 
@@ -55,19 +57,45 @@ export function IntroStep({ onStart }: IntroStepProps) {
 
   const requestMicrophone = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop()); // Stop immediately
+      setMicStatus('checking');
+      setMicMessage('');
+      const stream = await AudioRecorder.requestMicrophone();
+      stream.getTracks().forEach((track) => track.stop());
       setMicStatus('granted');
-    } catch {
-      setMicStatus('denied');
+    } catch (error) {
+      const errorName = (error as { name?: string })?.name;
+      setMicStatus(
+        errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError'
+          ? 'unavailable'
+          : 'denied'
+      );
+      setMicMessage(AudioRecorder.getErrorMessage(error));
     }
   };
 
   const testMicrophone = async () => {
-    setIsTestingMic(true);
-    // Simulate microphone test
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsTestingMic(false);
+    try {
+      setIsTestingMic(true);
+      setTestResult('listening');
+      setMicLevel(0);
+      setMicMessage('');
+
+      const result = await AudioRecorder.testMicrophone(setMicLevel);
+      setMicLevel(result.peakLevel);
+      setTestResult(result.signalDetected ? 'success' : 'silent');
+      setMicStatus('granted');
+    } catch (error) {
+      const errorName = (error as { name?: string })?.name;
+      setTestResult('error');
+      setMicStatus(
+        errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError'
+          ? 'unavailable'
+          : 'denied'
+      );
+      setMicMessage(AudioRecorder.getErrorMessage(error));
+    } finally {
+      setIsTestingMic(false);
+    }
   };
 
   const canStart = micStatus === 'granted';
@@ -126,7 +154,12 @@ export function IntroStep({ onStart }: IntroStepProps) {
       <div className="journey-card mt-6 p-6 sm:p-8">
         <h2 className="font-heading text-2xl font-semibold text-foreground">Microphone Setup</h2>
 
-        <MicrophoneStatus status={micStatus} onRetry={checkMicrophone} />
+        <MicrophoneStatus
+          status={micStatus}
+          message={micMessage}
+          onRequest={requestMicrophone}
+          onRetry={checkMicrophone}
+        />
 
         {micStatus === 'granted' && (
           <div className="mt-6">
@@ -149,6 +182,43 @@ export function IntroStep({ onStart }: IntroStepProps) {
                 </>
               )}
             </Button>
+
+            <div className="mt-4" aria-live="polite" role="status">
+              {(testResult === 'listening' || testResult === 'success' || testResult === 'silent') && (
+                <div className="rounded-lg border border-border bg-background/70 p-4">
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className="flex items-center gap-2 font-medium text-foreground">
+                      {testResult === 'listening' ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      ) : testResult === 'success' ? (
+                        <Check className="h-4 w-4 text-success-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-warning-500" />
+                      )}
+                      {testResult === 'listening'
+                        ? 'Speak normally — listening now'
+                        : testResult === 'success'
+                          ? 'Sound detected. Your microphone is working.'
+                          : 'Microphone connected, but no sound was detected. Speak louder and try again.'}
+                    </span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {Math.round(micLevel * 100)}%
+                    </span>
+                  </div>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-success-500 to-primary-500 transition-[width] duration-75"
+                      style={{ width: `${Math.max(testResult === 'listening' ? 2 : 0, micLevel * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {testResult === 'error' && micMessage && (
+                <p className="rounded-lg border border-error-500/30 bg-error-500/10 p-3 text-sm text-error-500">
+                  {micMessage}
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -211,9 +281,13 @@ function FeatureItem({
  */
 function MicrophoneStatus({
   status,
+  message,
+  onRequest,
   onRetry,
 }: {
-  status: 'checking' | 'granted' | 'denied' | 'unavailable';
+  status: MicrophoneStatusValue;
+  message: string;
+  onRequest: () => void;
   onRetry: () => void;
 }) {
   const statusConfig = {
@@ -231,17 +305,24 @@ function MicrophoneStatus({
       color: 'text-success-600',
       bgColor: 'bg-success-50',
     },
+    prompt: {
+      icon: <Volume2 className="w-8 h-8 text-primary" />,
+      title: 'Microphone permission needed',
+      description: 'Allow access to test your microphone and start recording.',
+      color: 'text-foreground',
+      bgColor: 'bg-primary/10',
+    },
     denied: {
       icon: <X className="w-8 h-8 text-error-500" />,
       title: 'Microphone access denied',
-      description: 'Please allow microphone access in your browser settings',
+      description: message || 'Please allow microphone access in your browser settings',
       color: 'text-error-600',
       bgColor: 'bg-error-50',
     },
     unavailable: {
       icon: <AlertCircle className="w-8 h-8 text-warning-500" />,
       title: 'No microphone detected',
-      description: 'Please connect a microphone and try again',
+      description: message || 'Please connect a microphone and try again',
       color: 'text-warning-600',
       bgColor: 'bg-warning-50',
     },
@@ -261,10 +342,18 @@ function MicrophoneStatus({
         </div>
       </div>
 
-      {(status === 'denied' || status === 'unavailable') && (
-        <Button onClick={onRetry} size="sm" className="mt-4">
-          Try Again
+      {status === 'prompt' && (
+        <Button onClick={onRequest} size="sm" className="mt-4">
+          <Mic className="mr-2 h-4 w-4" />
+          Allow Microphone
         </Button>
+      )}
+
+      {(status === 'denied' || status === 'unavailable') && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button onClick={onRequest} size="sm">Request Access</Button>
+          <Button onClick={onRetry} size="sm" variant="outline">Check Again</Button>
+        </div>
       )}
     </div>
   );
