@@ -271,6 +271,60 @@ class LoginView(APIView):
             )
 
 
+class ChangePasswordView(APIView):
+    """Change the authenticated user's password after verifying the current one."""
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if not hasattr(request, 'supabase_user') or not request.supabase_user:
+            return Response(
+                {'error': 'authentication_required', 'message': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        current_password = request.data.get('current_password', '')
+        new_password = request.data.get('new_password', '')
+
+        if not current_password or not new_password:
+            return Response(
+                {'error': 'passwords_required', 'message': 'Current and new passwords are required'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(new_password) < 8 or len(new_password) > 128:
+            return Response(
+                {'error': 'invalid_password', 'message': 'New password must be between 8 and 128 characters'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if current_password == new_password:
+            return Response(
+                {'error': 'password_unchanged', 'message': 'Choose a password different from your current password'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(id=request.supabase_user.id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'not_found', 'message': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not user.password_hash or not check_password(current_password, user.password_hash):
+            return Response(
+                {'error': 'invalid_current_password', 'message': 'Current password is incorrect'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.password_hash = make_password(new_password)
+        user.save(update_fields=['password_hash', 'updated_at'])
+        logger.info('Password changed for user: %s', user.id)
+
+        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
+
 class LogoutView(APIView):
     """
     POST /api/users/logout/

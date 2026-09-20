@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/lib/api/auth';
 import { processingApi } from '@/lib/api/processing';
-import { ShieldCheck } from 'lucide-react';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function ProcessingPage() {
   const router = useRouter();
@@ -22,7 +22,11 @@ export default function ProcessingPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [voiceConsentAccepted, setVoiceConsentAccepted] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = !!(
+    user?.is_premium ||
+    user?.payment_completed ||
+    user?.plan_type === 'premium'
+  );
 
   const handleComplete = () => {
     setIsComplete(true);
@@ -42,7 +46,9 @@ export default function ProcessingPage() {
           await processingApi.retryStep(user.id, 'voice-clone');
           toast.info('Voice cloning has been queued.');
         } catch {
-          toast.info('Consent is saved. Voice cloning can be retried after enough audio is available.');
+          toast.info(
+            'Consent is saved. Voice cloning can be retried after enough audio is available.'
+          );
         }
       }
     } catch {
@@ -54,6 +60,26 @@ export default function ProcessingPage() {
 
   if (!user) {
     return null;
+  }
+
+  if (!user.recording_completed) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="journey-hero p-6 sm:p-8">
+          <p className="journey-kicker">AI build room</p>
+          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+            Record before starting AI processing
+          </h1>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            There is nothing to process yet. Complete and upload your guided recordings first.
+          </p>
+          <Button className="mt-6" onClick={() => router.push('/record')}>
+            Start recording
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -93,7 +119,8 @@ export default function ProcessingPage() {
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
                     <p className="text-sm text-foreground">
-                      I confirm this is my voice, or I have legal permission to create this voice clone.
+                      I confirm this is my voice, or I have legal permission to create this voice
+                      clone.
                     </p>
                   </div>
                   <Button onClick={handleVoiceConsent} disabled={isSavingConsent} size="sm">
@@ -139,13 +166,17 @@ export default function ProcessingPage() {
               <li className="flex items-start gap-2">
                 <span className="font-bold text-primary">2.</span>
                 <span>
-                  We&apos;ll create a voice clone that sounds just like you using ElevenLabs
+                  {isPremium
+                    ? "After you consent, we'll create a voice clone that sounds like you using ElevenLabs"
+                    : "We'll create your text-based AI preview; voice cloning remains locked unless you upgrade"}
                 </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="font-bold text-primary">3.</span>
                 <span>
-                  Your family members can chat with your AI and hear responses in your voice
+                  {isPremium
+                    ? 'Your family members can chat with your AI and hear responses in your voice'
+                    : 'Your family members can chat with your text-based AI preview'}
                 </span>
               </li>
             </ul>

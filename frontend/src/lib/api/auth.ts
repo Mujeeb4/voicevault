@@ -51,8 +51,20 @@ export const authApi = {
     return res;
   },
 
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/users/change-password/', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    });
+  },
+
   recordConsent: async (
-    consentType: 'voice_cloning' | 'ai_personality_generation' | 'family_access' | 'terms_of_service' | 'privacy_policy',
+    consentType:
+      | 'voice_cloning'
+      | 'ai_personality_generation'
+      | 'family_access'
+      | 'terms_of_service'
+      | 'privacy_policy',
     accepted = true
   ): Promise<{ id: string; accepted: boolean; accepted_at: string | null }> => {
     const { data } = await apiClient.post('/users/consent/', {

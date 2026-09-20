@@ -9,7 +9,7 @@ from rest_framework.test import APIRequestFactory
 
 from apps.users.models import User
 from apps.users.views import UserProfileView
-from apps.users.views_auth import LoginView, RefreshTokenView, SignupView, generate_jwt_token
+from apps.users.views_auth import ChangePasswordView, LoginView, RefreshTokenView, SignupView, generate_jwt_token
 from utils.supabase_auth import SupabaseUser
 
 
@@ -124,3 +124,40 @@ class TokenRegressionTests(TestCase):
             'refresh': expired,
         }, format='json')
         self.assertEqual(RefreshTokenView.as_view()(expired_request).status_code, 401)
+
+
+class ChangePasswordRegressionTests(TestCase):
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create(
+            email='password-owner@example.com',
+            full_name='Password Owner',
+            password_hash=make_password('current-pass-123'),
+        )
+
+    def request(self, current_password, new_password):
+        request = self.factory.post('/api/users/change-password/', {
+            'current_password': current_password,
+            'new_password': new_password,
+        }, format='json')
+        request.supabase_user = SupabaseUser(str(self.user.id), self.user.email, {})
+        return request
+
+    def test_change_password_verifies_current_password(self):
+        response = ChangePasswordView.as_view()(
+            self.request('wrong-pass-123', 'new-strong-pass-123')
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data['error'], 'invalid_current_password')
+
+    def test_change_password_updates_login_credentials(self):
+        response = ChangePasswordView.as_view()(
+            self.request('current-pass-123', 'new-strong-pass-123')
+        )
+        self.assertEqual(response.status_code, 200)
+
+        login_request = self.factory.post('/api/users/login/', {
+            'email': self.user.email,
+            'password': 'new-strong-pass-123',
+        }, format='json')
+        self.assertEqual(LoginView.as_view()(login_request).status_code, 200)

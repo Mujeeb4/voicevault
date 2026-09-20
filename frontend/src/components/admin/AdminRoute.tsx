@@ -11,7 +11,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { isAdmin } from '@/lib/api/admin';
 import { Loader2, ShieldAlert } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AdminShell } from './AdminShell';
 
@@ -70,12 +70,14 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Not an admin
   if (!isAdmin(user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
         <Card className="w-full max-w-md border-destructive">
           <CardHeader>
             <div className="flex items-center gap-2 text-destructive mb-2">
               <ShieldAlert className="h-6 w-6" />
-              <CardTitle>Access Denied</CardTitle>
+              <h1 className="font-sans text-xl font-semibold leading-tight text-card-foreground sm:text-2xl">
+                Access Denied
+              </h1>
             </div>
             <CardDescription>
               You don&apos;t have permission to access the admin dashboard.
@@ -96,7 +98,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     );
   }
 

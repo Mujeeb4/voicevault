@@ -25,7 +25,10 @@ import {
   blobToFile,
   getAudioFormat,
 } from '@/lib/audio/compression';
-import { createOptionalReflectionQuestion, isOptionalReflectionQuestion } from '@/lib/recording/optional-question';
+import {
+  createOptionalReflectionQuestion,
+  isOptionalReflectionQuestion,
+} from '@/lib/recording/optional-question';
 
 // Step Components
 import { IntroStep } from '@/components/recording/IntroStep';
@@ -55,7 +58,11 @@ function RecordingContent() {
   const [currentStep, setCurrentStep] = useState<Step>('intro');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = !!(
+    user?.is_premium ||
+    user?.payment_completed ||
+    user?.plan_type === 'premium'
+  );
   const uploadChunkDurationSeconds = 10 * 60;
   const uploadPartMaxBytes = 22 * 1024 * 1024;
 
@@ -121,12 +128,18 @@ function RecordingContent() {
     }
 
     const userId = user.id;
-    const guidedQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
+    const guidedQuestions = questions.filter(
+      (question) => !isOptionalReflectionQuestion(question.id)
+    );
     const minimumRecordedCount = Math.min(10, guidedQuestions.length);
-    const completedGuidedCount = guidedQuestions.filter((question) => recordings.has(question.id)).length;
+    const completedGuidedCount = guidedQuestions.filter((question) =>
+      recordings.has(question.id)
+    ).length;
 
     if (completedGuidedCount < minimumRecordedCount) {
-      toast.error(`Please record at least ${minimumRecordedCount} guided answer${minimumRecordedCount === 1 ? '' : 's'} before uploading.`);
+      toast.error(
+        `Please record at least ${minimumRecordedCount} guided answer${minimumRecordedCount === 1 ? '' : 's'} before uploading.`
+      );
       setCurrentStep('recording');
       setStatus('recording');
       return;
@@ -154,8 +167,15 @@ function RecordingContent() {
         throw new Error('No recordings found');
       }
 
-      const totalDuration = orderedRecordings.reduce((sum, recording) => sum + recording.duration, 0);
-      const uploadChunks = createUploadChunks(orderedRecordings, uploadChunkDurationSeconds, uploadPartMaxBytes);
+      const totalDuration = orderedRecordings.reduce(
+        (sum, recording) => sum + recording.duration,
+        0
+      );
+      const uploadChunks = createUploadChunks(
+        orderedRecordings,
+        uploadChunkDurationSeconds,
+        uploadPartMaxBytes
+      );
       const totalUploadParts = uploadChunks.reduce(
         (sum, chunk) => sum + estimatePreparedPartCount(chunk, uploadChunkDurationSeconds),
         0
@@ -169,12 +189,21 @@ function RecordingContent() {
         const preparationWeight = expectedPartCount / totalUploadParts;
 
         toast.info(`Preparing part ${uploadedPartIndex + 1} of ${totalUploadParts}...`);
-        const preparedParts = await prepareUploadParts(chunk, uploadPartMaxBytes, uploadChunkDurationSeconds, (progress) => {
-          setUploadProgress(Math.round((preparationStart + progress * preparationWeight * 0.45) * 100));
-        });
+        const preparedParts = await prepareUploadParts(
+          chunk,
+          uploadPartMaxBytes,
+          uploadChunkDurationSeconds,
+          (progress) => {
+            setUploadProgress(
+              Math.round((preparationStart + progress * preparationWeight * 0.45) * 100)
+            );
+          }
+        );
 
         if (preparedParts.length !== expectedPartCount) {
-          throw new Error('Could not prepare audio parts consistently. Please try uploading again.');
+          throw new Error(
+            'Could not prepare audio parts consistently. Please try uploading again.'
+          );
         }
 
         for (const part of preparedParts) {
@@ -182,7 +211,10 @@ function RecordingContent() {
           const partStart = uploadedPartIndex / totalUploadParts;
           const partWeight = 1 / totalUploadParts;
           toast.info(`Uploading part ${partNumber} of ${totalUploadParts}...`);
-          const file = blobToFile(part.blob, `recording-part-${partNumber}.${getAudioFormat(part.blob)}`);
+          const file = blobToFile(
+            part.blob,
+            `recording-part-${partNumber}.${getAudioFormat(part.blob)}`
+          );
           const fileFormat = getAudioFormat(part.blob);
 
           await recordingsApi.uploadRecording(
@@ -244,7 +276,7 @@ function RecordingContent() {
             <p className="mt-1 text-muted-foreground">{getStepTitle(currentStep)}</p>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               {isPremium
-                ? 'Premium includes 30+ questions, local encrypted draft saving, and up to 5 hours of recordings.'
+                ? 'Premium includes 30 guided questions plus an optional reflection, local encrypted draft saving, and up to 5 hours of recordings.'
                 : 'Memory Starter includes 5 guided questions, local encrypted draft saving, and 15 minutes of recording.'}
             </p>
           </div>
@@ -259,20 +291,14 @@ function RecordingContent() {
         <ErrorState error={error} onRetry={() => window.location.reload()} />
       ) : (
         <AnimatePresence mode="wait">
-          {currentStep === 'intro' && (
-            <IntroStep key="intro" onStart={handleStartRecording} />
-          )}
+          {currentStep === 'intro' && <IntroStep key="intro" onStart={handleStartRecording} />}
 
           {currentStep === 'recording' && (
             <RecordingStep key="recording" onComplete={handleFinishRecording} />
           )}
 
           {currentStep === 'review' && (
-            <ReviewStep
-              key="review"
-              onBack={handleBackToRecording}
-              onProceed={handleStartUpload}
-            />
+            <ReviewStep key="review" onBack={handleBackToRecording} onProceed={handleStartUpload} />
           )}
 
           {currentStep === 'upload' && <UploadStep key="upload" />}
@@ -296,7 +322,9 @@ async function prepareUploadParts(
       return [{ blob: recording.blob, duration: recording.duration }];
     }
 
-    const compressedBlob = await compressToMP3(recording.blob, (progress) => onProgress?.(progress * 0.5));
+    const compressedBlob = await compressToMP3(recording.blob, (progress) =>
+      onProgress?.(progress * 0.5)
+    );
     if (recording.duration <= segmentSeconds && compressedBlob.size <= maxBytes) {
       await assertUploadableAudio(compressedBlob);
       onProgress?.(1);
@@ -314,15 +342,20 @@ async function prepareUploadParts(
     }));
   }
 
-  const combinedBlob = await combineAudioFiles(chunk.recordings.map((recording) => recording.blob), (progress) => {
-    onProgress?.(progress * 0.45);
-  });
+  const combinedBlob = await combineAudioFiles(
+    chunk.recordings.map((recording) => recording.blob),
+    (progress) => {
+      onProgress?.(progress * 0.45);
+    }
+  );
   const compressedBlob = await compressToMP3(combinedBlob, (progress) => {
     onProgress?.(0.45 + progress * 0.55);
   });
 
   if (compressedBlob.size > maxBytes) {
-    throw new Error('An upload part is still too large after compression. Please try again from a stronger connection.');
+    throw new Error(
+      'An upload part is still too large after compression. Please try again from a stronger connection.'
+    );
   }
 
   await assertUploadableAudio(compressedBlob);
@@ -332,24 +365,31 @@ async function prepareUploadParts(
 async function assertUploadableAudio(blob: Blob): Promise<void> {
   const header = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
   const format = getAudioFormat(blob);
-  const isWebm = format === 'webm' && header[0] === 0x1a && header[1] === 0x45 && header[2] === 0xdf && header[3] === 0xa3;
-  const isWav = format === 'wav'
-    && header[0] === 0x52
-    && header[1] === 0x49
-    && header[2] === 0x46
-    && header[3] === 0x46
-    && header[8] === 0x57
-    && header[9] === 0x41
-    && header[10] === 0x56
-    && header[11] === 0x45;
-  const isMp3 = format === 'mp3'
-    && (
-      (header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33)
-      || (header[0] === 0xff && (header[1] & 0xe0) === 0xe0)
-    );
+  const isWebm =
+    format === 'webm' &&
+    header[0] === 0x1a &&
+    header[1] === 0x45 &&
+    header[2] === 0xdf &&
+    header[3] === 0xa3;
+  const isWav =
+    format === 'wav' &&
+    header[0] === 0x52 &&
+    header[1] === 0x49 &&
+    header[2] === 0x46 &&
+    header[3] === 0x46 &&
+    header[8] === 0x57 &&
+    header[9] === 0x41 &&
+    header[10] === 0x56 &&
+    header[11] === 0x45;
+  const isMp3 =
+    format === 'mp3' &&
+    ((header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) ||
+      (header[0] === 0xff && (header[1] & 0xe0) === 0xe0));
 
   if (!isWebm && !isWav && !isMp3) {
-    throw new Error('A saved recording could not be decoded as audio. Please retake that recording before uploading.');
+    throw new Error(
+      'A saved recording could not be decoded as audio. Please retake that recording before uploading.'
+    );
   }
 }
 
@@ -373,7 +413,8 @@ function createUploadChunks(
 
   for (const recording of recordings) {
     const recordingBytes = recording.blob.size;
-    const wouldExceedDuration = currentDuration > 0 && currentDuration + recording.duration > maxDurationSeconds;
+    const wouldExceedDuration =
+      currentDuration > 0 && currentDuration + recording.duration > maxDurationSeconds;
     const wouldExceedSize = currentBytes > 0 && currentBytes + recordingBytes > maxBytes;
     if (wouldExceedDuration || wouldExceedSize) {
       chunks.push({ recordings: currentChunk, duration: currentDuration });
@@ -419,14 +460,18 @@ function JourneyStageRail({ currentStep }: { currentStep: Step }) {
               isActive
                 ? 'journey-step-active'
                 : isDone
-                ? 'border-primary/28 bg-primary/8 text-foreground'
-                : 'border-border bg-background/36 text-muted-foreground'
+                  ? 'border-primary/28 bg-primary/8 text-foreground'
+                  : 'border-border bg-background/36 text-muted-foreground'
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
-                isActive || isDone ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-              }`}>
+              <span
+                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                  isActive || isDone
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
                 {isDone ? '✓' : index + 1}
               </span>
               <span className="font-semibold">{stage.label}</span>

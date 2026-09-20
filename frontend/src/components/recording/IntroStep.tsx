@@ -119,9 +119,9 @@ export function IntroStep({ onStart }: IntroStepProps) {
         </motion.div>
 
         <p className="journey-kicker">Private recording session</p>
-        <h1 className="mt-2 font-heading text-4xl font-semibold text-foreground">
+        <h2 className="mt-2 font-heading text-4xl font-semibold text-foreground">
           Let Your Voice Live On
-        </h1>
+        </h2>
         <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
           Record your answers, leave and return safely, then upload everything when you are ready.
         </p>
@@ -184,7 +184,9 @@ export function IntroStep({ onStart }: IntroStepProps) {
             </Button>
 
             <div className="mt-4" aria-live="polite" role="status">
-              {(testResult === 'listening' || testResult === 'success' || testResult === 'silent') && (
+              {(testResult === 'listening' ||
+                testResult === 'success' ||
+                testResult === 'silent') && (
                 <div className="rounded-lg border border-border bg-background/70 p-4">
                   <div className="flex items-center justify-between gap-3 text-sm">
                     <span className="flex items-center gap-2 font-medium text-foreground">
@@ -208,7 +210,9 @@ export function IntroStep({ onStart }: IntroStepProps) {
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-gradient-to-r from-success-500 to-primary-500 transition-[width] duration-75"
-                      style={{ width: `${Math.max(testResult === 'listening' ? 2 : 0, micLevel * 100)}%` }}
+                      style={{
+                        width: `${Math.max(testResult === 'listening' ? 2 : 0, micLevel * 100)}%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -236,7 +240,12 @@ export function IntroStep({ onStart }: IntroStepProps) {
 
       {/* Start Button */}
       <div className="sticky bottom-4 z-20 mt-6 rounded-lg border border-border bg-background/86 p-3 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
-        <Button onClick={onStart} disabled={!canStart} size="lg" className="w-full shimmer-btn text-primary-foreground sm:mx-auto sm:flex sm:max-w-md">
+        <Button
+          onClick={onStart}
+          disabled={!canStart}
+          size="lg"
+          className="w-full shimmer-btn text-primary-foreground sm:mx-auto sm:flex sm:max-w-md"
+        >
           {canStart ? (
             <>
               <Mic className="w-5 h-5 mr-2" />
@@ -336,9 +345,7 @@ function MicrophoneStatus({
         {config.icon}
         <div className="flex-1">
           <p className={`font-semibold ${config.color}`}>{config.title}</p>
-          {config.description && (
-            <p className="text-sm text-gray-600 mt-1">{config.description}</p>
-          )}
+          {config.description && <p className="text-sm text-gray-600 mt-1">{config.description}</p>}
         </div>
       </div>
 
@@ -351,8 +358,12 @@ function MicrophoneStatus({
 
       {(status === 'denied' || status === 'unavailable') && (
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={onRequest} size="sm">Request Access</Button>
-          <Button onClick={onRetry} size="sm" variant="outline">Check Again</Button>
+          <Button onClick={onRequest} size="sm">
+            Request Access
+          </Button>
+          <Button onClick={onRetry} size="sm" variant="outline">
+            Check Again
+          </Button>
         </div>
       )}
     </div>

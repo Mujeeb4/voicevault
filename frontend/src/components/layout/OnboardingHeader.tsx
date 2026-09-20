@@ -4,12 +4,19 @@
  * Sticky brand header for onboarding and marketing pages.
  */
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useAuthStore } from '@/store/auth';
 
 export function OnboardingHeader() {
   const pathname = usePathname();
+  const { isAuthenticated, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    void checkAuth();
+  }, [checkAuth]);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/78 backdrop-blur-xl supports-[backdrop-filter]:bg-background/72">
@@ -56,21 +63,34 @@ export function OnboardingHeader() {
           >
             Pricing
           </Link>
+          {isAuthenticated ? (
+            <Link
+              href="/settings"
+              className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 sm:inline-flex sm:px-4 ${
+                pathname === '/settings'
+                  ? 'bg-primary/12 text-primary'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+              }`}
+            >
+              Settings
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 sm:inline-flex sm:px-4 ${
+                pathname === '/login'
+                  ? 'bg-primary/12 text-primary'
+                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
+              }`}
+            >
+              Sign in
+            </Link>
+          )}
           <Link
-            href="/login"
-            className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 sm:inline-flex sm:px-4 ${
-              pathname === '/login'
-                ? 'bg-primary/12 text-primary'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-            }`}
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/pricing"
+            href={isAuthenticated ? '/dashboard' : '/signup'}
             className="shimmer-btn glow-amber-sm ml-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-md sm:px-5"
           >
-            Preserve My Voice
+            {isAuthenticated ? 'Open My Vault' : 'Start Free'}
           </Link>
         </nav>
       </div>

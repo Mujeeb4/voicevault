@@ -96,3 +96,5 @@ temp_recordings/
 
 # Node
 node_modules/
+artifacts/
+graphify-out/

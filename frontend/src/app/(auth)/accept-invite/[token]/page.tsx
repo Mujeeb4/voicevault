@@ -10,7 +10,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { familyApi } from '@/lib/api/family';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,17 +25,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, UserCheck, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function AcceptInvitationPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
+export default function AcceptInvitationPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = React.use(params);
   const router = useRouter();
   const { user, isAuthenticated, login, signup } = useAuthStore();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [invitationDetails, setInvitationDetails] = useState<Awaited<ReturnType<typeof familyApi.getInvitationDetails>> | null>(null);
+  const [invitationDetails, setInvitationDetails] = useState<Awaited<
+    ReturnType<typeof familyApi.getInvitationDetails>
+  > | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAccepted, setIsAccepted] = useState(false);
 
@@ -165,7 +170,7 @@ export default function AcceptInvitationPage({
 
   if (isLoading && !invitationDetails) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center space-y-4">
@@ -174,18 +179,20 @@ export default function AcceptInvitationPage({
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     );
   }
 
   if (error && !invitationDetails) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
         <Card className="w-full max-w-md border-destructive">
           <CardHeader>
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <CardTitle>Invalid Invitation</CardTitle>
+              <h1 className="font-sans text-xl font-semibold leading-tight text-card-foreground sm:text-2xl">
+                Invalid Invitation
+              </h1>
             </div>
           </CardHeader>
           <CardContent>
@@ -199,13 +206,13 @@ export default function AcceptInvitationPage({
             </Button>
           </CardFooter>
         </Card>
-      </div>
+      </main>
     );
   }
 
   if (isAccepted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
         <Card className="w-full max-w-md border-green-500">
           <CardHeader>
             <div className="flex items-center gap-2 text-green-600">
@@ -223,19 +230,19 @@ export default function AcceptInvitationPage({
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+    <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <UserCheck className="h-12 w-12 mx-auto mb-4 text-primary" />
           <CardTitle className="text-2xl">You&apos;re Invited!</CardTitle>
           <CardDescription>
-            <strong>{invitationDetails?.ai_owner.full_name}</strong> has invited you to chat with their AI
-            personality as their <strong>{invitationDetails?.relationship}</strong>.
+            <strong>{invitationDetails?.ai_owner.full_name}</strong> has invited you to chat with
+            their AI personality as their <strong>{invitationDetails?.relationship}</strong>.
           </CardDescription>
         </CardHeader>
 
@@ -266,7 +273,7 @@ export default function AcceptInvitationPage({
 
           {isNewUser ? (
             // New User Form
-            <form onSubmit={handleAcceptAsNewUser} className="space-y-4">
+            <form method="post" onSubmit={handleAcceptAsNewUser} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input
@@ -337,7 +344,7 @@ export default function AcceptInvitationPage({
             </form>
           ) : (
             // Existing User Form
-            <form onSubmit={handleAcceptAsExistingUser} className="space-y-4">
+            <form method="post" onSubmit={handleAcceptAsExistingUser} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="loginEmail">Email *</Label>
                 <Input
@@ -383,12 +390,11 @@ export default function AcceptInvitationPage({
 
         <CardFooter className="flex flex-col gap-2">
           <p className="text-xs text-muted-foreground text-center">
-            By accepting, you&apos;ll be able to chat with {invitationDetails?.ai_owner.full_name}&apos;s AI personality. You
-            cannot modify their voice or settings.
+            By accepting, you&apos;ll be able to chat with {invitationDetails?.ai_owner.full_name}
+            &apos;s AI personality. You cannot modify their voice or settings.
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </main>
   );
 }
-

@@ -71,7 +71,16 @@ export default function CheckoutPage() {
     };
 
     startCheckout();
-  }, [hasCheckedAuth, isAuthenticated, user?.is_premium, user?.payment_completed, user?.plan_type, isLoading, router, hasStartedCheckout]);
+  }, [
+    hasCheckedAuth,
+    isAuthenticated,
+    user?.is_premium,
+    user?.payment_completed,
+    user?.plan_type,
+    isLoading,
+    router,
+    hasStartedCheckout,
+  ]);
 
   if (error) {
     return (
@@ -88,6 +97,9 @@ export default function CheckoutPage() {
               <div className="rounded-full bg-red-50 p-3">
                 <AlertCircle className="h-10 w-10 text-red-500" />
               </div>
+              <h1 className="font-sans text-xl font-semibold text-[#2c2a26]">
+                Unable to start checkout
+              </h1>
               <p className="text-[#5c5853]">{error}</p>
               <Link
                 href="/pricing"
@@ -114,9 +126,15 @@ export default function CheckoutPage() {
         >
           <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary-600" />
-            <h2 className="font-sans text-lg font-semibold text-[#2c2a26]">Redirecting to secure checkout</h2>
-            <p className="text-sm text-[#5c5853]">You&apos;re making sure your voice never disappears.</p>
-            <p className="text-xs text-[#6b6560]">Click below. Start recording. Leave no regrets.</p>
+            <h1 className="font-sans text-lg font-semibold text-[#2c2a26]">
+              Redirecting to secure checkout
+            </h1>
+            <p className="text-sm text-[#5c5853]">
+              You&apos;re making sure your voice never disappears.
+            </p>
+            <p className="text-xs text-[#6b6560]">
+              You&apos;ll continue automatically when your secure checkout is ready.
+            </p>
           </div>
         </motion.div>
       </main>

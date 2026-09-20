@@ -11,7 +11,13 @@ import { useRouter } from 'next/navigation';
 import { ChatInterface } from '@/components/chat/ChatInterface';
 import { useAuthStore } from '@/store/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, MessageSquare, Lock } from 'lucide-react';
@@ -34,6 +40,7 @@ const ChatPage: React.FC = () => {
   const [accessibleAIs, setAccessibleAIs] = useState<AccessibleAI[]>([]);
   const [selectedAIId, setSelectedAIId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoadFailure, setIsLoadFailure] = useState(false);
 
   // Confidentiality: Check authentication (CIA Triad)
   useEffect(() => {
@@ -54,6 +61,7 @@ const ChatPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      setIsLoadFailure(false);
 
       // Fetch family members where user has access
       // This endpoint returns ONLY AIs the user is explicitly granted access to
@@ -68,7 +76,7 @@ const ChatPage: React.FC = () => {
 
       if (readyAIs.length === 0) {
         setError(
-          'No AI personalities are available yet. You may need to accept an invitation or wait for processing to complete.'
+          'No AI is ready for this account yet. Finish your own setup, or wait for an invited family AI to complete processing.'
         );
       } else {
         setAccessibleAIs(readyAIs);
@@ -79,6 +87,7 @@ const ChatPage: React.FC = () => {
       }
     } catch {
       console.error('Failed to load accessible AIs');
+      setIsLoadFailure(true);
       setError('Failed to load available AIs. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -99,22 +108,45 @@ const ChatPage: React.FC = () => {
       <div>
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <CardTitle>Unable to Access Chat</CardTitle>
+            <div
+              className={`flex items-center gap-2 ${isLoadFailure ? 'text-destructive' : 'text-foreground'}`}
+            >
+              {isLoadFailure ? (
+                <AlertCircle className="h-5 w-5" />
+              ) : (
+                <MessageSquare className="h-5 w-5 text-primary" />
+              )}
+              <CardTitle>
+                {isLoadFailure ? 'Unable to load chat' : "Chat isn't ready yet"}
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Alert variant="destructive">
+            <Alert variant={isLoadFailure ? 'destructive' : 'default'}>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
             <div className="flex gap-2">
-              <Button onClick={loadAccessibleAIs} variant="outline">
-                Retry
-              </Button>
-              <Button onClick={() => router.push('/dashboard')}>
-                Go to Dashboard
-              </Button>
+              {isLoadFailure ? (
+                <>
+                  <Button onClick={loadAccessibleAIs} variant="outline">
+                    Retry
+                  </Button>
+                  <Button onClick={() => router.push('/dashboard')}>Dashboard</Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => router.push('/dashboard')} variant="outline">
+                    Dashboard
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      router.push(user?.recording_completed ? '/processing' : '/record')
+                    }
+                  >
+                    {user?.recording_completed ? 'View processing' : 'Start recording'}
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -157,13 +189,16 @@ const ChatPage: React.FC = () => {
             <Alert>
               <Lock className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Security Notice:</strong> All conversations are encrypted and stored securely.
-                You can only chat with AI personalities where you&apos;ve accepted an invitation.
-                You cannot modify their voice, personality, or settings.
+                <strong>Security Notice:</strong> All conversations are encrypted and stored
+                securely. You can only chat with AI personalities where you&apos;ve accepted an
+                invitation. You cannot modify their voice, personality, or settings.
               </AlertDescription>
             </Alert>
 
-            <Button onClick={() => selectedAIId && router.push(`/chat?ai=${selectedAIId}`)} disabled={!selectedAIId}>
+            <Button
+              onClick={() => selectedAIId && router.push(`/chat?ai=${selectedAIId}`)}
+              disabled={!selectedAIId}
+            >
               Start Chatting
             </Button>
           </CardContent>

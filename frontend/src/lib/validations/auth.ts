@@ -16,8 +16,11 @@ export const signupSchema = z
       .min(8, 'Password must be at least 8 characters')
       .max(128, 'Password must be 128 characters or fewer'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
-    full_name: z.string().min(1, 'Full name is required'),
+    full_name: z.string().trim().min(1, 'Full name is required'),
     phone_number: z.string().optional(),
+    acceptedTerms: z.boolean().refine((accepted) => accepted, {
+      message: 'You must accept the Terms and Privacy Policy',
+    }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',

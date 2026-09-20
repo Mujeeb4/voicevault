@@ -51,7 +51,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await login(data);
-      toast.success('Welcome back!');
+      toast.success('Signed in successfully.');
       const redirect = searchParams.get('redirect');
       const safeRedirect =
         redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
@@ -91,7 +91,7 @@ export default function LoginPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+            <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email" className="text-foreground">
                   Email
@@ -99,6 +99,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   error={errors.email?.message}
                   {...register('email')}
@@ -114,6 +115,7 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
                     placeholder="Enter your password"
                     error={errors.password?.message}
                     {...register('password')}
@@ -130,14 +132,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <label className="flex cursor-pointer items-center gap-2">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
-                  />
-                  <span className="text-sm text-muted-foreground">Remember me</span>
-                </label>
+              <div className="flex items-center justify-end">
                 <Link
                   href="/forgot-password"
                   className="text-sm font-medium text-primary hover:text-primary/90 transition-colors"

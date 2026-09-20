@@ -1,13 +1,13 @@
 /**
  * Signup Page — Mobile-first, professional
- * Single plan flow: signup → checkout ($149.99) → record
+ * Free-first flow: signup → dashboard (or the explicitly requested safe page)
  */
 
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, Check } from 'lucide-react';
@@ -24,10 +24,10 @@ import { OnboardingHeader, SiteFooter } from '@/components/layout';
 
 export default function SignupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const signup = useAuthStore((state) => state.signup);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const {
     register,
@@ -35,19 +35,20 @@ export default function SignupPage() {
     formState: { errors, isSubmitting },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
+    defaultValues: { acceptedTerms: false },
   });
 
   const onSubmit = async (data: SignupFormData) => {
-    if (!agreedToTerms) {
-      toast.error('Please accept the terms and conditions');
-      return;
-    }
-
     try {
       const { email, password, full_name, phone_number } = data;
       await signup({ email, password, full_name, phone_number });
-      toast.success('Account created! Redirecting to checkout...');
-      router.push('/checkout');
+      toast.success('Your free Memory Starter vault is ready.');
+      const requestedNext = searchParams.get('next');
+      const safeNext =
+        requestedNext?.startsWith('/') && !requestedNext.startsWith('//')
+          ? requestedNext
+          : '/dashboard?welcome=1';
+      router.replace(safeNext);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Failed to create account'));
     }
@@ -68,7 +69,7 @@ export default function SignupPage() {
               Begin Your Forever Memory
             </h1>
             <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              One account. One payment. Your voice, preserved.
+              Start free. Record your first memories today. Upgrade only when you choose.
             </p>
           </div>
 
@@ -78,7 +79,12 @@ export default function SignupPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+            <form
+              method="post"
+              noValidate
+              onSubmit={handleSubmit(onSubmit)}
+              className="space-y-4 sm:space-y-5"
+            >
               <div>
                 <Label htmlFor="full_name" className="text-foreground">
                   Full name
@@ -100,6 +106,7 @@ export default function SignupPage() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="you@example.com"
                   error={errors.email?.message}
                   {...register('email')}
@@ -129,6 +136,7 @@ export default function SignupPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     placeholder="Create a strong password"
                     error={errors.password?.message}
                     {...register('password')}
@@ -153,6 +161,7 @@ export default function SignupPage() {
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     placeholder="Re-enter password"
                     error={errors.confirmPassword?.message}
                     {...register('confirmPassword')}
@@ -173,35 +182,43 @@ export default function SignupPage() {
                 </div>
               </div>
 
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  id="terms"
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
-                />
-                <span className="text-sm text-muted-foreground">
-                  I agree to the{' '}
-                  <Link
-                    href="/terms"
-                    className="font-medium text-primary hover:text-primary/90 transition-colors"
-                  >
-                    Terms
-                  </Link>{' '}
-                  and{' '}
-                  <Link
-                    href="/privacy"
-                    className="font-medium text-primary hover:text-primary/90 transition-colors"
-                  >
-                    Privacy
-                  </Link>
-                </span>
-              </label>
+              <div>
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    id="terms"
+                    type="checkbox"
+                    {...register('acceptedTerms')}
+                    aria-invalid={errors.acceptedTerms ? true : undefined}
+                    aria-describedby={errors.acceptedTerms ? 'terms-error' : undefined}
+                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    I agree to the{' '}
+                    <Link
+                      href="/terms"
+                      className="font-medium text-primary hover:text-primary/90 transition-colors"
+                    >
+                      Terms
+                    </Link>{' '}
+                    and{' '}
+                    <Link
+                      href="/privacy"
+                      className="font-medium text-primary hover:text-primary/90 transition-colors"
+                    >
+                      Privacy
+                    </Link>
+                  </span>
+                </label>
+                {errors.acceptedTerms && (
+                  <p id="terms-error" className="mt-1 text-sm text-error-500" role="alert">
+                    {errors.acceptedTerms.message}
+                  </p>
+                )}
+              </div>
 
               <Button
                 type="submit"
-                disabled={isSubmitting || !agreedToTerms}
+                disabled={isSubmitting}
                 className="h-11 w-full font-semibold sm:h-12"
                 size="lg"
               >
@@ -213,7 +230,7 @@ export default function SignupPage() {
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    Secure My Legacy
+                    Create Free Account
                   </>
                 )}
               </Button>

@@ -18,6 +18,7 @@ import {
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { SoundWave } from '@/components/home/SoundWave';
+import { useAuthStore } from '@/store/auth';
 
 const HeroBackground = dynamic(
   () => import('@/components/home/HeroBackground').then((mod) => mod.HeroBackground),
@@ -79,7 +80,7 @@ const steps = [
     number: '01',
     title: 'Record Your Voice',
     description:
-      'Answer 30+ guided questions about your life, values, and memories in your own words.',
+      'Answer 30 guided questions plus an optional reflection about your life, values, and memories.',
     icon: Mic,
     color: 'amber',
   },
@@ -210,348 +211,355 @@ const accentColorMap = {
 };
 
 export default function HomePage() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return (
     <div className="min-h-screen bg-background">
       <OnboardingHeader />
 
-      {/* ─── HERO ────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-14 sm:py-18 md:py-24">
-        <HeroBackground />
+      <main>
+        {/* ─── HERO ────────────────────────────────────────────────── */}
+        <section className="relative overflow-hidden py-14 sm:py-18 md:py-24">
+          <HeroBackground />
 
-        <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="mx-auto max-w-4xl text-center"
-          >
-            {/* Eyebrow badge */}
+          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-1.5"
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="mx-auto max-w-4xl text-center"
             >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-              </span>
-              <span className="text-[12px] font-semibold text-primary">
-                AI Voice Preservation Technology
-              </span>
+              {/* Eyebrow badge */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-1.5"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                <span className="text-[12px] font-semibold text-primary">
+                  AI Voice Preservation Technology
+                </span>
+              </motion.div>
+
+              {/* Main heading */}
+              <h1 className="font-heading text-4xl font-bold leading-[1.08] text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
+                One Day, Your Voice
+                <br />
+                Will Be
+                <br />
+                <span className="text-gradient-amber italic">the Thing They Miss Most.</span>
+              </h1>
+
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
+                Give your family something no photo or video ever could — a living memory that
+                speaks back, tells stories, and says{' '}
+                <em className="text-foreground/80 not-italic font-medium">
+                  &ldquo;I love you&rdquo;
+                </em>{' '}
+                in your own voice. Forever.
+              </p>
+
+              {/* CTAs */}
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                <Button
+                  asChild
+                  size="lg"
+                  className="shimmer-btn glow-amber-sm h-12 gap-2 rounded-lg px-8 text-sm font-semibold text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.04] sm:h-14 sm:px-10 sm:text-base"
+                >
+                  <Link href="/pricing">
+                    Preserve My Voice
+                    <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="lg"
+                  className="h-12 gap-2 rounded-lg border border-border bg-card/50 px-8 text-sm font-medium text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/70 hover:text-foreground sm:h-14 sm:px-8"
+                >
+                  <Link href={isAuthenticated ? '/dashboard' : '/login'}>
+                    <Play className="h-4 w-4 fill-current" strokeWidth={0} />
+                    {isAuthenticated ? 'Open My Vault' : 'Sign In'}
+                  </Link>
+                </Button>
+              </div>
+
+              {/* Trust badges */}
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+                {trustItems.map((item) => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground/70"
+                  >
+                    <CheckCircle className="h-3.5 w-3.5 text-teal-500/80" strokeWidth={2} />
+                    {item}
+                  </span>
+                ))}
+              </div>
             </motion.div>
 
-            {/* Main heading */}
-            <h1 className="font-heading text-4xl font-bold leading-[1.08] text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-              One Day, Your Voice
-              <br />
-              Will Be
-              <br />
-              <span className="text-gradient-amber italic">the Thing They Miss Most.</span>
-            </h1>
+            {/* Sound wave visualization */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.4 }}
+              className="mt-12 flex flex-col items-center gap-3"
+            >
+              <p className="text-[11px] font-semibold uppercase text-muted-foreground/60">
+                Your voice, preserved forever
+              </p>
+              <SoundWave barCount={36} className="h-14 sm:h-16" />
+            </motion.div>
+          </div>
+        </section>
 
-            <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
-              Give your family something no photo or video ever could — a living memory that speaks
-              back, tells stories, and says{' '}
-              <em className="text-foreground/80 not-italic font-medium">
-                &ldquo;I love you&rdquo;
-              </em>{' '}
-              in your own voice. Forever.
-            </p>
-
-            {/* CTAs */}
-            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
-              <Button
-                asChild
-                size="lg"
-                className="shimmer-btn glow-amber-sm h-12 gap-2 rounded-lg px-8 text-sm font-semibold text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.04] sm:h-14 sm:px-10 sm:text-base"
-              >
-                <Link href="/pricing">
-                  Preserve My Voice
-                  <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                variant="ghost"
-                size="lg"
-                className="h-12 gap-2 rounded-lg border border-border bg-card/50 px-8 text-sm font-medium text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/70 hover:text-foreground sm:h-14 sm:px-8"
-              >
-                <Link href="/login">
-                  <Play className="h-4 w-4 fill-current" strokeWidth={0} />
-                  Sign In
-                </Link>
-              </Button>
-            </div>
-
-            {/* Trust badges */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-              {trustItems.map((item) => (
+        {/* ─── MARQUEE BANNER ──────────────────────────────────────── */}
+        <section
+          className="relative border-y py-3"
+          aria-label="Why preserve"
+          style={{ borderColor: 'hsl(38 95% 55% / 0.12)' }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(180deg, hsl(38 95% 55% / 0.04) 0%, transparent 100%)',
+            }}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-r from-background to-transparent"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
+            aria-hidden
+          />
+          <div className="overflow-hidden">
+            <div className="flex w-max animate-banner-marquee items-center gap-x-10">
+              {[...bannerLines, ...bannerLines].flatMap((line, i) => [
                 <span
-                  key={item}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground/70"
+                  key={`banner-${i}`}
+                  className="whitespace-nowrap text-[12px] font-medium text-primary/70 sm:text-[13px]"
                 >
-                  <CheckCircle className="h-3.5 w-3.5 text-teal-500/80" strokeWidth={2} />
-                  {item}
-                </span>
-              ))}
+                  {line}
+                </span>,
+                <span
+                  key={`sep-${i}`}
+                  className="h-1 w-1 shrink-0 rounded-full bg-primary/20"
+                  aria-hidden
+                />,
+              ])}
             </div>
-          </motion.div>
+          </div>
+        </section>
 
-          {/* Sound wave visualization */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="mt-12 flex flex-col items-center gap-3"
-          >
-            <p className="text-[11px] font-semibold uppercase text-muted-foreground/60">
-              Your voice, preserved forever
-            </p>
-            <SoundWave barCount={36} className="h-14 sm:h-16" />
-          </motion.div>
-        </div>
-      </section>
+        {/* ─── WHAT YOU'RE PRESERVING ──────────────────────────────── */}
+        <section className="py-16 sm:py-20 md:py-24" aria-label="What you preserve">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <motion.div {...fadeUp} className="mb-10 sm:mb-12">
+              <p className="text-[11px] font-semibold uppercase text-primary/80">
+                What you preserve
+              </p>
+              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+                A Gift That Speaks
+                <span className="text-gradient-amber italic"> Across Time</span>
+              </h2>
+              <p className="mt-3 max-w-xl text-base text-muted-foreground">
+                Your voice carries decades of love, laughter, and wisdom. Don&apos;t let it
+                disappear.
+              </p>
+            </motion.div>
 
-      {/* ─── MARQUEE BANNER ──────────────────────────────────────── */}
-      <section
-        className="relative border-y py-3"
-        aria-label="Why preserve"
-        style={{ borderColor: 'hsl(38 95% 55% / 0.12)' }}
-      >
-        <div
-          className="absolute inset-0"
+            <ExpandableFeatureCards />
+          </div>
+        </section>
+
+        {/* ─── HOW IT WORKS ────────────────────────────────────────── */}
+        <section
+          id="how-it-works"
+          className="relative scroll-mt-16 py-16 sm:scroll-mt-[4.25rem] sm:py-20 md:py-24"
           style={{
-            background: 'linear-gradient(180deg, hsl(38 95% 55% / 0.04) 0%, transparent 100%)',
+            background:
+              'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
           }}
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-r from-background to-transparent"
-          aria-hidden
-        />
-        <div
-          className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
-          aria-hidden
-        />
-        <div className="overflow-hidden">
-          <div className="flex w-max animate-banner-marquee items-center gap-x-10">
-            {[...bannerLines, ...bannerLines].flatMap((line, i) => [
-              <span
-                key={`banner-${i}`}
-                className="whitespace-nowrap text-[12px] font-medium text-primary/70 sm:text-[13px]"
-              >
-                {line}
-              </span>,
-              <span
-                key={`sep-${i}`}
-                className="h-1 w-1 shrink-0 rounded-full bg-primary/20"
+        >
+          {/* Section top separator */}
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.18), hsl(var(--secondary) / 0.14), transparent)',
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-0 right-0 h-px"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, hsl(var(--secondary) / 0.14), hsl(var(--primary) / 0.1), transparent)',
+            }}
+          />
+
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <motion.div {...fadeUp} className="mb-12 sm:mb-14">
+              <p className="text-[11px] font-semibold uppercase text-primary/80">How it works</p>
+              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
+                Don&apos;t Let Your Story{' '}
+                <span className="text-gradient-amber italic">End With You.</span>
+              </h2>
+              <p className="mt-3 max-w-lg text-base text-muted-foreground">
+                Three simple steps. One hour of your time. A lifetime gift for everyone you love.
+              </p>
+            </motion.div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6 lg:gap-8">
+              {steps.map((step, i) => {
+                const Icon = step.icon;
+                const colors = accentColorMap[step.color as keyof typeof accentColorMap];
+                return (
+                  <motion.div
+                    key={step.number}
+                    initial={{ opacity: 0, y: 24 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <div className="group relative h-full rounded-lg border border-border bg-card/50 p-6 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40 sm:p-7">
+                      {/* Step number — large background art */}
+                      <div className="absolute right-5 top-4 font-heading text-[72px] font-bold leading-none text-white/[0.03] select-none">
+                        {step.number}
+                      </div>
+
+                      {/* Icon */}
+                      <div
+                        className={`mb-5 flex h-12 w-12 items-center justify-center rounded-lg ${colors.bg} ${colors.text} transition-colors duration-300 group-hover:scale-110`}
+                      >
+                        <Icon className="h-6 w-6" strokeWidth={1.75} />
+                      </div>
+
+                      {/* Step label */}
+                      <p className={`mb-2 text-[11px] font-semibold uppercase ${colors.text}`}>
+                        Step {step.number}
+                      </p>
+
+                      <h3 className="font-heading text-xl font-semibold text-foreground sm:text-2xl">
+                        {step.title}
+                      </h3>
+                      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                        {step.description}
+                      </p>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ─── EMOTIONAL CTA BANNER ────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden py-16 sm:py-20 md:py-24"
+          aria-label="Preserve your voice"
+        >
+          {/* Background */}
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 44%, hsl(var(--secondary) / 0.06))',
+            }}
+            aria-hidden
+          />
+
+          <div className="relative z-10 mx-auto max-w-3xl px-4 text-center sm:px-6">
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
+                <Mic className="h-7 w-7 text-primary" strokeWidth={1.75} />
+              </div>
+
+              <h2 className="font-heading text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
+                Your voice is <span className="text-gradient-amber italic">irreplaceable.</span>
+              </h2>
+
+              <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
+                Don&apos;t let it become a memory they can&apos;t hear.{' '}
+                <strong className="font-semibold text-foreground/90">One hour today</strong> gives
+                your family a living legacy — forever.
+              </p>
+
+              <div className="mt-8">
+                <Button
+                  asChild
+                  size="lg"
+                  className="shimmer-btn glow-amber h-auto min-h-14 w-full max-w-full gap-2.5 whitespace-normal rounded-lg px-4 py-3 text-center text-sm font-semibold leading-snug text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.02] sm:w-auto sm:px-10 sm:text-base sm:hover:scale-[1.04]"
+                >
+                  <Link href="/pricing">
+                    Preserve My Voice — $149.99 Lifetime
+                    <ArrowRight className="h-5 w-5" strokeWidth={2.5} />
+                  </Link>
+                </Button>
+              </div>
+
+              <p className="mt-4 text-sm text-muted-foreground/60">
+                One-time payment · Lifetime access · 30-day guarantee
+              </p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* ─── TESTIMONIALS ────────────────────────────────────────── */}
+        <section
+          className="relative py-16 sm:py-20 md:py-24"
+          aria-label="Testimonials"
+          style={{
+            background:
+              'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
+          }}
+        >
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.18), hsl(var(--primary) / 0.18), transparent)',
+            }}
+          />
+
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <motion.div {...fadeUp} className="mb-10">
+              <p className="text-[11px] font-semibold uppercase text-primary/80">Testimonials</p>
+              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl">
+                What <span className="text-gradient-amber">Families</span> Say
+              </h2>
+            </motion.div>
+
+            <div className="relative">
+              <div
+                className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
                 aria-hidden
-              />,
-            ])}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── WHAT YOU'RE PRESERVING ──────────────────────────────── */}
-      <section className="py-16 sm:py-20 md:py-24" aria-label="What you preserve">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <motion.div {...fadeUp} className="mb-10 sm:mb-12">
-            <p className="text-[11px] font-semibold uppercase text-primary/80">What you preserve</p>
-            <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
-              A Gift That Speaks
-              <span className="text-gradient-amber italic"> Across Time</span>
-            </h2>
-            <p className="mt-3 max-w-xl text-base text-muted-foreground">
-              Your voice carries decades of love, laughter, and wisdom. Don&apos;t let it disappear.
-            </p>
-          </motion.div>
-
-          <ExpandableFeatureCards />
-        </div>
-      </section>
-
-      {/* ─── HOW IT WORKS ────────────────────────────────────────── */}
-      <section
-        id="how-it-works"
-        className="relative py-16 sm:py-20 md:py-24"
-        style={{
-          background:
-            'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
-        }}
-      >
-        {/* Section top separator */}
-        <div
-          className="absolute top-0 left-0 right-0 h-px"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.18), hsl(var(--secondary) / 0.14), transparent)',
-          }}
-        />
-        <div
-          className="absolute bottom-0 left-0 right-0 h-px"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, hsl(var(--secondary) / 0.14), hsl(var(--primary) / 0.1), transparent)',
-          }}
-        />
-
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <motion.div {...fadeUp} className="mb-12 sm:mb-14">
-            <p className="text-[11px] font-semibold uppercase text-primary/80">How it works</p>
-            <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
-              Don&apos;t Let Your Story{' '}
-              <span className="text-gradient-amber italic">End With You.</span>
-            </h2>
-            <p className="mt-3 max-w-lg text-base text-muted-foreground">
-              Three simple steps. One hour of your time. A lifetime gift for everyone you love.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6 lg:gap-8">
-            {steps.map((step, i) => {
-              const Icon = step.icon;
-              const colors = accentColorMap[step.color as keyof typeof accentColorMap];
-              return (
-                <motion.div
-                  key={step.number}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <div className="group relative h-full rounded-lg border border-border bg-card/50 p-6 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40 sm:p-7">
-                    {/* Step number — large background art */}
-                    <div className="absolute right-5 top-4 font-heading text-[72px] font-bold leading-none text-white/[0.03] select-none">
-                      {step.number}
-                    </div>
-
-                    {/* Icon */}
-                    <div
-                      className={`mb-5 flex h-12 w-12 items-center justify-center rounded-lg ${colors.bg} ${colors.text} transition-colors duration-300 group-hover:scale-110`}
-                    >
-                      <Icon className="h-6 w-6" strokeWidth={1.75} />
-                    </div>
-
-                    {/* Step label */}
-                    <p className={`mb-2 text-[11px] font-semibold uppercase ${colors.text}`}>
-                      Step {step.number}
-                    </p>
-
-                    <h3 className="font-heading text-xl font-semibold text-foreground sm:text-2xl">
-                      {step.title}
-                    </h3>
-                    <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                      {step.description}
-                    </p>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── EMOTIONAL CTA BANNER ────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden py-16 sm:py-20 md:py-24"
-        aria-label="Preserve your voice"
-      >
-        {/* Background */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 44%, hsl(var(--secondary) / 0.06))',
-          }}
-          aria-hidden
-        />
-
-        <div className="relative z-10 mx-auto max-w-3xl px-4 text-center sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
-              <Mic className="h-7 w-7 text-primary" strokeWidth={1.75} />
-            </div>
-
-            <h2 className="font-heading text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
-              Your voice is <span className="text-gradient-amber italic">irreplaceable.</span>
-            </h2>
-
-            <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-              Don&apos;t let it become a memory they can&apos;t hear.{' '}
-              <strong className="font-semibold text-foreground/90">One hour today</strong> gives
-              your family a living legacy — forever.
-            </p>
-
-            <div className="mt-8">
-              <Button
-                asChild
-                size="lg"
-                className="shimmer-btn glow-amber h-14 gap-2.5 rounded-lg px-10 text-base font-semibold text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.04]"
-              >
-                <Link href="/pricing">
-                  Preserve My Voice — $149.99 Lifetime
-                  <ArrowRight className="h-5 w-5" strokeWidth={2.5} />
-                </Link>
-              </Button>
-            </div>
-
-            <p className="mt-4 text-sm text-muted-foreground/60">
-              One-time payment · Lifetime access · 30-day guarantee
-            </p>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── TESTIMONIALS ────────────────────────────────────────── */}
-      <section
-        className="relative py-16 sm:py-20 md:py-24"
-        aria-label="Testimonials"
-        style={{
-          background:
-            'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
-        }}
-      >
-        <div
-          className="absolute top-0 left-0 right-0 h-px"
-          style={{
-            background:
-              'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.18), hsl(var(--primary) / 0.18), transparent)',
-          }}
-        />
-
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <motion.div {...fadeUp} className="mb-10">
-            <p className="text-[11px] font-semibold uppercase text-primary/80">Testimonials</p>
-            <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl">
-              What <span className="text-gradient-amber">Families</span> Say
-            </h2>
-          </motion.div>
-
-          <div className="relative">
-            <div
-              className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
-              aria-hidden
-            />
-            <div className="overflow-hidden">
-              <div className="flex w-max gap-3 animate-testimonials-scroll">
-                {[...testimonials, ...testimonials].map((t, i) => (
-                  <TestimonialCard key={`${t.name}-${i}`} t={t} />
-                ))}
+              />
+              <div
+                className="pointer-events-none absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
+                aria-hidden
+              />
+              <div className="overflow-hidden">
+                <div className="flex w-max gap-3 animate-testimonials-scroll">
+                  {[...testimonials, ...testimonials].map((t, i) => (
+                    <TestimonialCard key={`${t.name}-${i}`} t={t} />
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

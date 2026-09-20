@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import { useRecordingStore } from '@/store/recording';
@@ -36,6 +36,7 @@ interface AccessibleAI {
 
 function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, refreshUser } = useAuthStore();
   const { recordings, loadSavedRecordings } = useRecordingStore();
   const [accessibleAIs, setAccessibleAIs] = useState<AccessibleAI[]>([]);
@@ -73,12 +74,17 @@ function DashboardContent() {
     loadSavedRecordings(user.id);
   }, [loadSavedRecordings, user?.id, user?.recording_completed]);
 
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = !!(
+    user?.is_premium ||
+    user?.payment_completed ||
+    user?.plan_type === 'premium'
+  );
   const hasRecorded = user?.recording_completed;
   const hasAI = user?.ai_ready;
   const isFamilyMember = accessibleAIs.length > 0;
   const quota = user?.usage_quota;
   const savedDraftCount = recordings.size;
+  const isFirstSession = searchParams.get('welcome') === '1';
 
   // Determine what to show based on user's status
   const getProgressStep = () => {
@@ -120,7 +126,7 @@ function DashboardContent() {
         <div className="relative z-10 mt-2 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="font-heading text-3xl font-semibold leading-tight text-foreground sm:text-4xl">
-              Welcome back, {user?.full_name}
+              {isFirstSession ? `Welcome, ${user?.full_name}` : `Welcome back, ${user?.full_name}`}
             </h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
               {hasAI
@@ -129,11 +135,20 @@ function DashboardContent() {
                   ? "Your recordings are in place. Let's finish training your AI voice memory."
                   : isFamilyMember
                     ? 'You have family voice memories ready to visit.'
-                    : 'Start with your free Memory Starter vault and preserve the first chapter today.'}
+                    : isPremium
+                      ? 'Your complete Premium vault is unlocked. Start recording the stories your family will treasure.'
+                      : 'Start with your free Memory Starter vault and preserve the first chapter today.'}
             </p>
           </div>
-          <Button onClick={() => router.push(hasRecorded ? '/processing' : '/record')} className="w-full shimmer-btn text-primary-foreground sm:w-auto">
-            {hasRecorded ? 'View Processing' : savedDraftCount > 0 ? `Continue Recording (${savedDraftCount} saved)` : 'Start Recording'}
+          <Button
+            onClick={() => router.push(hasRecorded ? '/processing' : '/record')}
+            className="w-full shimmer-btn text-primary-foreground sm:w-auto"
+          >
+            {hasRecorded
+              ? 'View Processing'
+              : savedDraftCount > 0
+                ? `Continue Recording (${savedDraftCount} saved)`
+                : 'Start Recording'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
@@ -145,7 +160,8 @@ function DashboardContent() {
             <div>
               <p className="font-semibold text-foreground">Saved recording draft found</p>
               <p className="text-sm text-muted-foreground">
-                {savedDraftCount} answer{savedDraftCount === 1 ? '' : 's'} saved on this browser. Continue, review, then upload when ready.
+                {savedDraftCount} answer{savedDraftCount === 1 ? '' : 's'} saved on this browser.
+                Continue, review, then upload when ready.
               </p>
             </div>
             <Button onClick={() => router.push('/record')} className="w-full sm:w-auto">
@@ -174,17 +190,22 @@ function DashboardContent() {
               step={1}
               currentStep={progressStep}
               icon={<CreditCard className="h-5 w-5" />}
-              title={isPremium ? 'Premium Active' : 'Memory Starter'}
-              description={isPremium ? 'Full vault unlocked' : 'Free plan active'}
+              title={isPremium ? 'Premium' : 'Memory Starter'}
+              description={isPremium ? 'Current plan · Full vault unlocked' : 'Current plan · Free'}
               completed={isPremium}
-              onClick={() => router.push('/pricing')}
             />
             <ProgressCard
               step={2}
               currentStep={progressStep}
               icon={<Mic className="h-5 w-5" />}
               title={savedDraftCount > 0 && !hasRecorded ? 'Continue' : 'Record'}
-              description={savedDraftCount > 0 && !hasRecorded ? `${savedDraftCount} saved locally` : isPremium ? 'Answer 30 questions' : 'Answer 5 questions'}
+              description={
+                savedDraftCount > 0 && !hasRecorded
+                  ? `${savedDraftCount} saved locally`
+                  : isPremium
+                    ? 'Answer 30 questions'
+                    : 'Answer 5 questions'
+              }
               completed={hasRecorded}
               onClick={() => router.push('/record')}
             />
@@ -214,7 +235,10 @@ function DashboardContent() {
             <Card>
               <CardHeader>
                 <CardTitle>Memory Starter usage</CardTitle>
-                <CardDescription>Free plan includes 5 questions, 15 recording minutes, 5 messages, and 1 family invite.</CardDescription>
+                <CardDescription>
+                  Free plan includes 5 questions, 15 recording minutes, 5 messages, and 1 family
+                  invite.
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <UsageMeter
@@ -281,9 +305,12 @@ function DashboardContent() {
               <CardContent className="py-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-heading text-2xl font-semibold">Unlock the full memory vault</h3>
+                    <h3 className="font-heading text-2xl font-semibold">
+                      Unlock the full memory vault
+                    </h3>
                     <p className="mt-1 text-muted-foreground">
-                      Premium adds voice cloning, 30+ questions, 10 family members, and generous monthly usage.
+                      Premium adds voice cloning, 30 guided questions plus an optional reflection,
+                      10 family members, and generous monthly usage.
                     </p>
                   </div>
                   <Button
@@ -309,9 +336,7 @@ function DashboardContent() {
               <Users className="h-5 w-5 text-primary" />
               Family AIs
             </CardTitle>
-            <CardDescription>
-              Chat with AI personalities from your family members
-            </CardDescription>
+            <CardDescription>Chat with AI personalities from your family members</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -362,7 +387,7 @@ function ProgressCard({
   description: string;
   completed?: boolean;
   disabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
 }) {
   const isActive = step === currentStep + 1;
 
@@ -373,36 +398,40 @@ function ProgressCard({
         visible: { opacity: 1, y: 0 },
       }}
     >
-    <Card
-      className={`cursor-pointer transition-all duration-200 hover:-translate-y-0.5 ${completed
-        ? 'border-primary/45 bg-primary/12'
-        : isActive
-          ? 'border-primary/70 shadow-[0_0_0_1px_hsl(var(--primary)/0.16),0_16px_34px_hsl(var(--primary)/0.1)]'
-          : disabled
-            ? 'opacity-60 cursor-not-allowed'
-            : 'bg-card/60 hover:border-primary/35'
-        }`}
-      onClick={disabled ? undefined : onClick}
-    >
-      <CardContent className="p-4 flex items-center gap-3">
-        <div
-          className={`w-10 h-10 rounded-lg flex items-center justify-center ${completed
-            ? 'bg-primary text-primary-foreground'
+      <Card
+        className={`${onClick && !disabled ? 'cursor-pointer hover:-translate-y-0.5' : ''} transition-all duration-200 ${
+          completed
+            ? 'border-primary/45 bg-primary/12'
             : isActive
-              ? 'bg-primary text-primary-foreground'
+              ? 'border-primary/70 shadow-[0_0_0_1px_hsl(var(--primary)/0.16),0_16px_34px_hsl(var(--primary)/0.1)]'
               : disabled
-                ? 'bg-muted text-muted-foreground'
-                : 'bg-muted text-muted-foreground'
+                ? 'opacity-60 cursor-not-allowed'
+                : `bg-card/60 ${onClick ? 'hover:border-primary/35' : ''}`
+        }`}
+        onClick={disabled ? undefined : onClick}
+      >
+        <CardContent className="p-4 flex items-center gap-3">
+          <div
+            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              completed
+                ? 'bg-primary text-primary-foreground'
+                : isActive
+                  ? 'bg-primary text-primary-foreground'
+                  : disabled
+                    ? 'bg-muted text-muted-foreground'
+                    : 'bg-muted text-muted-foreground'
             }`}
-        >
-          {completed ? <CheckCircle2 className="h-5 w-5" /> : icon}
-        </div>
-        <div>
-          <p className={`font-medium ${disabled ? 'text-muted-foreground' : 'text-foreground'}`}>{title}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
-        </div>
-      </CardContent>
-    </Card>
+          >
+            {completed ? <CheckCircle2 className="h-5 w-5" /> : icon}
+          </div>
+          <div>
+            <p className={`font-medium ${disabled ? 'text-muted-foreground' : 'text-foreground'}`}>
+              {title}
+            </p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 }
@@ -425,7 +454,8 @@ function UsageMeter({
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-foreground">{label}</p>
         <p className="text-xs text-muted-foreground">
-          {used} / {limit}{suffix ? ` ${suffix}` : ''}
+          {used} / {limit}
+          {suffix ? ` ${suffix}` : ''}
         </p>
       </div>
       <Progress value={value} className="h-2" />
@@ -450,7 +480,9 @@ function ActionCard({
       className="flex cursor-pointer items-center gap-4 rounded-lg border border-border bg-background/35 p-4 transition-all duration-200 hover:border-primary/35 hover:bg-primary/10"
       onClick={onClick}
     >
-      <div className="rounded-lg border border-primary/25 bg-primary/12 p-3 text-primary">{icon}</div>
+      <div className="rounded-lg border border-primary/25 bg-primary/12 p-3 text-primary">
+        {icon}
+      </div>
       <div>
         <p className="font-medium text-foreground">{title}</p>
         <p className="text-sm text-muted-foreground">{description}</p>

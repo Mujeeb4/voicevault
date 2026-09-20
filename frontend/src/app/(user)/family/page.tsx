@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Search, Users, UserPlus, Info, Lock } from 'lucide-react';
+import { Loader2, Search, Users, UserPlus, Info, Lock, ArrowRight } from 'lucide-react';
 function FamilyManagementContent() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -26,8 +26,10 @@ function FamilyManagementContent() {
   const [activeTab, setActiveTab] = useState<'all' | 'accepted' | 'pending'>('all');
 
   useEffect(() => {
-    loadFamilyMembers();
-  }, [loadFamilyMembers]);
+    if (user?.ai_ready) {
+      loadFamilyMembers();
+    }
+  }, [loadFamilyMembers, user?.ai_ready]);
 
   // Filter members
   const filteredMembers = familyMembers.filter((member) => {
@@ -51,8 +53,36 @@ function FamilyManagementContent() {
 
   const acceptedCount = familyMembers.filter((m) => !!m.invitation_accepted_at).length;
   const pendingCount = familyMembers.filter((m) => !m.invitation_accepted_at).length;
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = !!(
+    user?.is_premium ||
+    user?.payment_completed ||
+    user?.plan_type === 'premium'
+  );
   const inviteLimit = user?.usage_quota?.limits.family_members ?? (isPremium ? 10 : 1);
+
+  if (!user?.ai_ready) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="journey-hero p-6 sm:p-8">
+          <p className="journey-kicker">Family access</p>
+          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+            Finish your AI before inviting family
+          </h1>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Family invitations become available after your recordings are processed and your AI is
+            ready to chat.
+          </p>
+          <Button
+            className="mt-6"
+            onClick={() => router.push(user?.recording_completed ? '/processing' : '/record')}
+          >
+            {user?.recording_completed ? 'View processing' : 'Start recording'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading && familyMembers.length === 0) {
     return (
@@ -71,7 +101,9 @@ function FamilyManagementContent() {
       <div className="journey-hero mb-8 flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
         <div>
           <p className="journey-kicker">Family access</p>
-          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">Family Management</h1>
+          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+            Family Management
+          </h1>
           <p className="mt-1 text-muted-foreground">
             {familyMembers.length} of {inviteLimit} family invitations used
           </p>
@@ -83,8 +115,8 @@ function FamilyManagementContent() {
       <Alert className="mb-6 border-primary/25 bg-primary/10">
         <Lock className="h-4 w-4 text-primary" />
         <AlertDescription className="text-foreground">
-          <strong>Access Control:</strong> Family members can only chat with your AI. They cannot modify your voice,
-          personality, or settings. You can revoke access at any time.
+          <strong>Access Control:</strong> Family members can only chat with your AI. They cannot
+          modify your voice, personality, or settings. You can revoke access at any time.
         </AlertDescription>
       </Alert>
 
@@ -103,17 +135,15 @@ function FamilyManagementContent() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as typeof activeTab)} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(val) => setActiveTab(val as typeof activeTab)}
+        className="space-y-6"
+      >
         <TabsList>
-          <TabsTrigger value="all">
-            All ({familyMembers.length})
-          </TabsTrigger>
-          <TabsTrigger value="accepted">
-            Accepted ({acceptedCount})
-          </TabsTrigger>
-          <TabsTrigger value="pending">
-            Pending ({pendingCount})
-          </TabsTrigger>
+          <TabsTrigger value="all">All ({familyMembers.length})</TabsTrigger>
+          <TabsTrigger value="accepted">Accepted ({acceptedCount})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="space-y-4">
@@ -138,7 +168,7 @@ function FamilyManagementContent() {
               <p className="text-muted-foreground mb-6 max-w-md">
                 {searchQuery
                   ? 'Try adjusting your search query'
-                  : 'Invite family members to share your AI personality with them. They&apos;ll be able to chat and create memories.'}
+                  : "Invite family members to share your AI personality with them. They'll be able to chat and create memories."}
               </p>
               {!searchQuery && (
                 <InviteFamilyDialog
@@ -172,8 +202,9 @@ function FamilyManagementContent() {
         <Alert className="mt-8 border-primary/25 bg-primary/10">
           <Info className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm text-foreground">
-            <strong>Tip:</strong> Pending invitations will show until accepted. You can resend invitations if they
-            expire or weren&apos;t received. Accepted members can start chatting with your AI immediately.
+            <strong>Tip:</strong> Pending invitations will show until accepted. You can resend
+            invitations if they expire or weren&apos;t received. Accepted members can start chatting
+            with your AI immediately.
           </AlertDescription>
         </Alert>
       )}

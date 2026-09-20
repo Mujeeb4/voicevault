@@ -25,9 +25,13 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
   const [playingId, setPlayingId] = useState<string | null>(null);
 
   const totalDuration = Array.from(recordings.values()).reduce((sum, r) => sum + r.duration, 0);
-  const guidedQuestions = questions.filter((question) => !isOptionalReflectionQuestion(question.id));
+  const guidedQuestions = questions.filter(
+    (question) => !isOptionalReflectionQuestion(question.id)
+  );
   const minimumRecordedCount = Math.min(10, guidedQuestions.length);
-  const completedGuidedCount = guidedQuestions.filter((question) => recordings.has(question.id)).length;
+  const completedGuidedCount = guidedQuestions.filter((question) =>
+    recordings.has(question.id)
+  ).length;
   const skippedGuidedCount = Math.max(0, guidedQuestions.length - completedGuidedCount);
   const canProceed = completedGuidedCount >= minimumRecordedCount;
 
@@ -41,15 +45,21 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       {/* Header */}
       <div className="journey-card p-6 text-center sm:p-8">
         <p className="journey-kicker">Final check</p>
-        <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground">Review Your Recordings</h1>
+        <h2 className="mt-2 font-heading text-3xl font-semibold text-foreground">
+          Review Your Recordings
+        </h2>
         <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
-          Your answers are saved on this browser. Listen, retake anything needed, and upload once at least {minimumRecordedCount} guided answers are recorded.
+          Your answers are saved on this browser. Listen, retake anything needed, and upload once at
+          least {minimumRecordedCount} guided answers are recorded.
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-3 gap-4">
-        <StatCard label="Recorded Answers" value={`${completedGuidedCount} / ${minimumRecordedCount} minimum`} />
+        <StatCard
+          label="Recorded Answers"
+          value={`${completedGuidedCount} / ${minimumRecordedCount} minimum`}
+        />
         <StatCard label="Total Duration" value={formatDuration(totalDuration)} />
         <StatCard label="Skipped Questions" value={`${skippedGuidedCount}`} />
       </div>
@@ -58,7 +68,8 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       {!canProceed && (
         <div className="rounded-lg border border-warning-500/30 bg-warning-500/10 p-4">
           <p className="font-medium text-warning-200">
-            Record {minimumRecordedCount - completedGuidedCount} more guided answer{minimumRecordedCount - completedGuidedCount === 1 ? '' : 's'} before uploading.
+            Record {minimumRecordedCount - completedGuidedCount} more guided answer
+            {minimumRecordedCount - completedGuidedCount === 1 ? '' : 's'} before uploading.
           </p>
         </div>
       )}
@@ -66,7 +77,8 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       {canProceed && skippedGuidedCount > 0 && (
         <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
           <p className="font-medium text-primary">
-            {skippedGuidedCount} guided question{skippedGuidedCount === 1 ? '' : 's'} will be skipped.
+            {skippedGuidedCount} guided question{skippedGuidedCount === 1 ? '' : 's'} will be
+            skipped.
           </p>
           <p className="mt-1 text-sm text-primary/85">
             That is okay. Only your recorded answers are uploaded and used for AI processing.
@@ -115,7 +127,12 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
           Back to Recording
         </Button>
 
-        <Button onClick={onProceed} disabled={!canProceed} size="lg" className="w-full shimmer-btn text-primary-foreground">
+        <Button
+          onClick={onProceed}
+          disabled={!canProceed}
+          size="lg"
+          className="w-full shimmer-btn text-primary-foreground"
+        >
           <Upload className="w-5 h-5 mr-2" />
           Upload all recordings
         </Button>
@@ -160,7 +177,9 @@ function RecordingRow({
   onPause: () => void;
   onRetake: () => void;
 }) {
-  const [audio] = useState(() => (recording ? new Audio(URL.createObjectURL(recording.blob)) : null));
+  const [audio] = useState(() =>
+    recording ? new Audio(URL.createObjectURL(recording.blob)) : null
+  );
 
   const handlePlayPause = () => {
     if (!audio) return;
@@ -194,7 +213,9 @@ function RecordingRow({
               {isOptional ? 'optional' : question.domain}
             </Badge>
             {recording && (
-              <span className="text-xs text-muted-foreground">{formatDuration(recording.duration)}</span>
+              <span className="text-xs text-muted-foreground">
+                {formatDuration(recording.duration)}
+              </span>
             )}
             {!recording && isSkipped && (
               <span className="text-xs text-muted-foreground">Skipped</span>
@@ -207,11 +228,7 @@ function RecordingRow({
           {recording ? (
             <>
               <Button onClick={handlePlayPause} size="sm" variant="outline">
-                {isPlaying ? (
-                  <Pause className="w-4 h-4" />
-                ) : (
-                  <Play className="w-4 h-4" />
-                )}
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </Button>
 
               <Button onClick={onRetake} size="sm" variant="ghost">
@@ -219,9 +236,7 @@ function RecordingRow({
               </Button>
             </>
           ) : (
-            <span className="text-sm text-muted-foreground">
-              Skipped
-            </span>
+            <span className="text-sm text-muted-foreground">Skipped</span>
           )}
         </div>
       </div>

@@ -7,7 +7,18 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import { paymentsApi, Package } from '@/lib/api/payments';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, ArrowRight, Lock, Mic, MessageSquare, Shield, Zap, Users, Star } from 'lucide-react';
+import {
+  Loader2,
+  Check,
+  ArrowRight,
+  Lock,
+  Mic,
+  MessageSquare,
+  Shield,
+  Zap,
+  Users,
+  Star,
+} from 'lucide-react';
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/lib/utils';
@@ -35,7 +46,7 @@ const defaultPlans: Package[] = [
     price_display: '$149.99',
     highlighted: true,
     features: [
-      '30+ guided questions',
+      '30 guided questions + optional reflection',
       'Up to 5 hours of memories',
       'Advanced AI personality',
       'Voice cloning included',
@@ -62,7 +73,11 @@ export default function PricingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = !!(
+    user?.is_premium ||
+    user?.payment_completed ||
+    user?.plan_type === 'premium'
+  );
   const canceled = searchParams.get('canceled') === 'true';
 
   useEffect(() => {
@@ -91,7 +106,7 @@ export default function PricingPage() {
 
   const handleUnlockPremium = () => {
     if (!isAuthenticated) {
-      router.push('/signup');
+      router.push('/signup?next=/pricing');
       return;
     }
     if (isPremium) {
@@ -138,12 +153,17 @@ export default function PricingPage() {
         <section className="relative overflow-hidden py-14 sm:py-16 md:py-20">
           <div
             className="pointer-events-none absolute inset-0"
-            style={{ background: 'linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent 58%)' }}
+            style={{
+              background: 'linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent 58%)',
+            }}
             aria-hidden
           />
           <div
             className="absolute top-0 left-0 right-0 h-px"
-            style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent)' }}
+            style={{
+              background:
+                'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.3), transparent)',
+            }}
           />
 
           <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
@@ -152,16 +172,14 @@ export default function PricingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-              <p className="mb-4 text-[11px] font-semibold uppercase text-primary/80">
-                Pricing
-              </p>
+              <p className="mb-4 text-[11px] font-semibold uppercase text-primary/80">Pricing</p>
               <h1 className="font-heading text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
                 Preserve a Legacy.{' '}
                 <span className="text-gradient-amber italic">Start for Free.</span>
               </h1>
               <p className="mt-4 text-base text-muted-foreground sm:text-lg">
-                Give your family a meaningful first experience free. Upgrade once to unlock the full,
-                living memory vault — complete with voice cloning.
+                Give your family a meaningful first experience free. Upgrade once to unlock the
+                full, living memory vault — complete with voice cloning.
               </p>
             </motion.div>
           </div>
@@ -189,7 +207,10 @@ export default function PricingPage() {
                     {premium && (
                       <div
                         className="pointer-events-none absolute inset-0"
-                        style={{ background: 'linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent 62%)' }}
+                        style={{
+                          background:
+                            'linear-gradient(180deg, hsl(var(--primary) / 0.08), transparent 62%)',
+                        }}
                         aria-hidden
                       />
                     )}
@@ -198,7 +219,10 @@ export default function PricingPage() {
                     {premium && (
                       <div
                         className="absolute top-0 left-0 right-0 h-px"
-                        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.6), transparent)' }}
+                        style={{
+                          background:
+                            'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.6), transparent)',
+                        }}
                       />
                     )}
 
@@ -206,20 +230,38 @@ export default function PricingPage() {
                       {/* Plan header */}
                       <div className="flex items-start justify-between gap-3 mb-6">
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${premium ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                            {premium ? <Mic className="h-5 w-5" strokeWidth={1.75} /> : <MessageSquare className="h-5 w-5" strokeWidth={1.75} />}
+                          <div
+                            className={`flex h-11 w-11 items-center justify-center rounded-lg ${premium ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
+                          >
+                            {premium ? (
+                              <Mic className="h-5 w-5" strokeWidth={1.75} />
+                            ) : (
+                              <MessageSquare className="h-5 w-5" strokeWidth={1.75} />
+                            )}
                           </div>
                           <div>
-                            <h2 className="font-heading text-lg font-bold text-foreground">{plan.name}</h2>
+                            <h2 className="font-heading text-lg font-bold text-foreground">
+                              {plan.name}
+                            </h2>
                             {premium && (
                               <div className="mt-0.5 flex items-center gap-1">
-                                {[1,2,3].map(i => <Star key={i} className="h-3 w-3 fill-primary/70 text-primary/70" strokeWidth={0} />)}
-                                <span className="text-[11px] text-primary/70 font-medium ml-0.5">Most popular</span>
+                                {[1, 2, 3].map((i) => (
+                                  <Star
+                                    key={i}
+                                    className="h-3 w-3 fill-primary/70 text-primary/70"
+                                    strokeWidth={0}
+                                  />
+                                ))}
+                                <span className="text-[11px] text-primary/70 font-medium ml-0.5">
+                                  Most popular
+                                </span>
                               </div>
                             )}
                           </div>
                         </div>
-                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${premium ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                        <span
+                          className={`rounded-full px-3 py-1 text-[11px] font-semibold ${premium ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}
+                        >
                           {premium ? 'Best Value' : 'Free Forever'}
                         </span>
                       </div>
@@ -227,10 +269,14 @@ export default function PricingPage() {
                       {/* Price */}
                       <div className="mb-6">
                         <div className="flex items-baseline gap-2">
-                          <span className={`font-heading text-5xl font-bold ${premium ? 'text-gradient-amber' : 'text-foreground'}`}>
+                          <span
+                            className={`font-heading text-5xl font-bold ${premium ? 'text-gradient-amber' : 'text-foreground'}`}
+                          >
                             {plan.price_display}
                           </span>
-                          <span className="text-sm text-muted-foreground">{premium ? 'one-time' : 'forever free'}</span>
+                          <span className="text-sm text-muted-foreground">
+                            {premium ? 'one-time' : 'forever free'}
+                          </span>
                         </div>
                         {premium && (
                           <p className="mt-1.5 text-sm text-muted-foreground">
@@ -243,11 +289,19 @@ export default function PricingPage() {
                       {premium && (
                         <div className="mb-6 grid grid-cols-2 gap-2.5">
                           {premiumHighlights.map(({ icon: Icon, label, desc }) => (
-                            <div key={label} className="flex items-start gap-2.5 rounded-lg border border-border bg-background/35 p-3">
-                              <Icon className="h-4 w-4 mt-0.5 shrink-0 text-primary" strokeWidth={1.75} />
+                            <div
+                              key={label}
+                              className="flex items-start gap-2.5 rounded-lg border border-border bg-background/35 p-3"
+                            >
+                              <Icon
+                                className="h-4 w-4 mt-0.5 shrink-0 text-primary"
+                                strokeWidth={1.75}
+                              />
                               <div>
                                 <p className="text-[12px] font-semibold text-foreground">{label}</p>
-                                <p className="text-[11px] text-muted-foreground/70 mt-0.5">{desc}</p>
+                                <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                                  {desc}
+                                </p>
                               </div>
                             </div>
                           ))}
@@ -258,8 +312,15 @@ export default function PricingPage() {
                       <ul className="mb-6 space-y-2.5">
                         {plan.features.map((feature) => (
                           <li key={feature} className="flex items-start gap-3 text-sm">
-                            <Check className={`mt-0.5 h-4 w-4 shrink-0 ${premium ? 'text-primary' : 'text-teal-500/70'}`} strokeWidth={2.5} />
-                            <span className={premium ? 'text-foreground/90' : 'text-muted-foreground'}>{feature}</span>
+                            <Check
+                              className={`mt-0.5 h-4 w-4 shrink-0 ${premium ? 'text-primary' : 'text-teal-500/70'}`}
+                              strokeWidth={2.5}
+                            />
+                            <span
+                              className={premium ? 'text-foreground/90' : 'text-muted-foreground'}
+                            >
+                              {feature}
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -267,7 +328,10 @@ export default function PricingPage() {
                       {/* CTA Button */}
                       <Button
                         onClick={premium ? handleUnlockPremium : handleStartFree}
-                        disabled={premium && checkoutLoading}
+                        disabled={
+                          (premium && (checkoutLoading || isPremium)) ||
+                          (!premium && isAuthenticated)
+                        }
                         className={`h-12 w-full gap-2 rounded-lg text-sm font-semibold transition-all duration-300 ${
                           premium
                             ? 'shimmer-btn glow-amber-sm text-primary-foreground shadow-none hover:scale-[1.02]'
@@ -279,6 +343,11 @@ export default function PricingPage() {
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Redirecting...
                           </>
+                        ) : premium && isPremium ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            Premium Active
+                          </>
                         ) : premium ? (
                           <>
                             <Lock className="h-4 w-4" />
@@ -286,8 +355,16 @@ export default function PricingPage() {
                           </>
                         ) : (
                           <>
-                            Start Free Today
-                            <ArrowRight className="h-4 w-4" />
+                            {isPremium
+                              ? 'Included with Premium'
+                              : isAuthenticated
+                                ? 'Current Plan'
+                                : 'Create Free Account'}
+                            {isPremium ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <ArrowRight className="h-4 w-4" />
+                            )}
                           </>
                         )}
                       </Button>
@@ -314,11 +391,16 @@ export default function PricingPage() {
               </div>
               <div>
                 <h3 className="font-heading text-base font-semibold text-foreground sm:text-lg">
-                  You have created something meaningful.
+                  {isPremium
+                    ? 'Your complete VoiceVault is active.'
+                    : isAuthenticated
+                      ? 'Your Memory Starter vault is active.'
+                      : 'Start preserving your first memories for free.'}
                 </h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Upgrade to VoiceVault Premium to unlock the full memory vault, complete voice cloning,
-                  and allow your family to hear these stories in your own voice — forever.
+                  {isPremium
+                    ? 'Return to your dashboard to keep recording, processing, and sharing your memories.'
+                    : 'Premium is an optional one-time upgrade for voice cloning, more questions, and expanded family access.'}
                 </p>
               </div>
               <Button
@@ -332,13 +414,21 @@ export default function PricingPage() {
           </motion.div>
 
           <div className="mt-6 text-center text-sm text-muted-foreground/60">
-            <Link href="/" className="transition-colors hover:text-muted-foreground">Home</Link>
+            <Link href="/" className="transition-colors hover:text-muted-foreground">
+              Home
+            </Link>
             {' · '}
-            <Link href="/#how-it-works" className="transition-colors hover:text-muted-foreground">How it works</Link>
+            <Link href="/#how-it-works" className="transition-colors hover:text-muted-foreground">
+              How it works
+            </Link>
             {' · '}
-            <Link href="/terms" className="transition-colors hover:text-muted-foreground">Terms</Link>
+            <Link href="/terms" className="transition-colors hover:text-muted-foreground">
+              Terms
+            </Link>
             {' · '}
-            <Link href="/privacy" className="transition-colors hover:text-muted-foreground">Privacy</Link>
+            <Link href="/privacy" className="transition-colors hover:text-muted-foreground">
+              Privacy
+            </Link>
           </div>
         </section>
       </main>

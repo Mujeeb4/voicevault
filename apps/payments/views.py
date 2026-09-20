@@ -32,6 +32,29 @@ PREMIUM_PRICE = {
 }
 
 
+def _configured_price_id(value):
+    """Return a usable Stripe price id, ignoring example/template values."""
+    price_id = (value or '').strip()
+    placeholder_markers = ('your', 'example', 'xxx')
+    if not price_id.startswith('price_') or any(
+        marker in price_id.lower() for marker in placeholder_markers
+    ):
+        return ''
+    return price_id
+
+
+def _checkout_frontend_url(request):
+    """Return the app origin that should receive Stripe's checkout redirect."""
+    configured_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+    request_origin = request.headers.get('Origin', '').rstrip('/')
+    if getattr(settings, 'DEBUG', False) and request_origin in {
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    }:
+        return request_origin
+    return configured_url
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def create_checkout_session(request):
@@ -95,13 +118,14 @@ def create_checkout_session(request):
             user.save(update_fields=['stripe_customer_id'])
         
         # Get frontend URL for redirects
-        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        frontend_url = _checkout_frontend_url(request)
         
         line_item = {
             'quantity': 1,
         }
-        if package['price_id']:
-            line_item['price'] = package['price_id']
+        price_id = _configured_price_id(package['price_id'])
+        if price_id:
+            line_item['price'] = price_id
         else:
             line_item['price_data'] = {
                 'currency': package['currency'],
@@ -459,7 +483,7 @@ def get_packages(request):
             'price_display': premium_price_display,
             'currency': currency,
             'features': [
-                '30+ guided questions',
+                '30 guided questions + optional reflection',
                 'Up to 5 hours of memories',
                 'Advanced AI personality',
                 'Voice cloning included',
