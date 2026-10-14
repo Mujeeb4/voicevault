@@ -19,6 +19,9 @@ class AIConfiguration(models.Model):
     
     # Voice cloning
     voice_clone_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    voice_provider = models.CharField(max_length=20, default='elevenlabs')
+    voice_reference_path = models.CharField(max_length=500, blank=True, default='')
+    voice_reference_text = models.TextField(blank=True, default='')
     voice_quality_score = models.FloatField(null=True, blank=True, help_text="0.00 to 1.00")
     voice_similarity_target = models.FloatField(default=0.85)
     
@@ -45,6 +48,17 @@ class AIConfiguration(models.Model):
             models.Index(fields=['voice_clone_id']),
         ]
     
+    @property
+    def has_cloned_voice(self):
+        from django.conf import settings
+        from services.voice_cloning import is_cloned_voice_id
+        if self.voice_provider != settings.VOICE_PROVIDER:
+            return False
+        if self.voice_provider == 'replicate':
+            return bool(self.voice_clone_id and self.voice_clone_id.startswith('replicate:')
+                        and self.voice_reference_path and self.voice_reference_text)
+        return is_cloned_voice_id(self.voice_clone_id)
+
     def __str__(self):
         return f"AI Config for {self.user.email}"
 
@@ -57,6 +71,7 @@ class ProcessingQueue(models.Model):
         ('transcribe', 'Transcribe'),
         ('analyze_personality', 'Analyze Personality'),
         ('clone_voice', 'Clone Voice'),
+        ('voice_preview', 'Voice Preview'),
         ('test_ai', 'Test AI'),
     ]
     
@@ -105,7 +120,9 @@ class APIUsageTracking(models.Model):
     """
     API_PROVIDER_CHOICES = [
         ('openai', 'OpenAI'),
+        ('qwen', 'QwenCloud'),
         ('elevenlabs', 'ElevenLabs'),
+        ('replicate', 'Replicate'),
     ]
     
     OPERATION_CHOICES = [
@@ -128,7 +145,7 @@ class APIUsageTracking(models.Model):
     # Usage metrics
     tokens_used = models.IntegerField(null=True, blank=True, help_text="For OpenAI")
     characters_used = models.IntegerField(null=True, blank=True, help_text="For ElevenLabs")
-    cost_usd = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000)
+    cost_usd = models.DecimalField(max_digits=10, decimal_places=4, default=0.0000, null=True, blank=True)
     
     # Request details
     request_id = models.CharField(max_length=255, null=True, blank=True)

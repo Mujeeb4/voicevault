@@ -18,7 +18,11 @@ SUPABASE_SERVICE_KEY = 'test-service-key'
 
 # Use test API keys
 OPENAI_API_KEY = 'sk-test-key'
+CHAT_PROVIDER = 'openai'
+QWEN_API_KEY = ''
 ELEVENLABS_API_KEY = 'test-key'
+VOICE_PROVIDER = 'elevenlabs'
+REPLICATE_API_TOKEN = ''
 STRIPE_SECRET_KEY = 'sk_test_key'
 STRIPE_WEBHOOK_SECRET = 'whsec_test'
 

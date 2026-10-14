@@ -11,7 +11,7 @@ import { VoicePlayer } from '@/lib/audio/player';
 import { chatApi, type StreamingConnection } from '@/lib/api/chat';
 
 const AUDIO_POLL_INTERVAL_MS = 2000;
-const AUDIO_POLL_MAX_ATTEMPTS = 30;
+const AUDIO_POLL_MAX_ATTEMPTS = 90;
 
 interface ChatState {
   // State

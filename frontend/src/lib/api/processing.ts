@@ -50,5 +50,20 @@ export const processingApi = {
     );
     return data;
   },
+
+  startVoicePreview: async (userId: string, text: string): Promise<{ preview_id: string; status: string }> => {
+    const { data } = await apiClient.post(`/admin/process/voice-preview/${userId}/`, { text });
+    return data;
+  },
+
+  getVoicePreviewStatus: async (userId: string, previewId: string): Promise<{ status: string; audio_url?: string; error?: string }> => {
+    const { data } = await apiClient.get(`/admin/process/voice-preview/${userId}/${previewId}/`);
+    return data;
+  },
+
+  getVoicePreviewAudio: async (userId: string, previewId: string): Promise<Blob> => {
+    const { data } = await apiClient.get(`/admin/process/voice-preview/${userId}/${previewId}/audio/`, { responseType: 'blob' });
+    return data;
+  },
 };
 

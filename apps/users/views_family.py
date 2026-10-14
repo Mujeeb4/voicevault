@@ -617,6 +617,8 @@ def accessible_ais(request):
         family_access = FamilyMember.objects.filter(
             email=user_email,
             has_access=True
+        ).exclude(
+            ai_owner_id=user_id,
         ).select_related('ai_owner')
         
         for fm in family_access:

@@ -232,12 +232,12 @@ class CloneVoiceView(APIView):
             # Calculate total duration
             total_duration = sum(r.duration_seconds or 0 for r in recordings)
 
-            # Match the worker task requirement: 60 seconds minimum.
-            if total_duration < 60:
+            minimum_duration = 3 if settings.VOICE_PROVIDER == 'replicate' else 60
+            if total_duration < minimum_duration:
                 return Response(
                     {
                         'error': 'insufficient_audio',
-                        'message': f'Only {total_duration:.1f} seconds of audio (minimum 60s required)'
+                        'message': f'Only {total_duration:.1f} seconds of audio (minimum {minimum_duration}s required)'
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -369,8 +369,13 @@ class ProcessingStatusView(APIView):
                 user.mark_recording_complete()
                 logger.info(f"Auto-marked user {user_id} as recording_completed after detecting completed recordings")
             
-            has_transcript = Transcript.objects.filter(user=user).exists()
+            has_transcript = Transcript.objects.filter(
+                user=user, word_count__gte=settings.AI_PRODUCTION_MIN_WORDS
+            ).exists()
             has_ai_config = AIConfiguration.objects.filter(user=user).exists()
+            has_personality = AIConfiguration.objects.filter(user=user).exclude(personality_data={}).exclude(
+                system_prompt__startswith='Temporary prompt'
+            ).exists()
             
             # Get latest task for each type
             latest_tasks = {}
@@ -387,17 +392,22 @@ class ProcessingStatusView(APIView):
             # Determine overall status
             # Check if all processing is actually complete (even if ai_ready hasn't been set)
             all_processing_complete = False
-            if has_transcript and has_ai_config:
+            invalid_stored_voice = False
+            if has_ai_config:
                 try:
                     ai_config_check = AIConfiguration.objects.get(user=user)
+                    invalid_stored_voice = bool(ai_config_check.voice_clone_id and not ai_config_check.has_cloned_voice)
                     all_processing_complete = bool(
-                        ai_config_check.voice_clone_id and 
-                        ai_config_check.personality_data
+                        has_transcript and ai_config_check.has_cloned_voice and
+                        ai_config_check.personality_data and
+                        len(ai_config_check.system_prompt) >= settings.AI_SYSTEM_PROMPT_MIN_LENGTH
                     )
                 except AIConfiguration.DoesNotExist:
                     pass
             
-            if user.ai_ready or all_processing_complete:
+            if invalid_stored_voice:
+                overall_status = 'failed'
+            elif user.ai_ready or all_processing_complete:
                 overall_status = 'complete'
                 # If all processing is done but ai_ready isn't set, auto-set it
                 if all_processing_complete and not user.ai_ready:
@@ -442,7 +452,7 @@ class ProcessingStatusView(APIView):
             
             # Personality analysis step
             personality_task = latest_tasks.get('analyze_personality', {})
-            if has_ai_config:
+            if has_personality:
                 personality_status = 'complete'
             else:
                 personality_status = map_status(personality_task.get('status', 'pending'))
@@ -455,7 +465,7 @@ class ProcessingStatusView(APIView):
             if has_ai_config:
                 try:
                     ai_config_check = AIConfiguration.objects.get(user=user)
-                    voice_clone_complete = bool(ai_config_check.voice_clone_id)
+                    voice_clone_complete = ai_config_check.has_cloned_voice
                 except AIConfiguration.DoesNotExist:
                     pass
             
@@ -463,6 +473,8 @@ class ProcessingStatusView(APIView):
                 voice_clone_status = 'complete'
             else:
                 voice_clone_status = map_status(voice_clone_task.get('status', 'pending'))
+                if voice_clone_status == 'complete':
+                    voice_clone_status = 'failed'
             
             # Get transcript info if exists (include full transcript for voice cloning step)
             transcript_info = None
@@ -614,3 +626,104 @@ class RunFullPipelineView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class VoicePreviewView(APIView):
+    """Owner-started, paid Qwen3 voice preview using the saved reference."""
+    permission_classes = [AllowAny]
+
+    def post(self, request, user_id):
+        denied = authorize_processing_access(request, user_id, 'preview voice')
+        if denied:
+            return denied
+        user = get_object_or_404(User, id=user_id)
+        limit = can_clone_voice(user)
+        if not limit.allowed:
+            return Response({'error': limit.message}, status=403)
+        config = AIConfiguration.objects.filter(user=user).first()
+        if not config or not config.has_cloned_voice or config.voice_provider != 'replicate':
+            return Response({'error': 'Prepare a Qwen3 voice reference first.'}, status=400)
+        text = request.data.get('text', '') if isinstance(request.data, dict) else ''
+        if not isinstance(text, str) or not 1 <= len(text.strip()) <= 300:
+            return Response({'error': 'Enter 1 to 300 characters.'}, status=400)
+        text = text.strip()
+        existing = ProcessingQueue.objects.filter(
+            user=user, task_type='voice_preview', task_data__text=text,
+            task_data__voice_id=config.voice_clone_id, status__in=['pending', 'processing', 'complete', 'failed']
+        ).order_by('-created_at').first()
+        if existing:
+            return Response({'preview_id': str(existing.id), 'status': existing.status}, status=200)
+        import uuid
+        preview_id = uuid.uuid5(uuid.NAMESPACE_URL, f'voicevault-preview:{user.id}:{config.voice_clone_id}:{text}')
+        queue, created = ProcessingQueue.objects.get_or_create(
+            id=preview_id,
+            defaults={'user': user, 'task_type': 'voice_preview', 'status': 'pending',
+                      'priority': 6, 'task_data': {'text': text, 'voice_id': config.voice_clone_id}},
+        )
+        if not created:
+            return Response({'preview_id': str(queue.id), 'status': queue.status}, status=200)
+        from .tasks import generate_voice_preview_task
+        try:
+            generate_voice_preview_task.apply_async(args=[str(queue.id)], queue='voice')
+        except Exception as exc:
+            logger.warning('Could not queue voice preview: %s', exc.__class__.__name__)
+            queue.status = 'failed'
+            queue.error_message = 'Voice worker is unavailable.'
+            queue.save(update_fields=['status', 'error_message'])
+            return Response({'error': queue.error_message}, status=503)
+        return Response({'preview_id': str(queue.id), 'status': 'pending'}, status=202)
+
+
+class VoicePreviewStatusView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id, preview_id):
+        denied = authorize_processing_access(request, user_id, 'read voice preview')
+        if denied:
+            return denied
+        queue = get_object_or_404(ProcessingQueue, id=preview_id, user_id=user_id, task_type='voice_preview')
+        if queue.status == 'processing' and not (queue.result_data or {}).get('prediction_id') and queue.started_at:
+            from datetime import timedelta
+            from django.utils import timezone
+            if timezone.now() - queue.started_at > timedelta(minutes=5):
+                queue.status = 'failed'
+                queue.error_message = 'Preview submission was interrupted. Check the Replicate dashboard before trying different text.'
+                queue.completed_at = timezone.now()
+                queue.save(update_fields=['status', 'error_message', 'completed_at'])
+        if queue.status == 'processing' and (queue.result_data or {}).get('prediction_id'):
+            try:
+                from services.replicate_voice import refresh_preview
+                refresh_preview(queue.id)
+                queue.refresh_from_db()
+            except Exception as exc:
+                logger.warning('Voice preview status refresh failed: %s', exc.__class__.__name__)
+        payload = {'status': queue.status, 'preview_id': str(queue.id)}
+        if queue.status == 'complete':
+            payload['audio_url'] = f'/api/admin/process/voice-preview/{user_id}/{queue.id}/audio/'
+        elif queue.status == 'failed':
+            payload['error'] = queue.error_message or 'Voice preview failed.'
+        return Response(payload)
+
+
+class VoicePreviewAudioView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, user_id, preview_id):
+        denied = authorize_processing_access(request, user_id, 'play voice preview')
+        if denied:
+            return denied
+        queue = get_object_or_404(ProcessingQueue, id=preview_id, user_id=user_id,
+                                  task_type='voice_preview', status='complete')
+        data = queue.result_data or {}
+        audio_path = data.get('audio_path')
+        if not audio_path or not audio_path.startswith(f'previews/{user_id}/{queue.id}.'):
+            return Response({'error': 'Preview audio is unavailable.'}, status=404)
+        from django.http import HttpResponse
+        from utils.supabase_client import download_file_from_supabase
+        content = download_file_from_supabase('responses', audio_path)
+        if not content:
+            return Response({'error': 'Preview audio is unavailable.'}, status=404)
+        content_type = 'audio/wav' if data.get('format') == 'wav' else 'audio/mpeg'
+        response = HttpResponse(content, content_type=content_type)
+        response['Cache-Control'] = 'private, max-age=3600'
+        return response

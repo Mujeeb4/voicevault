@@ -32,6 +32,7 @@ from apps.chat.utils import (
     calculate_gpt4o_cost
 )
 from apps.chat.tasks import generate_audio_async, generate_audio_sync, is_celery_available
+from services.chat_llm import get_chat_backend, streamed_total_tokens
 from services.plan_limits import (
     can_generate_voice_response,
     can_send_chat_message,
@@ -195,7 +196,12 @@ def chat_streaming(request):
         return JsonResponse(chat_limit.as_error(), status=402)
     
     # STEP 1: Check cache first (< 50ms) ⚡
-    cached = get_cached_response(question, str(ai_owner_id))
+    voice_cache_id = ai_owner.ai_config.voice_clone_id if hasattr(ai_owner, 'ai_config') and ai_owner.ai_config.has_cloned_voice else ''
+    if voice_cache_id and ai_owner.ai_config.voice_provider == 'replicate':
+        voice_cache_id += ':qwen3-tts:auto'
+    cached = get_cached_response(question, str(ai_owner_id), voice_cache_id)
+    if getattr(settings, 'VOICE_PROVIDER', '') == 'replicate' and cached and not cached.get('audio'):
+        cached = None
     if cached:
         # INSTANT RESPONSE! Return cached data immediately
         cache_time_ms = int((time.time() - start_time) * 1000)
@@ -253,6 +259,8 @@ def chat_streaming(request):
         response_text = ""
         tokens_used = 0
         conversation_id = None
+        client = None
+        backend = None
         
         try:
             # Build optimized context
@@ -262,43 +270,41 @@ def chat_streaming(request):
                 family_member=family_member
             )
             
-            # Import OpenAI (lazy import)
+            # The OpenAI SDK also supports QwenCloud's text-only compatible endpoint.
             try:
                 import openai
-                from decouple import config
-                
-                api_key = config('OPENAI_API_KEY', default='')
-                if not api_key:
-                    logger.error("OpenAI API key is not configured")
-                    yield f"data: {json.dumps({'type': 'error', 'message': 'AI service is not configured'})}\n\n"
-                    return
-                
-                # Initialize client (Python 3.14 compat fix)
                 import httpx
-                http_client = httpx.Client(timeout=300.0)
+                backend = get_chat_backend()
+                http_client = httpx.Client(timeout=90.0)
                 client = openai.OpenAI(
-                    api_key=api_key,
-                    http_client=http_client
+                    api_key=backend.api_key,
+                    http_client=http_client,
+                    max_retries=0,
+                    **({'base_url': backend.base_url} if backend.base_url else {}),
                 )
-                
             except ImportError:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'OpenAI library not installed'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Chat SDK is not installed'})}\n\n"
+                return
+            except ValueError as exc:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
                 return
             
-            # STEP 3: Stream GPT-4o response (200-400ms to first token) ⚡
+            # STEP 3: Stream the selected text model's response.
             stream_start = time.time()
             first_token_time = None
-            
-            stream = client.chat.completions.create(
-                model="gpt-4o",  # FAST! 109 tokens/sec, 50% cheaper
+            stream_options = dict(
+                model=backend.model,
                 messages=[
                     {"role": "system", "content": system_message},
                     {"role": "user", "content": question}
                 ],
                 temperature=0.7,
-                max_tokens=300,  # Reduced for speed (2-3 sentences)
-                stream=True
+                max_tokens=300,
+                stream=True,
             )
+            if backend.extra_body:
+                stream_options['extra_body'] = backend.extra_body
+            stream = client.chat.completions.create(**stream_options)
             
             # Stream text chunks to client as they arrive
             chunk_count = 0
@@ -321,9 +327,10 @@ def chat_streaming(request):
                         timestamp = time.time() - start_time
                         yield f"data: {json.dumps({'type': 'text_chunk', 'content': text_chunk, 'timestamp': round(timestamp, 3)})}\n\n"
                 
-                # Check for usage info (at the end) -- NOTE: Requires stream_options={"include_usage": True}
-                if hasattr(chunk, 'usage') and chunk.usage:
-                    tokens_used = chunk.usage.total_tokens
+                # Providers may return usage as an SDK object or a raw dictionary.
+                streamed_tokens = streamed_total_tokens(chunk)
+                if streamed_tokens is not None:
+                    tokens_used = streamed_tokens
             
             # Fallback token calculation if usage not returned (e.g. older library)
             if tokens_used == 0:
@@ -354,11 +361,11 @@ def chat_streaming(request):
             conversation_id = str(conversation.id)
             record_chat_message(ai_owner, conversation_id)
             
-            # Track OpenAI usage
-            cost = calculate_gpt4o_cost(tokens_used)
+            # The Token Plan's Qwen usage has no reliable per-call USD price here.
+            cost = calculate_gpt4o_cost(tokens_used) if backend.provider == 'openai' else None
             APIUsageTracking.objects.create(
                 user=ai_owner,
-                api_provider='openai',
+                api_provider=backend.provider,
                 operation='chat',
                 tokens_used=tokens_used,
                 cost_usd=cost,
@@ -373,7 +380,7 @@ def chat_streaming(request):
             voice_limit = can_generate_voice_response(ai_owner)
             if not voice_limit.allowed:
                 yield f"data: {json.dumps({'type': 'audio_unavailable', 'message': voice_limit.message, 'upgrade_required': voice_limit.upgrade_required})}\n\n"
-            elif ai_owner.ai_config and ai_owner.ai_config.voice_clone_id:
+            elif ai_owner.ai_config and ai_owner.ai_config.has_cloned_voice:
                 try:
                     if is_celery_available():
                         # Queue async audio generation only when a worker is reachable.
@@ -405,6 +412,7 @@ def chat_streaming(request):
                     )
                     
                     if audio_result.get('success') and audio_result.get('audio_url'):
+                        conversation.refresh_from_db(fields=['audio_url'])
                         audio_url = _conversation_audio_playback_url(conversation, requesting_user)
                         yield f"data: {json.dumps({'type': 'audio_ready', 'audio_url': audio_url, 'conversation_id': conversation_id, 'generation_time_ms': audio_result.get('total_time_ms', 0)})}\n\n"
                     else:
@@ -420,7 +428,8 @@ def chat_streaming(request):
                 response_text=response_text,
                 audio_url=None,  # Will be updated when audio is ready
                 tokens_used=tokens_used,
-                response_time_ms=total_time_ms
+                response_time_ms=total_time_ms,
+                voice_id=voice_cache_id,
             )
             
             # Final success event
@@ -428,8 +437,20 @@ def chat_streaming(request):
             
         except Exception as e:
             logger.error("Streaming chat error: %s", e.__class__.__name__, exc_info=True)
-            yield f"data: {json.dumps({'type': 'error', 'message': 'Unable to complete chat response'})}\n\n"
+            message = 'Unable to complete chat response'
+            if getattr(e, 'status_code', None) == 429:
+                body = getattr(e, 'body', None)
+                code = body.get('code') if isinstance(body, dict) else None
+                provider_name = 'QwenCloud' if backend and backend.provider == 'qwen' else 'OpenAI'
+                message = (f'{provider_name} chat credits are exhausted.' if code in
+                           {'credit_balance_exhausted', 'insufficient_quota'} else
+                           f'{provider_name} chat is rate limited. Please retry shortly.')
+            elif getattr(e, 'status_code', None) in (401, 403):
+                message = 'The configured chat provider rejected its API key.'
+            yield f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"
         finally:
+            if client is not None:
+                client.close()
             # CRITICAL: Close database connections after streaming
             # This is essential for Supabase free tier to avoid connection exhaustion
             from django.db import connections
@@ -720,8 +741,12 @@ def stream_conversation_audio(request, conversation_id):
     if not audio_path.exists() or not audio_path.is_file():
         raise Http404('Audio not found')
 
-    response = FileResponse(audio_path.open('rb'), content_type='audio/mpeg')
-    response['Content-Disposition'] = f'inline; filename="voicevault_response_{conversation.id}.mp3"'
+    audio_format = audio_path.suffix.lower()
+    if audio_format not in ('.wav', '.mp3'):
+        raise Http404('Unsupported audio format')
+    content_type = 'audio/wav' if audio_format == '.wav' else 'audio/mpeg'
+    response = FileResponse(audio_path.open('rb'), content_type=content_type)
+    response['Content-Disposition'] = f'inline; filename="voicevault_response_{conversation.id}{audio_format}"'
     response['Cache-Control'] = 'private, max-age=300'
     response['X-Content-Type-Options'] = 'nosniff'
     return response
@@ -799,6 +824,30 @@ def get_audio_status(request, task_id):
     if db_response:
         return db_response
 
+    if conversation_id:
+        try:
+            conversation = Conversation.objects.select_related('family_member').get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            return Response({'error': 'Conversation not found'}, status=404)
+        if not _user_can_access_conversation_audio(requesting_user, conversation):
+            return Response({'error': 'You do not have access to this audio'}, status=403)
+        if conversation.replicate_prediction_id:
+            try:
+                from services.replicate_voice import refresh_prediction
+                result = refresh_prediction(conversation_id)
+                if result.get('audio_url'):
+                    conversation.refresh_from_db(fields=['audio_url'])
+                    return Response({'status': 'complete', 'audio_url': _conversation_audio_playback_url(conversation, requesting_user),
+                                     'conversation_id': conversation_id})
+                if not result.get('pending'):
+                    return Response({'status': 'failed', 'error': result.get('error', 'Audio generation failed'),
+                                     'conversation_id': conversation_id})
+            except Exception as exc:
+                logger.warning('Replicate audio status refresh failed: %s', exc.__class__.__name__)
+        elif conversation.replicate_audio_status == 'failed':
+            return Response({'status': 'failed', 'error': conversation.replicate_audio_error,
+                             'conversation_id': conversation_id})
+
     try:
         task_result = AsyncResult(task_id)
     except Exception as exc:
@@ -826,6 +875,9 @@ def get_audio_status(request, task_id):
                     'upgrade_required': result.get('upgrade_required', False),
                     'conversation_id': conversation_id,
                 })
+
+            if result.get('pending'):
+                return Response({'status': 'processing', 'conversation_id': conversation_id, 'task_id': task_id})
 
             if result.get('audio_url'):
                 if conversation_id:
@@ -867,3 +919,41 @@ def get_audio_status(request, task_id):
         'task_id': task_id,
         'conversation_id': conversation_id,
     })
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def replicate_webhook(request):
+    """Accept only signed Replicate completion events for predictions we submitted."""
+    from services.replicate_voice import verify_webhook, refresh_prediction
+    if not verify_webhook(request.headers, request.body):
+        return JsonResponse({'error': 'Invalid webhook signature'}, status=401)
+    try:
+        payload = json.loads(request.body)
+        prediction_id = payload.get('id')
+    except (ValueError, AttributeError):
+        return JsonResponse({'error': 'Invalid webhook payload'}, status=400)
+    if not prediction_id:
+        return JsonResponse({'error': 'Missing prediction ID'}, status=400)
+    try:
+        conversation = Conversation.objects.only('id').get(replicate_prediction_id=prediction_id)
+    except Conversation.DoesNotExist:
+        from apps.ai_processing.models import ProcessingQueue
+        preview = ProcessingQueue.objects.filter(task_type='voice_preview',
+                                                 result_data__prediction_id=prediction_id).first()
+        if not preview:
+            # The callback can arrive before the POST response is saved. Ask Replicate to retry.
+            return JsonResponse({'error': 'Prediction not registered yet'}, status=503)
+        try:
+            from services.replicate_voice import refresh_preview
+            refresh_preview(preview.id)
+            return JsonResponse({'ok': True})
+        except Exception as exc:
+            logger.warning('Replicate preview webhook failed: %s', exc.__class__.__name__)
+            return JsonResponse({'error': 'Webhook processing failed'}, status=503)
+    try:
+        refresh_prediction(conversation.id)
+    except Exception as exc:
+        logger.warning('Replicate webhook processing failed: %s', exc.__class__.__name__)
+        return JsonResponse({'error': 'Webhook processing failed'}, status=503)
+    return JsonResponse({'ok': True})

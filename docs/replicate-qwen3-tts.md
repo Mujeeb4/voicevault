@@ -1,0 +1,11 @@
+# Replicate Qwen3-TTS voice cloning
+
+Voice Vault uses the verified `qwen/qwen3-tts` model version `d490a561cf1171a8dc3d96d1e57efffea7dd34607148bb641f3d9de4e38c472e` (the 1.7B Base voice cloning model). Each generation sends `mode=voice_clone`, the user's 20-second recording clip, the transcript of that exact clip, and `language=auto`. No stock speaker or style instruction is sent.
+
+Set `REPLICATE_API_TOKEN`, `REPLICATE_WEBHOOK_KEY`, and `VOICE_PROVIDER=replicate` in `.env`. The web and Celery worker both read `.env`. The worker needs `ffmpeg` to create a mono WAV reference. A voice reference is prepared when a Premium user with voice cloning consent chooses Clone Voice. The app stores the reference in its recordings storage and saves its path and matching transcript in `AIConfiguration`; preparing it does not call Replicate. The recording is sent to Replicate only when the user requests a voice preview or chat speech.
+
+The processing page has a **Generate voice preview** action. Clicking it starts a paid prediction; repeating the same text for the same reference reuses the pending or completed preview. The resulting audio is kept in Voice Vault storage and served to the owner through an authenticated endpoint. Chat responses use the same reference and store the prediction ID on the conversation to prevent automatic resubmission after a timeout. Provider charges are not reported as zero in usage records: `cost_usd` is left unknown because the prediction response does not return a billed amount. Check the Replicate dashboard for the actual charge.
+
+Local use polls prediction status and needs no public callback URL. On a public deployment, set `REPLICATE_WEBHOOK_URL` to the externally reachable `https://<backend-host>/api/chat/replicate/webhook/`. The callback checks the `REPLICATE_WEBHOOK_KEY` signature and then retrieves the prediction through the API. The signing key is not the callback URL. Restart and rebuild both web and worker after changing configuration. Apply Django migrations before starting the app.
+
+No generation request is made by setup or migration. The first preview or chat voice response is the user's live quality test. Voice similarity depends on the recording and model; an exact, accent-free match cannot be guaranteed by this integration.

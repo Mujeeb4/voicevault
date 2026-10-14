@@ -12,12 +12,15 @@ from typing import Optional, Dict, List
 import json
 import time
 import os
+from contextlib import ExitStack
 
 from apps.users.models import User
 from apps.recordings.models import AudioRecording, Transcript
 from .models import AIConfiguration, ProcessingQueue, APIUsageTracking
 from utils.supabase_client import download_file_from_supabase, download_file_stream_to_temp
 from services.plan_limits import can_clone_voice, has_accepted_consent, record_ai_generation
+
+from services.voice_cloning import create_voice_clone, is_cloned_voice_id, voice_cloning_failure_message
 
 logger = logging.getLogger(__name__)
 
@@ -685,6 +688,16 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
                 'user_id': user_id,
             }
         
+        if settings.VOICE_PROVIDER == 'replicate':
+            from services.replicate_voice import prepare_reference
+            config = prepare_reference(user)
+            queue_entry.status = 'complete'
+            queue_entry.completed_at = timezone.now()
+            queue_entry.result_data = {'voice_clone_id': config.voice_clone_id, 'provider': 'replicate'}
+            queue_entry.save(update_fields=['status', 'completed_at', 'result_data'])
+            return {'success': True, 'user_id': user_id, 'voice_clone_id': config.voice_clone_id,
+                    'provider': 'replicate', 'quality_score': None}
+
         # Get all audio recordings
         recordings = AudioRecording.objects.filter(
             user=user,
@@ -706,102 +719,46 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
         
         logger.info(f"Found {recordings.count()} recordings, total duration: {total_duration:.1f}s")
         
-        # Download audio files from Supabase (streaming to temp files)
+        # Keep samples and handles scoped so every failure cleans them up.
         import tempfile
-        temp_files = []
-        
-        for recording in recordings[:25]:  # ElevenLabs limit
-            try:
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=f'.{recording.format}')
-                temp_file.close() # Close so we can write to it
-                temp_path = temp_file.name
-                
-                success = download_file_stream_to_temp(
+        from pathlib import Path
+        from elevenlabs import ElevenLabs
+
+        start_time = time.time()
+        if not settings.ELEVENLABS_API_KEY:
+            raise ValueError("ElevenLabs API key not configured")
+
+        selected_recordings = list(recordings[:25])
+        selected_duration = sum(r.duration_seconds or 0 for r in selected_recordings)
+        if selected_duration < 60:
+            raise ValueError("Insufficient audio in the selected cloning samples (minimum 60s required)")
+
+        with tempfile.TemporaryDirectory(prefix='voicevault-clone-') as temp_dir, ExitStack() as stack:
+            file_handles = []
+            for index, recording in enumerate(selected_recordings):
+                temp_path = str(Path(temp_dir) / f'{index}.{recording.format}')
+                if not download_file_stream_to_temp(
                     bucket='recordings',
                     file_path=recording.storage_path,
-                    temp_file_path=temp_path
-                )
-                
-                if success:
-                    temp_files.append(temp_path)
-                    logger.info(f"Downloaded recording {recording.id} for cloning")
-                else:
-                    logger.warning(f"Failed to download recording {recording.id}")
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
-                        
-            except Exception as e:
-                logger.warning("Failed to process recording %s: %s", recording.id, e.__class__.__name__)
-                continue
-        
-        audio_files_count = len(temp_files)
-        
-        if audio_files_count < 1:
-            raise ValueError(f"No audio files available for voice cloning")
-        
-        logger.info(f"Using {audio_files_count} audio file(s) for voice cloning")
-        
-        # Initialize ElevenLabs v2 client
-        from elevenlabs import ElevenLabs
-        
-        start_time = time.time()
-        
-        # Create voice name
-        voice_name = f"{user.full_name} VoiceVault"
-        
-        try:
-            api_key = settings.ELEVENLABS_API_KEY
-            if not api_key:
-                raise ValueError("ElevenLabs API key not configured")
-            
-            el_client = ElevenLabs(api_key=api_key)
-            
-            logger.info(f"Cloning voice: {voice_name}")
-            
-            # Open temp files as binary handles for the v2 SDK
-            file_handles = []
-            try:
-                for path in temp_files:
-                    file_handles.append(open(path, 'rb'))
-                
-                logger.info(f"Calling ElevenLabs API to clone voice with {len(file_handles)} file(s)...")
-                
-                voice = el_client.voices.add(
-                    name=voice_name,
-                    description=f"AI voice clone for {user.full_name} created by VoiceVault",
-                    files=file_handles
-                )
-                
-                voice_clone_id = voice.voice_id
-                
-                logger.info(f"Voice clone created successfully: {voice_clone_id}")
-                
-                # Voice quality score - ElevenLabs automatically validates
-                voice_quality_score = 0.90
-                
-            finally:
-                # Close all open file handles
-                for fh in file_handles:
-                    try:
-                        fh.close()
-                    except:
-                        pass
-                # Clean up temp files
-                import os
-                for temp_file in temp_files:
-                    try:
-                        os.unlink(temp_file)
-                    except:
-                        pass
-            
-        except Exception as e:
-            logger.error("ElevenLabs voice cloning failed: %s", e.__class__.__name__)
-            # Fall back to a free pre-made ElevenLabs voice for testing
-            # Using "Rachel" - a free pre-made voice available on all plans
-            logger.warning("Falling back to free pre-made voice 'Rachel' (21m00Tcm4TlvDq8ikWAM)")
-            voice_clone_id = "21m00Tcm4TlvDq8ikWAM"  # Rachel - free premade voice
-            voice_quality_score = 0.70
-        
+                    temp_file_path=temp_path,
+                ):
+                    raise ValueError("Could not download a voice recording. Restore the recording and retry cloning.")
+                if not Path(temp_path).stat().st_size:
+                    raise ValueError("A voice recording is empty. Upload a valid recording and retry cloning.")
+                file_handles.append(stack.enter_context(open(temp_path, 'rb')))
+
+            audio_files_count = len(file_handles)
+            el_client = ElevenLabs(api_key=settings.ELEVENLABS_API_KEY)
+            voice_clone_id = create_voice_clone(
+                el_client,
+                name=f"{user.full_name} VoiceVault",
+                description=f"AI voice clone for {user.full_name} created by VoiceVault",
+                files=file_handles,
+            )
+
+        # IVC returns an ID and verification status, not a similarity score.
+        voice_quality_score = None
+
         response_time = int((time.time() - start_time) * 1000)
         
         # Get or create AI configuration
@@ -815,8 +772,9 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
         
         # Update voice configuration
         ai_config.voice_clone_id = voice_clone_id
+        ai_config.voice_provider = 'elevenlabs'
         ai_config.voice_quality_score = voice_quality_score
-        ai_config.quality_approved = voice_quality_score >= settings.AI_VOICE_QUALITY_THRESHOLD
+        ai_config.quality_approved = False
         ai_config.save()
         
         # Track API usage
@@ -837,7 +795,7 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
             'voice_clone_id': voice_clone_id,
             'voice_quality_score': voice_quality_score,
             'audio_files_used': audio_files_count,
-            'total_duration': total_duration
+            'total_duration': selected_duration
         }
         queue_entry.save()
         
@@ -860,15 +818,17 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
     except Exception as e:
         logger.error("Voice cloning failed: %s", e.__class__.__name__)
         queue_entry.status = 'failed'
-        queue_entry.error_message = 'Voice cloning failed'
+        queue_entry.error_message = voice_cloning_failure_message(e)
         queue_entry.completed_at = timezone.now()
         queue_entry.save()
         
         # Retry logic
-        if queue_entry.retry_count < 3:
-            raise self.retry(exc=e, countdown=180 * (2 ** queue_entry.retry_count))
+        queue_entry.retry_count = self.request.retries
+        queue_entry.save(update_fields=['retry_count'])
+        if self.request.retries < self.max_retries and not isinstance(e, ValueError):
+            raise self.retry(exc=e, countdown=180 * (2 ** self.request.retries))
         
-        return {'success': False, 'error': 'Voice cloning failed'}
+        return {'success': False, 'error': queue_entry.error_message, 'user_id': user_id}
 
 
 @shared_task(bind=True)
@@ -913,7 +873,7 @@ def test_ai_quality_task(self, user_id: str) -> Dict:
             }
         
         # Check voice clone only when the user is Premium and has provided voice consent.
-        if user.has_premium_access and has_accepted_consent(user, 'voice_cloning') and not ai_config.voice_clone_id:
+        if user.has_premium_access and has_accepted_consent(user, 'voice_cloning') and not ai_config.has_cloned_voice:
             return {
                 'success': False,
                 'error': 'Voice clone not created'
@@ -1091,3 +1051,9 @@ def start_ai_pipeline_task(self, user_id: str) -> Dict:
     except Exception as e:
         logger.error("Failed to start AI pipeline: %s", e.__class__.__name__)
         return {'success': False, 'error': 'Failed to start AI pipeline'}
+
+
+@shared_task
+def generate_voice_preview_task(queue_id: str) -> Dict:
+    from services.replicate_voice import run_preview
+    return run_preview(queue_id)

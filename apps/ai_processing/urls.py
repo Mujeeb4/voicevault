@@ -8,7 +8,10 @@ from .views import (
     CloneVoiceView,
     FinalizeAIView,
     ProcessingStatusView,
-    RunFullPipelineView
+    RunFullPipelineView,
+    VoicePreviewView,
+    VoicePreviewStatusView,
+    VoicePreviewAudioView,
 )
 
 urlpatterns = [
@@ -18,5 +21,8 @@ urlpatterns = [
     path('process/finalize/<uuid:user_id>/', FinalizeAIView.as_view(), name='admin-finalize'),
     path('process/status/<uuid:user_id>/', ProcessingStatusView.as_view(), name='admin-status'),
     path('process/full-pipeline/<uuid:user_id>/', RunFullPipelineView.as_view(), name='admin-full-pipeline'),
+    path('process/voice-preview/<uuid:user_id>/', VoicePreviewView.as_view(), name='voice-preview'),
+    path('process/voice-preview/<uuid:user_id>/<uuid:preview_id>/', VoicePreviewStatusView.as_view(), name='voice-preview-status'),
+    path('process/voice-preview/<uuid:user_id>/<uuid:preview_id>/audio/', VoicePreviewAudioView.as_view(), name='voice-preview-audio'),
 ]
 

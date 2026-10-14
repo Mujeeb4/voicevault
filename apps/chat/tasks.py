@@ -9,6 +9,8 @@ from typing import Dict, Optional
 from celery import shared_task
 from django.utils import timezone
 
+from services.voice_cloning import is_cloned_voice_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,6 +33,10 @@ def generate_audio_sync(
     Returns:
         Dict with audio_url and generation stats
     """
+    from django.conf import settings
+    if settings.VOICE_PROVIDER == 'replicate':
+        from services.replicate_voice import generate_audio
+        return generate_audio(response_text, voice_id, conversation_id, ai_owner_id)
     from apps.chat.models import Conversation
     from apps.ai_processing.models import APIUsageTracking
     from utils.supabase_client import upload_file_to_supabase
@@ -43,6 +49,8 @@ def generate_audio_sync(
         logger.info(f"[SYNC] Generating audio for conversation {conversation_id}")
         from apps.users.models import User
         ai_owner = User.objects.get(id=ai_owner_id)
+        if not is_cloned_voice_id(voice_id) or voice_id != ai_owner.ai_config.voice_clone_id:
+            return {'success': False, 'error': 'A valid voice clone is required. Please retry voice cloning.'}
         voice_limit = can_generate_voice_response(ai_owner)
         if not voice_limit.allowed:
             return {
@@ -196,6 +204,10 @@ def generate_audio_async(
     Returns:
         Dict with audio_url and generation stats
     """
+    from django.conf import settings
+    if settings.VOICE_PROVIDER == 'replicate':
+        from services.replicate_voice import generate_audio
+        return generate_audio(response_text, voice_id, conversation_id, ai_owner_id)
     from apps.chat.models import Conversation
     from apps.ai_processing.models import APIUsageTracking
     from utils.supabase_client import upload_file_to_supabase
@@ -208,6 +220,8 @@ def generate_audio_async(
         logger.info(f"Generating audio for conversation {conversation_id}")
         from apps.users.models import User
         ai_owner = User.objects.get(id=ai_owner_id)
+        if not is_cloned_voice_id(voice_id) or voice_id != ai_owner.ai_config.voice_clone_id:
+            return {'success': False, 'error': 'A valid voice clone is required. Please retry voice cloning.'}
         voice_limit = can_generate_voice_response(ai_owner)
         if not voice_limit.allowed:
             return {

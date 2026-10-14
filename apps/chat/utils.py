@@ -207,7 +207,7 @@ INSTRUCTIONS:
 # CACHING UTILITIES - For Instant Responses
 # ============================================================================
 
-def get_cache_key(question: str, ai_owner_id: str) -> str:
+def get_cache_key(question: str, ai_owner_id: str, voice_id: str = '') -> str:
     """
     Generate cache key from question and AI owner.
     Uses MD5 hash of normalized question for consistency.
@@ -225,10 +225,10 @@ def get_cache_key(question: str, ai_owner_id: str) -> str:
     # Create hash
     question_hash = hashlib.md5(normalized.encode()).hexdigest()
     
-    return f"chat:{ai_owner_id}:{question_hash}"
+    return f"chat:v2:{ai_owner_id}:{voice_id}:{question_hash}"
 
 
-def get_cached_response(question: str, ai_owner_id: str) -> Optional[Dict]:
+def get_cached_response(question: str, ai_owner_id: str, voice_id: str = '') -> Optional[Dict]:
     """
     Check if similar question was asked before.
     Returns instant response if found (<50ms).
@@ -240,7 +240,7 @@ def get_cached_response(question: str, ai_owner_id: str) -> Optional[Dict]:
     Returns:
         Dict with response data if cached, None otherwise
     """
-    cache_key = get_cache_key(question, ai_owner_id)
+    cache_key = get_cache_key(question, ai_owner_id, voice_id)
     cached = cache.get(cache_key)
     
     if cached:
@@ -257,7 +257,8 @@ def cache_response(
     response_text: str, 
     audio_url: Optional[str] = None,
     tokens_used: int = 0,
-    response_time_ms: int = 0
+    response_time_ms: int = 0,
+    voice_id: str = ''
 ) -> None:
     """
     Cache response for future instant retrieval.
@@ -271,7 +272,7 @@ def cache_response(
         tokens_used: Number of tokens used
         response_time_ms: Original response time
     """
-    cache_key = get_cache_key(question, ai_owner_id)
+    cache_key = get_cache_key(question, ai_owner_id, voice_id)
     
     cache_data = {
         'text': response_text,

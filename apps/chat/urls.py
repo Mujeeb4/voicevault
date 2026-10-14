@@ -25,4 +25,5 @@ urlpatterns = [
 
     # Protected audio playback (short-lived token required)
     path('audio/<uuid:conversation_id>/', views.stream_conversation_audio, name='conversation_audio'),
+    path('replicate/webhook/', views.replicate_webhook, name='replicate_webhook'),
 ]

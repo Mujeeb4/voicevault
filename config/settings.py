@@ -353,9 +353,26 @@ else:
 # OpenAI Settings
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 OPENAI_ANALYSIS_MODEL = config('OPENAI_ANALYSIS_MODEL', default='gpt-4.1-mini')
+OPENAI_CHAT_MODEL = config('OPENAI_CHAT_MODEL', default='gpt-4o')
+
+# Text chat can use QwenCloud while voice generation stays on Replicate.
+CHAT_PROVIDER = config('CHAT_PROVIDER', default='openai').lower()
+QWEN_API_KEY = config('QWEN_API_KEY', default='')
+QWEN_CHAT_MODEL = config('QWEN_CHAT_MODEL', default='qwen3.8-flash')
+QWEN_CHAT_BASE_URL = config(
+    'QWEN_CHAT_BASE_URL',
+    default='https://token-plan.maas.qwencloudapi.com/compatible-mode/v1',
+)
 
 # ElevenLabs Settings
 ELEVENLABS_API_KEY = config('ELEVENLABS_API_KEY', default='')
+REPLICATE_API_TOKEN = config('REPLICATE_API_TOKEN', default='')
+REPLICATE_WEBHOOK_KEY = config('REPLICATE_WEBHOOK_KEY', default='')
+REPLICATE_WEBHOOK_URL = config('REPLICATE_WEBHOOK_URL', default='')
+REPLICATE_MODEL = 'qwen/qwen3-tts'
+REPLICATE_MODEL_VERSION = config('REPLICATE_MODEL_VERSION', default='d490a561cf1171a8dc3d96d1e57efffea7dd34607148bb641f3d9de4e38c472e')
+REPLICATE_LANGUAGE = 'auto'
+VOICE_PROVIDER = config('VOICE_PROVIDER', default='replicate' if REPLICATE_API_TOKEN else 'elevenlabs').lower()
 
 # Stripe Settings
 STRIPE_MODE = config('STRIPE_MODE', default='test').lower()

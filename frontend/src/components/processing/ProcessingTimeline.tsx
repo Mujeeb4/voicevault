@@ -48,7 +48,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     {
       key: 'voice_cloning' as const,
       title: 'Generating Voice',
-      description: 'Creating your AI voice clone with ElevenLabs',
+      description: 'Preparing your recording for Qwen3 voice cloning',
       icon: <Mic className="w-6 h-6 text-primary-600" />,
       stepData: stepsData.voice_cloning || { status: 'pending' },
       showTranscriptionButton: transcriptionComplete && transcriptionText.length > 0,

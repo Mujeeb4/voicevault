@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { ProcessingStatusMonitor } from '@/components/processing/ProcessingStatusMonitor';
 import { ProcessingComplete } from '@/components/processing/ProcessingComplete';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi } from '@/lib/api/auth';
@@ -22,6 +22,13 @@ export default function ProcessingPage() {
   const [isComplete, setIsComplete] = useState(false);
   const [voiceConsentAccepted, setVoiceConsentAccepted] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
+  const [previewText, setPreviewText] = useState('I remember sitting on the front steps with my family, feeling completely safe and happy.');
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState('');
+  useEffect(() => () => {
+    if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
+  }, [previewAudioUrl]);
   const isPremium = !!(
     user?.is_premium ||
     user?.payment_completed ||
@@ -55,6 +62,31 @@ export default function ProcessingPage() {
       toast.error('Unable to save consent. Please try again.');
     } finally {
       setIsSavingConsent(false);
+    }
+  };
+
+  const handleVoicePreview = async () => {
+    if (!user || !previewText.trim()) return;
+    setIsPreviewing(true);
+    setPreviewError('');
+    setPreviewAudioUrl(null);
+    try {
+      const started = await processingApi.startVoicePreview(user.id, previewText.trim());
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const current = await processingApi.getVoicePreviewStatus(user.id, started.preview_id);
+        if (current.status === 'complete') {
+          const audio = await processingApi.getVoicePreviewAudio(user.id, started.preview_id);
+          setPreviewAudioUrl(URL.createObjectURL(audio));
+          return;
+        }
+        if (current.status === 'failed') throw new Error(current.error || 'Voice preview failed');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      throw new Error('The preview is still processing. Please try again shortly; the same text reuses the pending request.');
+    } catch (error) {
+      setPreviewError(error instanceof Error ? error.message : 'Could not generate voice preview');
+    } finally {
+      setIsPreviewing(false);
     }
   };
 
@@ -153,6 +185,28 @@ export default function ProcessingPage() {
             onComplete={handleComplete}
           />
 
+          {isPremium && (
+            <div className="journey-card p-6">
+              <h2 className="mb-2 text-lg font-semibold text-foreground">Hear your Qwen3 voice</h2>
+              <p className="mb-3 text-sm text-muted-foreground">
+                A preview uses your saved recording and matching transcript. Replicate charges for a new request when you press Generate; repeating the same text reuses its result.
+              </p>
+              <textarea
+                value={previewText}
+                onChange={(event) => setPreviewText(event.target.value)}
+                maxLength={300}
+                rows={3}
+                aria-label="Words for the voice preview"
+                className="mb-3 w-full rounded-lg border border-border bg-background p-3 text-foreground"
+              />
+              <Button onClick={handleVoicePreview} disabled={isPreviewing || !previewText.trim()}>
+                {isPreviewing ? 'Generating voice...' : 'Generate voice preview'}
+              </Button>
+              {previewError && <p className="mt-3 text-sm text-destructive">{previewError}</p>}
+              {previewAudioUrl && <audio className="mt-4 w-full" controls src={previewAudioUrl} />}
+            </div>
+          )}
+
           {/* Help Section */}
           <div className="journey-card p-6">
             <h3 className="mb-2 font-semibold text-foreground">What happens next?</h3>
@@ -167,7 +221,7 @@ export default function ProcessingPage() {
                 <span className="font-bold text-primary">2.</span>
                 <span>
                   {isPremium
-                    ? "After you consent, we'll create a voice clone that sounds like you using ElevenLabs"
+                    ? "After you consent, we'll prepare a recording and matching transcript for Qwen3 voice cloning"
                     : "We'll create your text-based AI preview; voice cloning remains locked unless you upgrade"}
                 </span>
               </li>

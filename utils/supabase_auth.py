@@ -33,6 +33,7 @@ class SupabaseAuthMiddleware(MiddlewareMixin):
         '/api/family/accept-invite/',
         '/api/family/invitation/',
         '/api/payments/webhook/',
+        '/api/chat/replicate/webhook/',
         '/api/payments/packages/',
         '/api/users/signup/',
         '/api/users/login/',

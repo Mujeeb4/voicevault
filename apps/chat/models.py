@@ -25,6 +25,9 @@ class Conversation(models.Model):
     question_text = models.TextField()
     response_text = models.TextField()
     audio_url = models.URLField(max_length=1000, null=True, blank=True)
+    replicate_prediction_id = models.CharField(max_length=100, blank=True, default='', db_index=True)
+    replicate_audio_status = models.CharField(max_length=20, blank=True, default='')
+    replicate_audio_error = models.CharField(max_length=255, blank=True, default='')
     
     # Performance metrics
     response_time_ms = models.IntegerField(help_text="Total response generation time")
