@@ -3,10 +3,15 @@ DRF Serializers for recordings app.
 """
 from rest_framework import serializers
 from .models import AudioRecording, Transcript, RecordingQuestion
+from .audio import recording_playback_url
 
 
 class AudioRecordingSerializer(serializers.ModelSerializer):
     """Serializer for AudioRecording model."""
+    public_url = serializers.SerializerMethodField()
+
+    def get_public_url(self, recording):
+        return recording_playback_url(recording)
     
     class Meta:
         model = AudioRecording

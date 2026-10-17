@@ -15,6 +15,7 @@ import logging
 
 from .models import AudioRecording
 from .serializers import AudioRecordingSerializer, AudioRecordingUploadSerializer
+from .audio import recording_playback_url
 from apps.users.models import User
 from services.plan_limits import (
     can_upload_recording,
@@ -263,7 +264,7 @@ class AudioRecordingUploadView(APIView):
                 return Response({
                     'recording_id': str(recording.id),
                     'storage_path': recording.storage_path,
-                    'public_url': recording.public_url,
+                    'public_url': recording_playback_url(recording),
                     'status': 'complete',
                     'created_at': recording.created_at.isoformat(),
                 }, status=status.HTTP_201_CREATED)
@@ -302,7 +303,7 @@ class AudioRecordingUploadView(APIView):
                     return Response({
                         'recording_id': str(existing_combined.id),
                         'storage_path': existing_combined.storage_path,
-                        'public_url': existing_combined.public_url,
+                        'public_url': recording_playback_url(existing_combined),
                         'status': 'complete',
                         'created_at': existing_combined.created_at.isoformat(),
                     }, status=status.HTTP_200_OK)

@@ -1,4 +1,6 @@
 from unittest.mock import patch
+from pathlib import Path
+import tempfile
 
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
@@ -37,6 +39,27 @@ class RecordingAccessTests(TestCase):
         response = self.client.get('/api/recordings/')
         self.assertEqual(response.status_code, 200)
         self.assertEqual([item['id'] for item in response.data['recordings']], [str(self.recording.id)])
+
+    @override_settings(DEBUG=False, STORAGE_BACKEND='local')
+    def test_production_playback_preserves_bytes_and_requires_signed_owner_link(self):
+        with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            path = Path(media_root) / 'storage' / 'recordings' / self.recording.storage_path
+            path.parent.mkdir(parents=True)
+            original = b'ID3' + b'original recording bytes' * 100
+            path.write_bytes(original)
+            self.authenticate()
+            listing = self.client.get('/api/recordings/')
+            url = listing.data['recordings'][0]['public_url']
+            self.assertTrue(url.startswith(f'/api/recordings/{self.recording.id}/audio/'))
+            self.client.credentials()
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response['Content-Type'], 'audio/mpeg')
+            self.assertEqual(b''.join(response.streaming_content), original)
+            response.close()
+            self.assertEqual(self.client.get(f'/api/recordings/{self.recording.id}/audio/').status_code, 401)
+            other_url = url.replace(str(self.recording.id), str(self.other_recording.id), 1)
+            self.assertEqual(self.client.get(other_url).status_code, 403)
 
     @patch('apps.recordings.views.delete_file_from_supabase', return_value=True)
     def test_app_jwt_cannot_delete_another_owners_recording(self, delete_file):
