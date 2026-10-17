@@ -441,6 +441,8 @@ class AudioRecordingListView(APIView):
     GET /api/recordings/
     List all recordings for authenticated user.
     """
+    # Authentication is verified by SupabaseAuthMiddleware and checked below.
+    permission_classes = [AllowAny]
     
     def get(self, request):
         # Check authentication
@@ -503,6 +505,8 @@ class AudioRecordingDeleteView(APIView):
     DELETE /api/recordings/{recording_id}/
     Delete a recording.
     """
+    # Keep the app's JWT authentication and ownership checks below authoritative.
+    permission_classes = [AllowAny]
     
     def delete(self, request, recording_id):
         # Check authentication
