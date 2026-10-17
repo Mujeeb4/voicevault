@@ -7,12 +7,13 @@
  * Following .cursorrules patterns
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Play, Pause, Volume2, VolumeX, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore } from '@/store/chat';
+import { AUTOPLAY_BLOCKED_MESSAGE } from '@/lib/audio/player';
 
 interface VoicePlayerComponentProps {
   audioUrl: string;
@@ -37,21 +38,77 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
     isAudioPlaying,
     currentAudioId,
     currentTime,
-    duration
+    duration,
+    volume,
+    audioErrors,
+    loadConversations,
   } = useChatStore();
 
-  const [localVolume, setLocalVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
+  const [metadataDuration, setMetadataDuration] = useState<number | null>(null);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const previousVolume = useRef(1);
+  const isMuted = volume === 0;
+
+  useEffect(() => {
+    if (volume > 0) previousVolume.current = volume;
+  }, [volume]);
+
+  // Read each reply's duration even when it has never been selected for playback.
+  // This element only reads metadata; the shared player remains the sole playback source.
+  useEffect(() => {
+    setMetadataDuration(null);
+    setMetadataError(null);
+    const probe = new Audio();
+    probe.preload = 'metadata';
+    const updateDuration = () => {
+      if (Number.isFinite(probe.duration) && probe.duration > 0) {
+        setMetadataDuration(probe.duration);
+        setMetadataError(null);
+      }
+    };
+    const onError = () => setMetadataError('Audio could not be loaded. Tap Play to refresh its link.');
+    probe.addEventListener('loadedmetadata', updateDuration);
+    probe.addEventListener('durationchange', updateDuration);
+    probe.addEventListener('error', onError);
+    probe.src = audioUrl;
+    probe.load();
+    return () => {
+      probe.removeEventListener('loadedmetadata', updateDuration);
+      probe.removeEventListener('durationchange', updateDuration);
+      probe.removeEventListener('error', onError);
+      probe.removeAttribute('src');
+      probe.load();
+    };
+  }, [audioUrl]);
 
   // Check if this specific instance is currently playing
   const isCurrent = currentAudioId === conversationId;
   const isPlaying = isAudioPlaying && isCurrent;
 
-  // Use global time/duration if current, otherwise 0
-  const displayTime = isCurrent ? currentTime : 0;
-  const displayDuration = isCurrent ? duration : 0; // Inactive players showing 0 is expected for now
+  const displayDuration = (isCurrent && duration > 0 ? duration : metadataDuration) || 0;
+  const displayTime = isCurrent ? Math.min(currentTime, displayDuration || currentTime) : 0;
+  const playbackError = audioErrors[conversationId] || (!displayDuration ? metadataError : null);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
+    if (playbackError === AUTOPLAY_BLOCKED_MESSAGE) {
+      // Keep a manual retry inside the user gesture; fetching first can block it again.
+      playAudio(audioUrl, conversationId);
+      return;
+    }
+    if (playbackError) {
+      setIsRetrying(true);
+      try {
+        await loadConversations();
+        const freshUrl = useChatStore.getState().conversations.find(c => c.id === conversationId)?.audio_url;
+        playAudio(freshUrl || audioUrl, conversationId);
+      } catch {
+        setMetadataError('Could not refresh this audio link. Please try again.');
+      } finally {
+        setIsRetrying(false);
+      }
+      return;
+    }
     if (isPlaying) {
       pauseAudio();
     } else if (isCurrent) {
@@ -63,18 +120,14 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
 
   const handleVolumeChange = (values: number[]) => {
     const newVolume = values[0];
-    setLocalVolume(newVolume);
     setVolume(newVolume);
-    setIsMuted(newVolume === 0);
   };
 
   const handleMuteToggle = () => {
     if (isMuted) {
-      setVolume(localVolume || 1);
-      setIsMuted(false);
+      setVolume(previousVolume.current);
     } else {
       setVolume(0);
-      setIsMuted(true);
     }
   };
 
@@ -87,7 +140,8 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
   const handleDownload = () => {
     const link = document.createElement('a');
     link.href = audioUrl;
-    link.download = `voicevault_response_${conversationId}.mp3`;
+    // The server's Content-Disposition supplies the actual WAV or MP3 filename.
+    link.download = '';
     link.click();
   };
 
@@ -106,6 +160,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
         onClick={handlePlayPause}
         className={className}
         aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
+        disabled={isRetrying}
       >
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </Button>
@@ -125,12 +180,12 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
           max={displayDuration || 100}
           step={0.1}
           onValueChange={handleSeek}
-          disabled={!isCurrent}
+          disabled={!isCurrent || !displayDuration}
           className="flex-1"
           aria-label="Audio progress"
         />
         <span className="text-xs text-muted-foreground w-10">
-          {formatTime(displayDuration)}
+          {displayDuration ? formatTime(displayDuration) : '--:--'}
         </span>
       </div>
 
@@ -144,6 +199,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
             onClick={handlePlayPause}
             className="h-8 w-8"
             aria-label={isPlaying ? 'Pause' : 'Play'}
+            disabled={isRetrying}
           >
             {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
           </Button>
@@ -160,7 +216,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
             </Button>
             <Slider
-              value={[isMuted ? 0 : localVolume]}
+              value={[volume]}
               min={0}
               max={1}
               step={0.01}
@@ -182,6 +238,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
           <Download className="h-4 w-4" />
         </Button>
       </div>
+      {playbackError && <p role="alert" className="text-sm text-destructive">{playbackError}</p>}
     </div>
   );
 };

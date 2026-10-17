@@ -27,6 +27,9 @@ interface ChatState {
   currentAudioId: string | null;
   currentTime: number;
   duration: number;
+  volume: number;
+  audioErrors: Record<string, string>;
+  readyAudioUrls: Record<string, string>;
   error: string | null;
   voicePlayer: VoicePlayer | null;
   eventSource: StreamingConnection | null;
@@ -47,6 +50,8 @@ interface ChatState {
   stopAudio: () => void;
   seekAudio: (time: number) => void;
   setVolume: (volume: number) => void;
+  ensureVoicePlayer: () => VoicePlayer;
+  queueAudio: (url: string, id: string) => void;
   reset: () => void;
 }
 
@@ -63,6 +68,9 @@ const initialState = {
   currentAudioId: null,
   currentTime: 0,
   duration: 0,
+  volume: 1,
+  audioErrors: {} as Record<string, string>,
+  readyAudioUrls: {} as Record<string, string>,
   error: null,
   voicePlayer: null,
   eventSource: null,
@@ -79,6 +87,45 @@ export const useChatStore = create<ChatState>()(
 
       setCurrentMessage: (message) => set({ currentMessage: message }),
 
+      ensureVoicePlayer: () => {
+        const existing = get().voicePlayer;
+        if (existing) return existing;
+        const player = new VoicePlayer({
+          onSelect: (id) => set(state => ({
+            currentAudioId: id, isAudioPlaying: false, currentTime: 0, duration: 0,
+            audioErrors: { ...state.audioErrors, [id]: '' },
+          })),
+          onPlay: (id) => set(state => ({
+            isAudioPlaying: true, currentAudioId: id,
+            audioErrors: { ...state.audioErrors, [id]: '' },
+          })),
+          onPause: (id) => {
+            if (get().currentAudioId === id) set({ isAudioPlaying: false });
+          },
+          onTimeUpdate: (currentTime, duration) => set({ currentTime, duration }),
+          onComplete: (id) => {
+            if (get().currentAudioId === id) set({ isAudioPlaying: false });
+          },
+          onError: (message, id) => {
+            if (get().currentAudioId === id) {
+              set(state => ({ isAudioPlaying: false, audioErrors: { ...state.audioErrors, [id]: message } }));
+            }
+          },
+        });
+        player.setVolume(get().volume);
+        set({ voicePlayer: player });
+        return player;
+      },
+
+      queueAudio: (url, id) => {
+        set(state => ({
+          readyAudioUrls: { ...state.readyAudioUrls, [id]: url },
+          conversations: state.conversations.map(c => c.id === id ? { ...c, audio_url: url } : c),
+          processingAudioIds: state.processingAudioIds.filter(value => value !== id),
+        }));
+        get().ensureVoicePlayer().addToQueue(url, id);
+      },
+
       loadConversations: async () => {
         try {
           const { aiOwnerId, familyMemberId } = get();
@@ -91,7 +138,12 @@ export const useChatStore = create<ChatState>()(
             aiOwnerId,
             familyMemberId || undefined
           );
-          set({ conversations: response.results, error: null });
+          set(state => ({
+            conversations: response.results.map(c => ({
+              ...c, audio_url: c.audio_url || state.readyAudioUrls[c.id],
+            })),
+            error: null,
+          }));
         } catch (error) {
           set({ error: error instanceof Error ? error.message : 'Failed to load conversations' });
           throw error;
@@ -110,27 +162,14 @@ export const useChatStore = create<ChatState>()(
           try {
             const existingConversation = get().conversations.find((c) => c.id === conversationId);
             if (existingConversation?.audio_url) {
-              set(state => ({
-                processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId),
-              }));
+              get().queueAudio(existingConversation.audio_url, conversationId);
               return;
             }
 
             const status = await chatApi.checkAudioStatus(taskId, conversationId);
 
             if (status.status === 'complete' && status.audio_url) {
-              const { voicePlayer } = get();
-              // Queue audio for playback
-              voicePlayer?.addToQueue(status.audio_url, conversationId);
-
-              // Update state with new audio URL and remove from processing
-              set((state) => ({
-                conversations: state.conversations.map((c) =>
-                  c.id === conversationId ? { ...c, audio_url: status.audio_url } : c
-                ),
-                audioQueue: [...state.audioQueue, status.audio_url!],
-                processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId)
-              }));
+              get().queueAudio(status.audio_url, conversationId);
             } else if (status.status === 'processing' || status.status === 'pending') {
               if (attempt >= AUDIO_POLL_MAX_ATTEMPTS) {
                 await get().loadConversations().catch(() => undefined);
@@ -158,7 +197,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       sendMessage: async (message: string) => {
-        const { aiOwnerId, familyMemberId, voicePlayer, eventSource } = get();
+        const { aiOwnerId, familyMemberId, eventSource } = get();
 
         if (!aiOwnerId || !familyMemberId) {
           throw new Error('Missing required IDs');
@@ -178,18 +217,6 @@ export const useChatStore = create<ChatState>()(
           eventSource.close();
         }
 
-        // Initialize voice player if needed
-        let player = voicePlayer;
-        if (!player) {
-          player = new VoicePlayer({
-            onPlay: (id) => set({ isAudioPlaying: true, currentAudioId: id }),
-            onTimeUpdate: (time, duration) => set({ currentTime: time, duration: duration }),
-            onComplete: (_id) => set({ isAudioPlaying: false, currentAudioId: null, currentTime: 0, duration: 0 }),
-            onError: (error) => console.warn(error),
-          });
-          set({ voicePlayer: player });
-        }
-
         set({
           isStreaming: true,
           streamingText: '',
@@ -205,17 +232,7 @@ export const useChatStore = create<ChatState>()(
               set((state) => ({ streamingText: state.streamingText + token }));
             },
             (audioUrl, conversationId) => {
-              // Queue audio for playback (direct URL)
-              player!.addToQueue(audioUrl, conversationId);
-
-              // Add to audio queue
-              set((state) => ({
-                audioQueue: [...state.audioQueue, audioUrl],
-                processingAudioIds: state.processingAudioIds.filter(id => id !== conversationId),
-                conversations: state.conversations.map((c) =>
-                  c.id === conversationId ? { ...c, audio_url: audioUrl } : c
-                ),
-              }));
+              get().queueAudio(audioUrl, conversationId);
             },
             (taskId, conversationId) => {
               // Handle async audio processing
@@ -239,7 +256,7 @@ export const useChatStore = create<ChatState>()(
                     family_member: { id: familyMemberId, full_name: state.conversations[0]?.family_member?.full_name || '' },
                     question_text: message,
                     response_text: streamingText,
-                    audio_url: undefined,
+                    audio_url: state.readyAudioUrls[realId],
                     created_at: new Date().toISOString(),
                     response_time_ms: 0,
                   } as Conversation,
@@ -297,15 +314,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       playAudio: (url, id) => {
-        const { voicePlayer } = get();
-        // If this ID is already current, just resume
-        if (get().currentAudioId === id && !get().isAudioPlaying) {
-          voicePlayer?.resume();
-          set({ isAudioPlaying: true });
-        } else {
-          // Play new
-          voicePlayer?.play(url, id);
-        }
+        get().ensureVoicePlayer().play(url, id);
       },
 
       pauseAudio: () => {
@@ -317,7 +326,6 @@ export const useChatStore = create<ChatState>()(
       resumeAudio: () => {
         const { voicePlayer } = get();
         voicePlayer?.resume();
-        set({ isAudioPlaying: true });
       },
 
       stopAudio: () => {
@@ -333,6 +341,7 @@ export const useChatStore = create<ChatState>()(
       },
 
       setVolume: (volume: number) => {
+        set({ volume });
         const { voicePlayer } = get();
         voicePlayer?.setVolume(volume);
       },
