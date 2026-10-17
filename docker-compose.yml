@@ -9,6 +9,7 @@ services:
   # PostgreSQL Database (for local testing, production uses Supabase)
   postgres:
     image: postgres:15-alpine
+    restart: unless-stopped
     container_name: voicevault-postgres
     environment:
       POSTGRES_USER: postgres
@@ -27,6 +28,7 @@ services:
   # Redis for Celery
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     container_name: voicevault-redis
     ports:
       - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
@@ -40,6 +42,7 @@ services:
 
   # Django + Next.js Web Service
   web:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -109,6 +112,7 @@ services:
 
   # Celery Worker
   celery-worker:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
@@ -144,6 +148,7 @@ services:
 
   # Celery Beat (Scheduler)
   celery-beat:
+    restart: unless-stopped
     build:
       context: .
       dockerfile: Dockerfile
