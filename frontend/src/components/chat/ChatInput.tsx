@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2, Mic, MicOff } from 'lucide-react';
@@ -169,6 +170,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       >
         {/* Voice Recording Button */}
         {onSendVoice && (
+          <Tooltip
+            disabled={disabled || isStreaming || isTranscribing}
+            content={
+              disabled
+                ? 'Chat is unavailable right now'
+                : isStreaming
+                  ? 'Wait for the AI to finish responding'
+                  : isTranscribing
+                    ? 'Transcribing your voice message...'
+                    : isRecording
+                      ? 'Stop recording'
+                      : 'Record a voice message'
+            }
+          >
           <Button
             onClick={handleToggleRecording}
             disabled={disabled || isStreaming || isTranscribing}
@@ -185,6 +200,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               <Mic className="h-4 w-4" />
             )}
           </Button>
+          </Tooltip>
         )}
 
         {/* Textarea */}
@@ -204,6 +220,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         />
 
         {/* Send Button */}
+        <Tooltip
+          disabled={disabled || isStreaming || message.trim().length === 0 || isRecording || isTranscribing}
+          content={
+            disabled
+              ? 'Chat is unavailable right now'
+              : isStreaming
+                ? 'Wait for the AI to finish responding'
+                : isTranscribing
+                  ? 'Transcribing your voice message...'
+                  : isRecording
+                    ? 'Stop recording before sending'
+                    : message.trim().length === 0
+                      ? 'Type a message to send'
+                      : 'Send message'
+          }
+        >
         <Button
           onClick={handleSend}
           disabled={disabled || isStreaming || message.trim().length === 0 || isRecording || isTranscribing}
@@ -213,6 +245,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         >
           {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
+        </Tooltip>
       </div>
 
       {/* Character Count */}

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, MessageSquare, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import apiClient from '@/lib/api/client';
 
 interface AccessibleAI {
@@ -195,12 +196,14 @@ const ChatPage: React.FC = () => {
               </AlertDescription>
             </Alert>
 
-            <Button
-              onClick={() => selectedAIId && router.push(`/chat?ai=${selectedAIId}`)}
-              disabled={!selectedAIId}
-            >
-              Start Chatting
-            </Button>
+            <Tooltip disabled content={selectedAIId ? null : 'Select a family AI above to start chatting'}>
+              <Button
+                onClick={() => selectedAIId && router.push(`/chat?ai=${selectedAIId}`)}
+                disabled={!selectedAIId}
+              >
+                Start Chatting
+              </Button>
+            </Tooltip>
           </CardContent>
         </Card>
       </div>

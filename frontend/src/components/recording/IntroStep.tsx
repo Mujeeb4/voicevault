@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Mic, Check, X, Loader2, AlertCircle, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { AudioRecorder } from '@/lib/audio/recorder';
 
 interface IntroStepProps {
@@ -240,11 +241,16 @@ export function IntroStep({ onStart }: IntroStepProps) {
 
       {/* Start Button */}
       <div className="sticky bottom-4 z-20 mt-6 rounded-lg border border-border bg-background/86 p-3 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
+        <Tooltip
+          disabled
+          className="w-full sm:mx-auto sm:flex sm:max-w-md"
+          content={canStart ? null : 'Allow microphone access in your browser, then use "Test microphone" to continue'}
+        >
         <Button
           onClick={onStart}
           disabled={!canStart}
           size="lg"
-          className="w-full sm:mx-auto sm:flex sm:max-w-md"
+          className="w-full"
         >
           {canStart ? (
             <>
@@ -255,6 +261,7 @@ export function IntroStep({ onStart }: IntroStepProps) {
             'Please allow microphone access'
           )}
         </Button>
+        </Tooltip>
       </div>
     </motion.div>
   );

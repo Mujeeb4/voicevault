@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import apiClient from '@/lib/api/client';
 import * as session from '@/lib/auth/session';
-import type { User, AuthTokens, LoginRequest, SignupRequest } from '@/types';
+import type { User, AuthTokens, LoginRequest, SignupRequest, SignupResponse } from '@/types';
 import { getApiErrorMessage } from '@/lib/utils';
 
 let authCheck: Promise<void> | null = null;
@@ -23,7 +23,7 @@ interface AuthState {
 
   // Actions
   login: (credentials: LoginRequest) => Promise<void>;
-  signup: (data: SignupRequest) => Promise<void>;
+  signup: (data: SignupRequest) => Promise<SignupResponse>;
   logout: () => void;
   clearError: () => void;
   checkAuth: () => Promise<void>;
@@ -86,26 +86,11 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
 
-          const { data: signupData } = await apiClient.post<{
-            user: User;
-            tokens: AuthTokens;
-          }>('/users/signup/', data);
+          // Signup no longer logs the user in: they must verify their email first.
+          const { data: signupData } = await apiClient.post<SignupResponse>('/users/signup/', data);
 
-          // Store tokens in session (which also updates API client)
-          const expiresAt = session.decodeTokenExpiry(signupData.tokens.access);
-          session.setTokens({
-            access: signupData.tokens.access,
-            refresh: signupData.tokens.refresh,
-            expiresAt: expiresAt || undefined,
-          });
-
-          set({
-            user: signupData.user,
-            tokens: signupData.tokens,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          });
+          set({ isLoading: false, error: null });
+          return signupData;
         } catch (error: unknown) {
           const errorMessage = getApiErrorMessage(error, 'Signup failed');
 

@@ -194,6 +194,32 @@ def send_welcome_email(
         return False
 
 
+def send_verification_email(to_email: str, to_name: str, verify_url: str) -> bool:
+    """Ask a new user to confirm their email address."""
+    try:
+        first = (to_name or "").split(" ")[0] or "there"
+        _send_branded_email(
+            to_email,
+            "Verify your email for VoiceVault",
+            "Verify your email",
+            [
+                f"Hi {first}, thanks for signing up for VoiceVault.",
+                "Please confirm your email address to activate your account. "
+                "This link expires in 24 hours and can only be used once.",
+            ],
+            cta_label="Verify email",
+            cta_url=verify_url,
+            note=f"If the button does not work, copy this link into your browser: {verify_url}",
+            footer_note="You received this email because an account was created with this address. "
+                        "If that was not you, you can ignore it.",
+        )
+        logger.info("Verification email sent")
+        return True
+    except Exception as e:
+        _log_email_failure("verification", e)
+        return False
+
+
 def send_account_welcome_email(to_email: str, to_name: str) -> bool:
     """Welcome a user right after they create an account."""
     try:

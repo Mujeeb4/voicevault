@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { AdminRoute } from '@/components/admin/AdminRoute';
 import { useAdminStore } from '@/store/admin';
 import { Input } from '@/components/ui/input';
@@ -139,6 +140,7 @@ function AdminUsersContent() {
                   </TableCell>
                   <TableCell>{user.family_members_count || 0}</TableCell>
                   <TableCell>
+                    <Tooltip content="View processing jobs">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -147,6 +149,7 @@ function AdminUsersContent() {
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))

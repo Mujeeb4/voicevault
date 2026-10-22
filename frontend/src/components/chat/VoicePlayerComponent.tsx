@@ -161,6 +161,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
         onClick={handlePlayPause}
         className={className}
         aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
+        title={isRetrying ? 'Retrying audio, please wait...' : isPlaying ? 'Pause audio' : 'Play audio'}
         disabled={isRetrying}
       >
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}

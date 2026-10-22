@@ -12,6 +12,7 @@ import { ProcessingComplete } from '@/components/processing/ProcessingComplete';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/ui/page-header';
 import { authApi } from '@/lib/api/auth';
 import { processingApi } from '@/lib/api/processing';
@@ -196,9 +197,14 @@ export default function ProcessingPage() {
                 aria-label="Words for the voice preview"
                 className="mb-3 w-full rounded-lg border border-border bg-background p-3 text-foreground"
               />
-              <Button onClick={handleVoicePreview} disabled={isPreviewing || !previewText.trim()}>
-                {isPreviewing ? 'Generating voice...' : 'Generate voice preview'}
-              </Button>
+              <Tooltip
+                disabled
+                content={isPreviewing ? 'A preview is already being generated' : !previewText.trim() ? 'Type some words to preview first' : null}
+              >
+                <Button onClick={handleVoicePreview} disabled={isPreviewing || !previewText.trim()}>
+                  {isPreviewing ? 'Generating voice...' : 'Generate voice preview'}
+                </Button>
+              </Tooltip>
               {previewError && <p className="mt-3 text-sm text-destructive">{previewError}</p>}
               {previewAudioUrl && <audio className="mt-4 w-full" controls src={previewAudioUrl} />}
             </div>

@@ -35,6 +35,8 @@ class SupabaseAuthMiddleware(MiddlewareMixin):
         '/api/chat/replicate/webhook/',
         '/api/payments/packages/',
         '/api/users/signup/',
+        '/api/users/verify-email/',
+        '/api/users/resend-verification/',
         '/api/users/login/',
         '/api/users/refresh/',
     ]

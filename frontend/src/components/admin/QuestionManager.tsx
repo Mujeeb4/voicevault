@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   DndContext,
   closestCenter,
@@ -115,6 +116,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
   return (
     <TableRow ref={setNodeRef} style={style} className={cn(isDragging && 'bg-muted')}>
       <TableCell className="w-12">
+        <Tooltip content="Drag to reorder">
         <button
           {...attributes}
           {...listeners}
@@ -123,6 +125,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
         >
           <GripVertical className="h-5 w-5 text-muted-foreground" />
         </button>
+        </Tooltip>
       </TableCell>
       <TableCell className="font-medium">{question.order}</TableCell>
       <TableCell className="max-w-md">

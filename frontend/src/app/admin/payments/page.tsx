@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { format } from 'date-fns';
 import { ExternalLink, Loader2, RotateCcw, Search } from 'lucide-react';
 import { AdminRoute } from '@/components/admin/AdminRoute';
@@ -172,6 +173,7 @@ function AdminPaymentsContent() {
                     <div className="flex justify-end gap-1">
                       {payment.status === 'succeeded' &&
                         payment.stripe_payment_intent_id.startsWith('pi_') && (
+                          <Tooltip disabled={refundingId === payment.id} content={refundingId === payment.id ? 'Refund in progress...' : 'Refund this payment'}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -185,8 +187,10 @@ function AdminPaymentsContent() {
                               <RotateCcw className="h-4 w-4" />
                             )}
                           </Button>
+                          </Tooltip>
                         )}
                       {payment.receipt_url && (
+                        <Tooltip content="Open Stripe receipt">
                         <Button asChild variant="ghost" size="icon">
                           <a
                             href={payment.receipt_url}
@@ -197,6 +201,7 @@ function AdminPaymentsContent() {
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
+                        </Tooltip>
                       )}
                     </div>
                   </TableCell>

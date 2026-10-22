@@ -3,7 +3,7 @@ import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as session from '@/lib/auth/session';
 
 export const API_BASE_URL = '/api';
-const publicAuthPaths = ['/users/login/', '/users/signup/', '/users/refresh/'];
+const publicAuthPaths = ['/users/login/', '/users/signup/', '/users/refresh/', '/users/verify-email/', '/users/resend-verification/'];
 const isPublicAuth = (url?: string) => publicAuthPaths.some((path) => url?.startsWith(path));
 let refreshOperation: Promise<string> | null = null;
 

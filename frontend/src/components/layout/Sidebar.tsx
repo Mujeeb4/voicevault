@@ -6,6 +6,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -106,11 +107,14 @@ export function Sidebar() {
           const base = 'flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-medium transition-colors';
           if (item.disabledReason) {
             return (
-              <div key={item.key} className={cn(base, 'cursor-not-allowed text-muted-foreground')} title={item.disabledReason}>
-                <Icon className="h-5 w-5" />
-                <span className="flex-1">{item.label}</span>
-                <Lock className="h-3.5 w-3.5" aria-label={item.disabledReason} />
-              </div>
+              <Tooltip key={item.key} disabled content={item.disabledReason} className="flex w-full">
+                <div className={cn(base, 'w-full cursor-not-allowed text-muted-foreground')} aria-disabled="true">
+                  <Icon className="h-5 w-5" />
+                  <span className="flex-1">{item.label}</span>
+                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">{item.disabledReason}</span>
+                </div>
+              </Tooltip>
             );
           }
           return (
@@ -196,10 +200,12 @@ export function MobileNav() {
         );
         if (item.disabledReason) {
           return (
-            <div key={item.key} className={cls} title={item.disabledReason} aria-disabled>
-              <Icon className="h-5 w-5" />
-              {item.label}
-            </div>
+            <Tooltip key={item.key} disabled content={item.disabledReason} className="flex w-full">
+              <div className={cn(cls, 'w-full')} aria-disabled="true">
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </div>
+            </Tooltip>
           );
         }
         return (

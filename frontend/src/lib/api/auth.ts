@@ -4,7 +4,7 @@
  */
 
 import apiClient from './client';
-import type { User, AuthTokens, LoginRequest, SignupRequest } from '@/types';
+import type { User, AuthTokens, LoginRequest, SignupRequest, SignupResponse } from '@/types';
 
 interface AuthResponse {
   user: User;
@@ -23,9 +23,23 @@ export const authApi = {
   /**
    * Sign up new user
    */
-  signup: async (data: SignupRequest): Promise<AuthResponse> => {
-    const { data: res } = await apiClient.post<AuthResponse>('/users/signup/', data);
+  signup: async (data: SignupRequest): Promise<SignupResponse> => {
+    const { data: res } = await apiClient.post<SignupResponse>('/users/signup/', data);
     return res;
+  },
+
+  /**
+   * Confirm an email address with the one-time token from the verification email
+   */
+  verifyEmail: async (token: string): Promise<void> => {
+    await apiClient.post('/users/verify-email/', { token });
+  },
+
+  /**
+   * Request a fresh verification email (response is identical for unknown emails)
+   */
+  resendVerification: async (email: string): Promise<void> => {
+    await apiClient.post('/users/resend-verification/', { email });
   },
 
   /**

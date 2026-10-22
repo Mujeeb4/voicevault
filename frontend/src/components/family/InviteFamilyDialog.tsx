@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import {
   Dialog,
   DialogContent,
@@ -217,9 +218,11 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
                   className="font-mono text-sm"
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
-                <Button variant="outline" size="icon" onClick={handleCopyLink}>
-                  {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+                <Tooltip content={isCopied ? 'Copied!' : 'Copy invitation link'}>
+                  <Button variant="outline" size="icon" onClick={handleCopyLink} aria-label="Copy invitation link">
+                    {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </Tooltip>
               </div>
               <p className="text-xs text-muted-foreground">
                 This link expires on {new Date(lastInvitation.expires_at).toLocaleDateString()}

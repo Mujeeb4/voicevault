@@ -15,7 +15,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from utils.throttling import AuthEndpointThrottle
-from utils.email_service import send_account_welcome_email, send_password_changed_email
+from django.core import signing
+from utils.email_service import (
+    send_account_welcome_email,
+    send_password_changed_email,
+    send_verification_email,
+)
 from .models import User
 from .serializers import UserSerializer
 import logging
@@ -58,6 +63,24 @@ def generate_jwt_token(user: User) -> dict:
         'access': access_token,
         'refresh': refresh_token,
     }
+
+
+VERIFY_SALT = 'voicevault.email-verification'
+VERIFY_MAX_AGE = 24 * 60 * 60  # 24 hours
+
+
+def make_verification_token(user: User) -> str:
+    """Signed, expiring token. Embeds the verified flag so it is single-use."""
+    return signing.dumps(
+        {'uid': str(user.id), 'v': bool(user.email_verified)},
+        salt=VERIFY_SALT,
+    )
+
+
+def send_verification_for(user: User) -> bool:
+    token = make_verification_token(user)
+    url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+    return send_verification_email(user.email, user.full_name, url)
 
 
 class SignupView(APIView):
@@ -135,34 +158,87 @@ class SignupView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
-            # Update last login
-            user.last_login_at = timezone.now()
-            user.save()
-            
-            # Generate tokens
-            tokens = generate_jwt_token(user)
-            
-            # Serialize user
-            serializer = UserSerializer(user)
-            
-            logger.info("New user signed up: %s", user.id)
+            logger.info("New user signed up (pending verification): %s", user.id)
             # Best-effort: the helper logs and swallows delivery failures.
-            send_account_welcome_email(user.email, user.full_name)
-            
+            send_verification_for(user)
+
             return Response(
                 {
-                    'user': serializer.data,
-                    'tokens': tokens,
+                    'verification_required': True,
+                    'email': user.email,
+                    'message': 'Check your email to verify your account.',
                 },
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
-            
+
         except Exception as e:
             logger.error("Signup error: %s", e.__class__.__name__, exc_info=True)
             return Response(
                 {'error': 'signup_failed', 'message': 'Failed to create account. Please try again.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class VerifyEmailView(APIView):
+    """
+    POST /api/users/verify-email/  {token}
+    Errors: token_required, invalid_token, token_expired, token_used.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
+    def post(self, request):
+        token = request.data.get('token', '')
+        if not token or not isinstance(token, str):
+            return Response({'error': 'token_required', 'message': 'Verification token is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = signing.loads(token, salt=VERIFY_SALT, max_age=VERIFY_MAX_AGE)
+        except signing.SignatureExpired:
+            return Response({'error': 'token_expired', 'message': 'This verification link has expired'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'error': 'invalid_token', 'message': 'This verification link is invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=data.get('uid'))
+        except (User.DoesNotExist, ValueError, TypeError, ValidationError):
+            return Response({'error': 'invalid_token', 'message': 'This verification link is invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Single use: token was minted while unverified (v=False).
+        if user.email_verified or data.get('v') is not False:
+            return Response({'error': 'token_used', 'message': 'This verification link has already been used'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        updated = User.objects.filter(id=user.id, email_verified=False).update(email_verified=True)
+        if not updated:
+            return Response({'error': 'token_used', 'message': 'This verification link has already been used'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        logger.info("Email verified for user: %s", user.id)
+        send_account_welcome_email(user.email, user.full_name)
+        return Response({'verified': True, 'message': 'Email verified'}, status=status.HTTP_200_OK)
+
+
+class ResendVerificationView(APIView):
+    """
+    POST /api/users/resend-verification/  {email}
+    Always responds the same way so account existence is not revealed.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
+    def post(self, request):
+        email = str(request.data.get('email', '')).strip().lower()
+        if email:
+            user = User.objects.filter(email=email, email_verified=False).first()
+            if user:
+                send_verification_for(user)
+        return Response(
+            {'message': 'If an unverified account exists for that email, a new verification link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
 
 
 class LoginView(APIView):
@@ -246,6 +322,12 @@ class LoginView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             
+            if not user.email_verified:
+                return Response(
+                    {'error': 'email_not_verified', 'message': 'Please verify your email before signing in.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             # Update last login
             user.last_login_at = timezone.now()
             user.save()
@@ -401,6 +483,12 @@ class RefreshTokenView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
+            if not user.email_verified:
+                return Response(
+                    {'error': 'email_not_verified', 'message': 'Please verify your email before signing in.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
             # Generate new access token
             tokens = generate_jwt_token(user)
             

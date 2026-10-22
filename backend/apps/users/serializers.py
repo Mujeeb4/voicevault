@@ -17,6 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'full_name',
             'phone_number',
+            'email_verified',
             'package_tier',
             'plan_type',
             'is_premium',
@@ -36,6 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = [
+            'email_verified',
             'id',
             'email',
             'package_tier',

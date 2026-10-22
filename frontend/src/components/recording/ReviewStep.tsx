@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Upload, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { useRecordingStore } from '@/store/recording';
 import { isOptionalReflectionQuestion } from '@/lib/recording/optional-question';
@@ -127,15 +128,25 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
           Back to Recording
         </Button>
 
-        <Button
-          onClick={onProceed}
-          disabled={!canProceed}
-          size="lg"
+        <Tooltip
+          disabled
           className="w-full"
+          content={
+            canProceed
+              ? null
+              : `Record at least ${minimumRecordedCount} guided answers to upload (${completedGuidedCount}/${minimumRecordedCount} done)`
+          }
         >
-          <Upload className="w-5 h-5 mr-2" />
-          Upload all recordings
-        </Button>
+          <Button
+            onClick={onProceed}
+            disabled={!canProceed}
+            size="lg"
+            className="w-full"
+          >
+            <Upload className="w-5 h-5 mr-2" />
+            Upload all recordings
+          </Button>
+        </Tooltip>
       </div>
     </motion.div>
   );

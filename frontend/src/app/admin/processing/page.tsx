@@ -7,6 +7,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useSearchParams } from 'next/navigation';
 import { AdminRoute } from '@/components/admin/AdminRoute';
 import { useAdminStore } from '@/store/admin';
@@ -196,27 +197,31 @@ function AdminProcessingContent() {
                   </TableCell>
                   <TableCell>
                     {job.status === 'failed' ? (
+                      <Tooltip content="Retry failed processing">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleTriggerPipeline(job.user_id)}
-                        title="Retry"
                         aria-label={`Retry processing for ${job.user_name || job.user_email}`}
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
+                      </Tooltip>
                     ) : job.status === 'pending' ? (
+                      <Tooltip content="Start processing now">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleTriggerPipeline(job.user_id)}
-                        title="Trigger"
                         aria-label={`Trigger processing for ${job.user_name || job.user_email}`}
                       >
                         <Play className="h-4 w-4" />
                       </Button>
+                      </Tooltip>
                     ) : job.status === 'in_progress' ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      <Tooltip content="Processing is in progress" disabled>
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="Processing in progress" />
+                      </Tooltip>
                     ) : null}
                   </TableCell>
                 </TableRow>

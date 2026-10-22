@@ -7,6 +7,7 @@
  */
 
 import React, { useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -114,11 +115,13 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={isLoading} aria-label={`Actions for ${member.full_name || member.email}`}>
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip disabled={isLoading} content={isLoading ? 'Working on the previous action...' : 'Member actions'}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" disabled={isLoading} aria-label={`Actions for ${member.full_name || member.email}`}>
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />

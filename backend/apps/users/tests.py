@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 
 import jwt
@@ -51,15 +52,24 @@ class SignupRegressionTests(TestCase):
             '+1 202 555 0199',
         )
 
+    @patch('apps.users.views_auth.send_verification_email')
     @patch('apps.users.views_auth.send_account_welcome_email')
-    def test_signup_sends_welcome_email(self, send_email):
+    def test_signup_requires_verification_and_issues_no_tokens(self, welcome, verify):
         request = APIRequestFactory().post('/api/users/signup/', {
             'email': 'welcome@example.com',
             'password': 'strong-pass-123',
             'full_name': 'Welcome Owner',
         }, format='json')
-        self.assertEqual(SignupView.as_view()(request).status_code, 201)
-        send_email.assert_called_once_with('welcome@example.com', 'Welcome Owner')
+        response = SignupView.as_view()(request)
+        self.assertEqual(response.status_code, 201)
+        self.assertNotIn('tokens', response.data)
+        self.assertTrue(response.data['verification_required'])
+        user = User.objects.get(email='welcome@example.com')
+        self.assertFalse(user.email_verified)
+        self.assertIsNone(user.last_login_at)
+        welcome.assert_not_called()
+        verify.assert_called_once()
+        self.assertIn('/verify-email?token=', verify.call_args[0][2])
 
     def test_signup_rejects_malformed_email(self):
         request = APIRequestFactory().post('/api/users/signup/', {
@@ -96,6 +106,7 @@ class TokenRegressionTests(TestCase):
             email='auth-owner@example.com',
             full_name='Auth Owner',
             password_hash=make_password('strong-pass-123'),
+            email_verified=True,
         )
 
     def test_login_and_refresh_happy_path(self):
@@ -144,6 +155,7 @@ class ChangePasswordRegressionTests(TestCase):
             email='password-owner@example.com',
             full_name='Password Owner',
             password_hash=make_password('current-pass-123'),
+            email_verified=True,
         )
 
     def request(self, current_password, new_password):
@@ -187,3 +199,78 @@ class ChangePasswordEmailTests(ChangePasswordRegressionTests):
     def test_failed_change_sends_nothing(self, send_email):
         ChangePasswordView.as_view()(self.request('wrong-pass-123', 'new-strong-pass-123'))
         send_email.assert_not_called()
+
+
+class EmailVerificationTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create(
+            email='verify@example.com',
+            full_name='Verify Me',
+            password_hash=make_password('strong-pass-123'),
+        )
+
+    def _verify(self, token):
+        from apps.users.views_auth import VerifyEmailView
+        return VerifyEmailView.as_view()(self.factory.post('/api/users/verify-email/', {'token': token}, format='json'))
+
+    def _login(self):
+        return LoginView.as_view()(self.factory.post('/api/users/login/', {
+            'email': 'verify@example.com', 'password': 'strong-pass-123'}, format='json'))
+
+    def test_model_default_is_unverified(self):
+        self.assertFalse(self.user.email_verified)
+
+    def test_login_blocked_until_verified(self):
+        response = self._login()
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['error'], 'email_not_verified')
+        bad = LoginView.as_view()(self.factory.post('/api/users/login/', {
+            'email': 'verify@example.com', 'password': 'wrong-password'}, format='json'))
+        self.assertEqual(bad.data['error'], 'invalid_credentials')
+
+    def test_refresh_blocked_for_unverified(self):
+        tokens = generate_jwt_token(self.user)
+        response = RefreshTokenView.as_view()(self.factory.post(
+            '/api/users/refresh/', {'refresh': tokens['refresh']}, format='json'))
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['error'], 'email_not_verified')
+
+    @patch('apps.users.views_auth.send_account_welcome_email')
+    def test_verify_works_once_and_sends_welcome(self, welcome):
+        from apps.users.views_auth import make_verification_token
+        token = make_verification_token(self.user)
+        self.assertEqual(self._verify(token).status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.email_verified)
+        welcome.assert_called_once_with('verify@example.com', 'Verify Me')
+        again = self._verify(token)
+        self.assertEqual(again.status_code, 400)
+        self.assertEqual(again.data['error'], 'token_used')
+        self.assertEqual(self._login().status_code, 200)
+
+    def test_invalid_and_expired_tokens(self):
+        from apps.users.views_auth import make_verification_token
+        self.assertEqual(self._verify('garbage').data['error'], 'invalid_token')
+        self.assertEqual(self._verify('').data['error'], 'token_required')
+        token = make_verification_token(self.user)
+        with patch('django.core.signing.time.time', return_value=time.time() + 25 * 3600):
+            self.assertEqual(self._verify(token).data['error'], 'token_expired')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.email_verified)
+
+    @patch('apps.users.views_auth.send_verification_email')
+    def test_resend_does_not_leak_existence(self, verify):
+        from apps.users.views_auth import ResendVerificationView
+        def call(email):
+            return ResendVerificationView.as_view()(self.factory.post(
+                '/api/users/resend-verification/', {'email': email}, format='json'))
+        known = call('verify@example.com')
+        unknown = call('nobody@example.com')
+        self.assertEqual(known.status_code, unknown.status_code)
+        self.assertEqual(known.data, unknown.data)
+        self.assertEqual(verify.call_count, 1)
+        User.objects.filter(id=self.user.id).update(email_verified=True)
+        call('verify@example.com')
+        self.assertEqual(verify.call_count, 1)

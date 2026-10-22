@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import { Tooltip } from '@/components/ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
@@ -232,6 +233,21 @@ export default function PricingPage() {
                     })}
                   </ul>
 
+                  <Tooltip
+                    disabled
+                    className="w-full"
+                    content={
+                      premium && isPremium
+                        ? 'You already have Premium. Nothing more to buy.'
+                        : premium && checkoutLoading
+                          ? 'Taking you to secure checkout...'
+                          : !premium && isAuthenticated
+                            ? isPremium
+                              ? 'Your Premium plan already includes everything in Free'
+                              : "You're already signed in on the Free plan"
+                            : null
+                    }
+                  >
                   <Button
                     onClick={premium ? handleUnlockPremium : handleStartFree}
                     disabled={(premium && (checkoutLoading || isPremium)) || (!premium && isAuthenticated)}
@@ -261,6 +277,7 @@ export default function PricingPage() {
                       </>
                     )}
                   </Button>
+                  </Tooltip>
                 </div>
               );
             })}

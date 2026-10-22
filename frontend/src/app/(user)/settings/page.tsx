@@ -14,6 +14,7 @@ import { authApi } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -230,6 +231,18 @@ export default function SettingsPage() {
               />
             </div>
 
+            <Tooltip
+              disabled
+              content={
+                isChangingPassword
+                  ? 'Password change in progress'
+                  : !currentPassword
+                    ? 'Enter your current password first'
+                    : !newPassword
+                      ? 'Enter a new password first'
+                      : null
+              }
+            >
             <Button
               type="submit"
               disabled={isChangingPassword || !currentPassword || !newPassword}
@@ -248,6 +261,7 @@ export default function SettingsPage() {
                 </>
               )}
             </Button>
+            </Tooltip>
           </form>
         </CardContent>
       </Card>

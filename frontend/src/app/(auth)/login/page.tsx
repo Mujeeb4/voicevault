@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AuthShell } from '@/components/layout';
+import { ResendVerificationButton } from '@/components/auth/resend-verification-button';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function LoginPage() {
   const login = useAuthStore((state) => state.login);
   const [showPassword, setShowPassword] = useState(false);
   const [logoutReason, setLogoutReason] = useState<string | null>(null);
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
 
   const reason = searchParams.get('reason');
   useEffect(() => {
@@ -49,6 +51,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
+    setUnverifiedEmail(null);
     try {
       await login(data);
       toast.success('Signed in successfully.');
@@ -56,6 +59,11 @@ export default function LoginPage() {
       const safeRedirect = safeRedirectPath(redirect, '/dashboard');
       router.replace(safeRedirect);
     } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      if (code === 'email_not_verified') {
+        setUnverifiedEmail(data.email.trim());
+        return;
+      }
       toast.error(getApiErrorMessage(err, 'Invalid email or password'));
     }
   };
@@ -78,6 +86,18 @@ export default function LoginPage() {
             <Alert className="mb-6 border-primary/20 bg-accent text-foreground">
               <AlertCircle className="h-4 w-4 text-primary" />
               <AlertDescription>{logoutReason}</AlertDescription>
+            </Alert>
+          )}
+
+          {unverifiedEmail && (
+            <Alert className="mb-6 border-primary/20 bg-accent text-foreground">
+              <AlertCircle className="h-4 w-4 text-primary" />
+              <AlertDescription>
+                <p>Please verify your email before signing in. Check your inbox for the verification link.</p>
+                <div className="mt-3">
+                  <ResendVerificationButton email={unverifiedEmail} />
+                </div>
+              </AlertDescription>
             </Alert>
           )}
 

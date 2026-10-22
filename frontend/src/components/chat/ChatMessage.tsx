@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { PersonAvatar } from '@/components/ui/person-avatar';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Copy, Star, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -150,9 +151,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         {/* Actions */}
         {!isUser && !isStreaming && (
           <div className="flex items-center gap-2 mt-2">
-            <Button variant="ghost" size="icon" onClick={handleCopy} className="h-8 w-8" aria-label="Copy message">
-              <Copy className="h-3 w-3" />
-            </Button>
+            <Tooltip content="Copy message">
+              <Button variant="ghost" size="icon" onClick={handleCopy} className="h-8 w-8" aria-label="Copy message">
+                <Copy className="h-3 w-3" />
+              </Button>
+            </Tooltip>
 
             {/* Quick Rating */}
             <div className="flex items-center gap-1">
@@ -195,6 +198,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                           variant="outline"
                           size="icon"
                           onClick={() => setRating(star)}
+                          aria-label={`Rate ${star} star${star === 1 ? '' : 's'}`}
                           className={cn('h-10 w-10', rating >= star && 'bg-yellow-500 text-white border-yellow-500')}
                         >
                           <Star className={cn('h-5 w-5', rating >= star && 'fill-current')} />
@@ -217,9 +221,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <p className="text-xs text-muted-foreground text-right">{feedback.length}/500</p>
                   </div>
 
-                  <Button onClick={handleDetailedRating} className="w-full" disabled={rating === 0}>
-                    Submit Rating
-                  </Button>
+                  <Tooltip disabled className="w-full" content={rating === 0 ? 'Choose a star rating first' : null}>
+                    <Button onClick={handleDetailedRating} className="w-full" disabled={rating === 0}>
+                      Submit Rating
+                    </Button>
+                  </Tooltip>
                 </div>
               </DialogContent>
             </Dialog>

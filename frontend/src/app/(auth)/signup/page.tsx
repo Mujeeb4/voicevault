@@ -1,33 +1,32 @@
 /**
  * Signup Page — Mobile-first, professional
- * Free-first flow: signup → dashboard (or the explicitly requested safe page)
+ * Signup → "check your email" → verify link → sign in
  */
 
 'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Eye, EyeOff, Loader2, Check } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Check, MailCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 import { useAuthStore } from '@/store/auth';
 import { signupSchema, type SignupFormData } from '@/lib/validations/auth';
-import { getApiErrorMessage, safeRedirectPath } from '@/lib/utils';
+import { getApiErrorMessage } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthShell } from '@/components/layout';
+import { ResendVerificationButton } from '@/components/auth/resend-verification-button';
 
 export default function SignupPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const signup = useAuthStore((state) => state.signup);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const {
     register,
@@ -42,14 +41,40 @@ export default function SignupPage() {
     try {
       const { email, password, full_name, phone_number } = data;
       await signup({ email, password, full_name, phone_number });
-      toast.success('Your free Memory Starter vault is ready.');
-      const requestedNext = searchParams.get('next');
-      const safeNext = safeRedirectPath(requestedNext, '/dashboard?welcome=1');
-      router.replace(safeNext);
+      setSentTo(email);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Failed to create account'));
     }
   };
+
+  if (sentTo) {
+    return (
+      <AuthShell>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div className="surface p-6 text-center shadow-sm sm:p-8">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent">
+              <MailCheck className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Check your email</h1>
+            <p className="mt-2 text-sm text-muted-foreground sm:text-base" aria-live="polite">
+              We sent a verification link to <span className="font-medium text-foreground">{sentTo}</span>.
+              Open it to activate your account, then sign in. The link expires in 24 hours.
+            </p>
+            <div className="mt-6 space-y-3">
+              <ResendVerificationButton email={sentTo} startCooldown />
+              <Button asChild variant="ghost" className="h-11 w-full">
+                <Link href="/login">Go to sign in</Link>
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell>

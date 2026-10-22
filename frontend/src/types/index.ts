@@ -12,6 +12,7 @@ export interface User {
   email: string;
   full_name: string;
   phone_number?: string;
+  email_verified?: boolean;
   created_at: string;
   recording_completed: boolean;
   ai_ready: boolean;
@@ -63,6 +64,12 @@ export interface SignupRequest {
   password: string;
   full_name: string;
   phone_number?: string;
+}
+
+export interface SignupResponse {
+  verification_required: boolean;
+  email: string;
+  message: string;
 }
 
 export interface AuthResponse {

@@ -9,6 +9,7 @@
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, RotateCcw, Check, SkipForward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip } from '@/components/ui/tooltip';
 import { Progress } from '@/components/ui/progress';
 import { useRecordingStore } from '@/store/recording';
 
@@ -91,11 +92,16 @@ export function QuestionStepper({
       {/* Navigation Buttons */}
       <div className="grid gap-3 sm:grid-cols-3">
         {/* Primary Action */}
+        <Tooltip
+          disabled
+          className="order-first w-full sm:order-last"
+          content={primaryDisabled ? 'Record an answer for this question to continue' : null}
+        >
         <Button
           onClick={handlePrimaryAction}
           disabled={primaryDisabled}
           size="lg"
-          className="order-first w-full sm:order-last"
+          className="w-full"
         >
           {isLastQuestion && canReview ? (
             <>
@@ -119,18 +125,25 @@ export function QuestionStepper({
             </>
           )}
         </Button>
+        </Tooltip>
 
         {/* Previous Button */}
+        <Tooltip
+          disabled
+          className="flex-1"
+          content={isFirstQuestion ? 'You are on the first question' : null}
+        >
         <Button
           onClick={onPrevious}
           disabled={isFirstQuestion}
           variant="outline"
           size="lg"
-          className="flex-1"
+          className="w-full"
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
           Previous
         </Button>
+        </Tooltip>
 
         {/* Retake Button (if has recording) */}
         {hasRecording ? (
