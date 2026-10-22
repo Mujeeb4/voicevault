@@ -122,7 +122,7 @@ export interface RecordingData {
 
 export interface UploadRequest {
   audio_file: File;
-  file_format: 'mp3' | 'webm' | 'wav';
+  file_format: 'mp3' | 'webm' | 'wav' | 'm4a' | 'ogg';
   duration_seconds: number;
   file_size_bytes: number;
   recording_metadata?: {

@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
 import { paymentsApi } from '@/lib/api/payments';
 import { authApi } from '@/lib/api/auth';
+import * as session from '@/lib/auth/session';
 import { getApiErrorMessage } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,14 @@ import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   User,
   Mail,
@@ -31,6 +40,8 @@ import {
   Receipt,
   ExternalLink,
   Sparkles,
+  LogOut,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -46,7 +57,7 @@ interface BillingDetails {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, logout } = useAuthStore();
 
   const [fullName, setFullName] = useState(user?.full_name || '');
   const [email] = useState(user?.email || '');
@@ -55,6 +66,12 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const [isLoggingOutAll, setIsLoggingOutAll] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [billing, setBilling] = useState<BillingDetails | null>(null);
   const [billingLoading, setBillingLoading] = useState(true);
@@ -105,7 +122,14 @@ export default function SettingsPage() {
 
     try {
       setIsChangingPassword(true);
-      await authApi.changePassword(currentPassword, newPassword);
+      // Other devices are signed out; keep this tab signed in with the fresh tokens.
+      const tokens = await authApi.changePassword(currentPassword, newPassword);
+      session.setTokens({
+        access: tokens.access,
+        refresh: tokens.refresh,
+        expiresAt: session.decodeTokenExpiry(tokens.access) ?? undefined,
+      });
+      useAuthStore.setState({ tokens });
       toast.success('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -114,6 +138,33 @@ export default function SettingsPage() {
       toast.error(getApiErrorMessage(error, 'Failed to change password'));
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    try {
+      setIsLoggingOutAll(true);
+      await authApi.logout(session.getRefreshToken(), true);
+      logout();
+      window.location.assign('/login');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to sign out of all devices'));
+      setIsLoggingOutAll(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsDeleting(true);
+      await authApi.deleteAccount(deletePassword);
+      // The server already revoked everything; clear local state without a logout call.
+      session.clearTokens();
+      useAuthStore.setState({ user: null, tokens: null, isAuthenticated: false });
+      window.location.assign('/');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Failed to delete account'));
+      setIsDeleting(false);
     }
   };
 
@@ -422,6 +473,106 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sessions */}
+      <Card className="surface">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-accent text-primary">
+              <LogOut className="h-5 w-5" />
+            </span>
+            Sessions
+          </CardTitle>
+          <CardDescription>
+            Sign out of every device, including this one. Changing your password does this for other devices automatically.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={handleLogoutAll} disabled={isLoggingOutAll}>
+            {isLoggingOutAll ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="mr-2 h-4 w-4" />
+            )}
+            Log out of all devices
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Danger zone */}
+      <Card className="surface border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            Danger zone
+          </CardTitle>
+          <CardDescription>
+            Permanently delete your account, recordings, AI voice, conversations and family access. This cannot be
+            undone, and a Premium purchase is not refunded or restored.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" onClick={() => setDeleteOpen(true)}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete account
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (isDeleting) return;
+          setDeleteOpen(open);
+          if (!open) {
+            setDeletePassword('');
+            setDeleteConfirmText('');
+          }
+        }}
+      >
+        <DialogContent>
+          <form onSubmit={handleDeleteAccount} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Delete your account?</DialogTitle>
+              <DialogDescription>
+                All of your data will be permanently deleted. Enter your password and type DELETE to confirm.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="deletePassword">Password</Label>
+              <Input
+                id="deletePassword"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deleteConfirm">Type DELETE to confirm</Label>
+              <Input
+                id="deleteConfirm"
+                autoComplete="off"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)} disabled={isDeleting}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={isDeleting || !deletePassword || deleteConfirmText !== 'DELETE'}
+              >
+                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Delete my account
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

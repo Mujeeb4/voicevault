@@ -25,6 +25,10 @@ class User(models.Model):
     phone_number = models.CharField(max_length=20, null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     password_hash = models.CharField(max_length=255, null=True, blank=True, help_text="Hashed password")
+    token_version = models.PositiveIntegerField(
+        default=0,
+        help_text="Bumped to revoke every JWT issued before the change",
+    )
     package_tier = models.CharField(max_length=20, choices=PACKAGE_CHOICES, default='free')
     plan_type = models.CharField(max_length=20, choices=PLAN_CHOICES, default='free', db_index=True)
     is_premium = models.BooleanField(default=False, db_index=True)
@@ -267,3 +271,58 @@ class FamilyMember(models.Model):
         self.conversation_count += 1
         self.last_conversation_at = timezone.now()
         self.save(update_fields=['conversation_count', 'last_conversation_at'])
+
+
+class RevokedToken(models.Model):
+    """Refresh tokens revoked at logout, stored as a SHA-256 digest until they would expire anyway."""
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'revoked_tokens'
+
+
+class FamilyInvitation(models.Model):
+    """
+    Durable record of an emailed family invitation link.
+
+    Only a SHA-256 hash of the token is stored; the raw token exists solely in
+    the emailed link. Replaces the former cache-only (Redis) token storage.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('revoked', 'Revoked'),
+        ('expired', 'Expired'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    token_hash = models.CharField(max_length=64, unique=True)
+    family_member = models.ForeignKey(
+        FamilyMember, on_delete=models.CASCADE, related_name='invitations'
+    )
+    inviter = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='sent_family_invitations'
+    )
+    email = models.EmailField()
+    personal_message = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='accepted_family_invitations'
+    )
+
+    class Meta:
+        db_table = 'family_invitations'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['family_member', 'status']),
+            models.Index(fields=['inviter', 'status']),
+        ]
+
+    def __str__(self):
+        return f"Invitation to {self.email} ({self.status})"

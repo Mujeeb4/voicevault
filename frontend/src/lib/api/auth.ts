@@ -45,8 +45,27 @@ export const authApi = {
   /**
    * Logout user
    */
-  logout: async (): Promise<void> => {
-    await apiClient.post<void>('/users/logout/', {});
+  logout: async (refresh: string | null, allDevices = false): Promise<void> => {
+    if (!refresh) return;
+    await apiClient.post<void>('/users/logout/', { refresh, all_devices: allDevices });
+  },
+
+  /**
+   * Email a one-time reset link (response is identical for unknown emails)
+   */
+  requestPasswordReset: async (email: string): Promise<void> => {
+    await apiClient.post('/users/password-reset/request/', { email });
+  },
+
+  confirmPasswordReset: async (token: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/users/password-reset/confirm/', { token, new_password: newPassword });
+  },
+
+  /**
+   * Permanently delete the account after confirming the password
+   */
+  deleteAccount: async (password: string): Promise<void> => {
+    await apiClient.post('/users/delete-account/', { password });
   },
 
   /**
@@ -65,11 +84,13 @@ export const authApi = {
     return res;
   },
 
-  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
-    await apiClient.post('/users/change-password/', {
+  /** Returns fresh tokens: the change revokes every older session. */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<AuthTokens> => {
+    const { data } = await apiClient.post<{ tokens: AuthTokens }>('/users/change-password/', {
       current_password: currentPassword,
       new_password: newPassword,
     });
+    return data.tokens;
   },
 
   recordConsent: async (

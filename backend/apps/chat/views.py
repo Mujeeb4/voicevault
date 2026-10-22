@@ -287,11 +287,10 @@ def chat_streaming(request):
                     max_retries=0,
                     **({'base_url': backend.base_url} if backend.base_url else {}),
                 )
-            except ImportError:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Chat SDK is not installed'})}\n\n"
-                return
-            except ValueError as exc:
-                yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+            except (ImportError, ValueError):
+                # Misconfiguration (missing SDK/API key): log details, keep the client message generic.
+                logger.exception("Chat backend is not available")
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Chat is temporarily unavailable. Please try again later.'})}\n\n"
                 return
             
             # STEP 3: Stream the selected text model's response.
@@ -441,7 +440,7 @@ def chat_streaming(request):
             yield f"data: {json.dumps({'type': 'complete', 'conversation_id': conversation_id, 'total_time_ms': total_time_ms})}\n\n"
             
         except Exception as e:
-            logger.error("Streaming chat error: %s", e.__class__.__name__, exc_info=True)
+            logger.exception("Streaming chat error")
             message = 'Unable to complete chat response'
             if getattr(e, 'status_code', None) == 429:
                 body = getattr(e, 'body', None)
@@ -451,7 +450,7 @@ def chat_streaming(request):
                            {'credit_balance_exhausted', 'insufficient_quota'} else
                            f'{provider_name} chat is rate limited. Please retry shortly.')
             elif getattr(e, 'status_code', None) in (401, 403):
-                message = 'The configured chat provider rejected its API key.'
+                message = 'Chat is temporarily unavailable. Please try again later.'
             yield f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"
         finally:
             if client is not None:
@@ -913,9 +912,10 @@ def get_audio_status(request, task_id):
                 'conversation_id': conversation_id,
             })
 
+        logger.error("Audio task %s failed: %s", task_id, task_result.result.__class__.__name__)
         return Response({
             'status': 'failed',
-            'error': str(task_result.result),
+            'error': 'Audio generation failed',
             'conversation_id': conversation_id,
         })
 

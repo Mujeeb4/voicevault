@@ -66,7 +66,7 @@ def generate_audio_sync(
             logger.error("ElevenLabs library not installed")
             return {
                 'success': False,
-                'error': 'ElevenLabs library not available'
+                'error': 'Voice generation is temporarily unavailable'
             }
         
         # Check if ElevenLabs API key is configured
@@ -75,7 +75,7 @@ def generate_audio_sync(
             logger.error("ElevenLabs API key not configured")
             return {
                 'success': False,
-                'error': 'ElevenLabs API key not configured'
+                'error': 'Voice generation is temporarily unavailable'
             }
         
         # Initialise ElevenLabs client and read model from env
@@ -236,7 +236,7 @@ def generate_audio_async(
             logger.error("ElevenLabs library not installed")
             return {
                 'success': False,
-                'error': 'ElevenLabs library not available'
+                'error': 'Voice generation is temporarily unavailable'
             }
         
         # Check if ElevenLabs API key is configured
@@ -245,7 +245,7 @@ def generate_audio_async(
             logger.error("ElevenLabs API key not configured")
             return {
                 'success': False,
-                'error': 'ElevenLabs API key not configured'
+                'error': 'Voice generation is temporarily unavailable'
             }
         
         # Initialise ElevenLabs client and read model from env

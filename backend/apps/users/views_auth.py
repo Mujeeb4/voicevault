@@ -3,7 +3,7 @@ Authentication views for signup, login, logout, and token refresh.
 Following .cursorrules patterns
 """
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.exceptions import ValidationError
@@ -18,10 +18,15 @@ from utils.throttling import AuthEndpointThrottle
 from django.core import signing
 from utils.email_service import (
     send_account_welcome_email,
+    send_account_deleted_email,
     send_password_changed_email,
+    send_password_reset_email,
     send_verification_email,
 )
-from .models import User
+from django.db import transaction
+from django.db.models import F
+from .models import RevokedToken, User
+from .password_policy import password_policy_response
 from .serializers import UserSerializer
 import logging
 
@@ -40,6 +45,7 @@ def generate_jwt_token(user: User) -> dict:
         'sub': str(user.id),
         'email': user.email,
         'type': 'access',
+        'tv': user.token_version,
         'iat': now,
         'exp': now + timedelta(hours=1),
     }
@@ -49,6 +55,7 @@ def generate_jwt_token(user: User) -> dict:
         'sub': str(user.id),
         'email': user.email,
         'type': 'refresh',
+        'tv': user.token_version,
         'iat': now,
         'exp': now + timedelta(days=7),
     }
@@ -113,11 +120,13 @@ class SignupView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
-            if not password or len(password) < 8 or len(password) > 128:
-                return Response(
-                    {'error': 'invalid_password', 'message': 'Password must be between 8 and 128 characters'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            if not isinstance(password, str):
+                password = ''
+            policy_error = password_policy_response(
+                password, user=User(email=email, full_name=full_name)
+            )
+            if policy_error:
+                return policy_error
             
             if not full_name:
                 return Response(
@@ -377,12 +386,6 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if len(new_password) < 8 or len(new_password) > 128:
-            return Response(
-                {'error': 'invalid_password', 'message': 'New password must be between 8 and 128 characters'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         if current_password == new_password:
             return Response(
                 {'error': 'password_unchanged', 'message': 'Choose a password different from your current password'},
@@ -403,33 +406,81 @@ class ChangePasswordView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        user.password_hash = make_password(new_password)
-        user.save(update_fields=['password_hash', 'updated_at'])
+        policy_error = password_policy_response(new_password, user=user, field='new_password')
+        if policy_error:
+            return policy_error
+
+        set_new_password(user, new_password)
         logger.info('Password changed for user: %s', user.id)
         send_password_changed_email(user.email, user.full_name)
 
-        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+        # Every older token is now revoked; hand this session fresh ones.
+        return Response(
+            {'message': 'Password changed successfully', 'tokens': generate_jwt_token(user)},
+            status=status.HTTP_200_OK,
+        )
+
+
+def bump_token_version(user: User) -> None:
+    """Atomically invalidate every token issued so far."""
+    User.objects.filter(id=user.id).update(token_version=F('token_version') + 1)
+    user.refresh_from_db(fields=['token_version'])
+
+
+def set_new_password(user: User, new_password: str) -> None:
+    """Store a new password and revoke all existing sessions in one write."""
+    User.objects.filter(id=user.id).update(
+        password_hash=make_password(new_password),
+        token_version=F('token_version') + 1,
+        updated_at=timezone.now(),
+    )
+    user.refresh_from_db(fields=['password_hash', 'token_version', 'updated_at'])
+
+
+def _decode_refresh(token) -> dict | None:
+    if not token or not isinstance(token, str):
+        return None
+    try:
+        payload = jwt.decode(
+            token, getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY), algorithms=['HS256']
+        )
+    except jwt.InvalidTokenError:
+        return None
+    return payload if payload.get('type') == 'refresh' else None
+
+
+def _token_digest(token: str) -> str:
+    import hashlib
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class LogoutView(APIView):
     """
-    POST /api/users/logout/
-    Logout user (client should discard tokens).
+    POST /api/users/logout/  {refresh, all_devices?}
+    Revokes the presented refresh token. With all_devices=true, bumps the user's
+    token_version so every access and refresh token ever issued stops working.
+    Authenticates by the refresh token itself so it works with an expired access
+    token (path is excluded from the JWT middleware). Always answers 200.
     """
-    permission_classes = [AllowAny]  # Allow any since logout is client-side
-    
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
     def post(self, request):
-        # In a stateless JWT system, logout is handled client-side
-        # But we can log it for analytics
-        user_id = 'anonymous'
-        if hasattr(request, 'supabase_user') and request.supabase_user:
-            user_id = request.supabase_user.id
-        logger.info("User logged out: %s", user_id)
-        
-        return Response(
-            {'message': 'Logged out successfully'},
-            status=status.HTTP_200_OK
-        )
+        refresh = request.data.get('refresh', '')
+        payload = _decode_refresh(refresh)
+        if payload:
+            user = User.objects.filter(id=payload.get('sub')).first()
+            if user and int(payload.get('tv', 0)) == user.token_version:
+                if request.data.get('all_devices') is True:
+                    bump_token_version(user)
+                else:
+                    expires_at = datetime.fromtimestamp(payload['exp'], tz=dt_timezone.utc)
+                    RevokedToken.objects.get_or_create(
+                        token_hash=_token_digest(refresh), defaults={'expires_at': expires_at}
+                    )
+                    RevokedToken.objects.filter(expires_at__lt=timezone.now()).delete()
+                logger.info("User logged out: %s", user.id)
+        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
 
 
 class RefreshTokenView(APIView):
@@ -473,6 +524,12 @@ class RefreshTokenView(APIView):
                     status=status.HTTP_401_UNAUTHORIZED
                 )
             
+            if RevokedToken.objects.filter(token_hash=_token_digest(refresh_token)).exists():
+                return Response(
+                    {'error': 'invalid_token', 'message': 'Invalid refresh token'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
             # Get user
             user_id = payload.get('sub')
             try:
@@ -483,6 +540,12 @@ class RefreshTokenView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
             
+            if int(payload.get('tv', 0)) != user.token_version:
+                return Response(
+                    {'error': 'invalid_token', 'message': 'Session is no longer valid. Please sign in again.'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
             if not user.email_verified:
                 return Response(
                     {'error': 'email_not_verified', 'message': 'Please verify your email before signing in.'},
@@ -503,3 +566,158 @@ class RefreshTokenView(APIView):
                 {'error': 'refresh_failed', 'message': 'Failed to refresh token'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+
+RESET_SALT = 'voicevault.password-reset'
+RESET_MAX_AGE = 60 * 60  # 1 hour
+
+
+def _password_fingerprint(user: User) -> str:
+    import hashlib
+    return hashlib.sha256((user.password_hash or '').encode()).hexdigest()[:16]
+
+
+def make_reset_token(user: User) -> str:
+    """Signed, expiring token bound to the current password hash, so it dies once used."""
+    return signing.dumps({'uid': str(user.id), 'p': _password_fingerprint(user)}, salt=RESET_SALT)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    POST /api/users/password-reset/request/  {email}
+    Always responds identically so account existence is not revealed.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
+    def post(self, request):
+        email = str(request.data.get('email', '')).strip().lower()
+        if email:
+            user = User.objects.filter(email=email).first()
+            if user:
+                url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={make_reset_token(user)}"
+                send_password_reset_email(user.email, user.full_name, url)
+        return Response(
+            {'message': 'If an account exists for that email, a password reset link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    POST /api/users/password-reset/confirm/  {token, new_password}
+    Errors: token_required, invalid_token, token_expired, token_used, invalid_password.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
+    def post(self, request):
+        token = request.data.get('token', '')
+        new_password = request.data.get('new_password', '')
+        if not token or not isinstance(token, str):
+            return Response({'error': 'token_required', 'message': 'Reset token is required'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = signing.loads(token, salt=RESET_SALT, max_age=RESET_MAX_AGE)
+        except signing.SignatureExpired:
+            return Response({'error': 'token_expired', 'message': 'This reset link has expired'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'error': 'invalid_token', 'message': 'This reset link is invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(id=data.get('uid'))
+        except (User.DoesNotExist, ValueError, TypeError, ValidationError):
+            return Response({'error': 'invalid_token', 'message': 'This reset link is invalid'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if data.get('p') != _password_fingerprint(user):
+            return Response({'error': 'token_used', 'message': 'This reset link has already been used'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        policy_error = password_policy_response(new_password, user=user, field='new_password')
+        if policy_error:
+            return policy_error
+
+        with transaction.atomic():
+            # Compare-and-set on the old hash so two concurrent uses cannot both win.
+            updated = User.objects.filter(id=user.id, password_hash=user.password_hash).update(
+                password_hash=make_password(new_password),
+                token_version=F('token_version') + 1,
+                email_verified=True,  # they proved control of the inbox
+                updated_at=timezone.now(),
+            )
+        if not updated:
+            return Response({'error': 'token_used', 'message': 'This reset link has already been used'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        logger.info("Password reset for user: %s", user.id)
+        send_password_changed_email(user.email, user.full_name)
+        return Response({'message': 'Password reset. You can now sign in.'}, status=status.HTTP_200_OK)
+
+
+def _stored_files_for(user: User) -> list:
+    """(bucket, path) pairs of every stored media object that belongs to the user."""
+    from apps.chat.models import Conversation
+    from apps.recordings.models import AudioRecording
+    from apps.ai_processing.models import AIConfiguration
+
+    files = [
+        ('recordings', path)
+        for path in AudioRecording.objects.filter(user=user).values_list('storage_path', flat=True)
+        if path
+    ]
+    ref = AIConfiguration.objects.filter(user=user).values_list('voice_reference_path', flat=True).first()
+    if ref:
+        files.append(('recordings', ref))
+    for url in Conversation.objects.filter(ai_owner=user).exclude(audio_url__isnull=True).values_list('audio_url', flat=True):
+        if url and '/responses/' in url:
+            files.append(('responses', url.split('/responses/', 1)[1].split('?', 1)[0]))
+    return files
+
+
+class DeleteAccountView(APIView):
+    """
+    POST /api/users/delete-account/  {password}
+    Permanently deletes the authenticated user after confirming their password.
+    Related rows cascade (recordings, transcript, AI config, chats, family
+    members, consent, quota, payments); audit log and API-usage rows keep a NULL
+    user and family links where this user was the invitee are unlinked. Stored
+    media is removed from the storage backend afterwards (best effort).
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AuthEndpointThrottle]
+
+    def post(self, request):
+        if not getattr(request, 'supabase_user', None):
+            return Response(
+                {'error': 'authentication_required', 'message': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        password = request.data.get('password', '')
+        if not password or not isinstance(password, str):
+            return Response({'error': 'password_required', 'message': 'Enter your password to delete your account'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(id=request.supabase_user.id)
+        except (User.DoesNotExist, ValueError, ValidationError):
+            return Response({'error': 'not_found', 'message': 'User not found'},
+                            status=status.HTTP_404_NOT_FOUND)
+        if not user.password_hash or not check_password(password, user.password_hash):
+            return Response({'error': 'invalid_password', 'message': 'Password is incorrect'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        files = _stored_files_for(user)
+        email, name, user_id = user.email, user.full_name, user.id
+        send_account_deleted_email(email, name)
+        user.delete()
+        logger.info("Account deleted: %s", user_id)
+
+        from utils.supabase_client import delete_file_from_supabase
+        for bucket, path in files:
+            try:
+                delete_file_from_supabase(bucket=bucket, file_path=path)
+            except Exception as exc:
+                logger.warning("Failed to delete stored file for deleted account: %s", exc.__class__.__name__)
+        return Response({'message': 'Account deleted'}, status=status.HTTP_200_OK)

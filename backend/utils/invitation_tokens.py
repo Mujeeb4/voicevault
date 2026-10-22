@@ -8,95 +8,121 @@ from datetime import timedelta
 from typing import Optional, Tuple
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.utils import timezone
-from apps.users.models import FamilyMember
+from apps.users.models import FamilyInvitation, FamilyMember
 
 
 # Token configuration
 TOKEN_LENGTH = 32  # 32 bytes = 256 bits
 TOKEN_EXPIRY_DAYS = 7
-CACHE_PREFIX = 'invitation_token:'
+CACHE_PREFIX = 'invitation_token:'  # legacy cache-only storage; transitional fallback only
 
 
-def generate_invitation_token(family_member: FamilyMember) -> Tuple[str, str]:
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def generate_invitation_token(family_member: FamilyMember, personal_message: str = '') -> Tuple[str, str]:
     """
-    Generate a secure invitation token for a family member.
-    
-    Args:
-        family_member: FamilyMember instance
-        
+    Create a durable (database-backed) invitation for a family member.
+
+    Any earlier pending invitation for the same inviter/email is revoked so
+    only the most recently emailed link works.
+
     Returns:
         Tuple of (token, invitation_url)
     """
-    # Generate secure random token
     token = secrets.token_urlsafe(TOKEN_LENGTH)
-    
-    # Create cache key
-    cache_key = f"{CACHE_PREFIX}{token}"
-    
-    # Store family member ID in cache with 7-day expiry
-    expiry_seconds = TOKEN_EXPIRY_DAYS * 24 * 60 * 60
-    cache.set(cache_key, str(family_member.id), timeout=expiry_seconds)
-    
-    # Generate invitation URL
-    # Note: FRONTEND_URL should be configured in settings
+    with transaction.atomic():
+        FamilyInvitation.objects.filter(
+            inviter=family_member.ai_owner, email__iexact=family_member.email, status='pending'
+        ).update(status='revoked')
+        FamilyInvitation.objects.create(
+            token_hash=hash_token(token),
+            family_member=family_member,
+            inviter=family_member.ai_owner,
+            email=family_member.email,
+            personal_message=personal_message or '',
+            expires_at=get_token_expiry_time(),
+        )
+
     frontend_url = settings.FRONTEND_URL.rstrip('/')
     invitation_url = f"{frontend_url}/accept-invite/{token}"
-    
     return token, invitation_url
+
+
+def _get_invitation(token: str) -> Optional[FamilyInvitation]:
+    return FamilyInvitation.objects.select_related(
+        'family_member', 'family_member__ai_owner'
+    ).filter(token_hash=hash_token(token)).first()
 
 
 def validate_invitation_token(token: str) -> Optional[FamilyMember]:
     """
-    Validate invitation token and return associated FamilyMember.
-    
-    Args:
-        token: Invitation token string
-        
-    Returns:
-        FamilyMember if token is valid, None otherwise
+    Return the FamilyMember for a usable invitation token, else None.
+
+    Looks in the database first. TRANSITIONAL: a token that is not in the
+    database falls back to the legacy cache lookup so invitations emailed
+    before the DB model shipped keep working until they expire (7 days).
+    TODO: remove the cache fallback (and CACHE_PREFIX) once those have expired.
     """
     if not token:
         return None
-    
-    # Get family member ID from cache
-    cache_key = f"{CACHE_PREFIX}{token}"
-    family_member_id = cache.get(cache_key)
-    
-    if not family_member_id:
-        # Token expired or doesn't exist
-        return None
-    
-    try:
-        # Get family member
-        family_member = FamilyMember.objects.select_related('ai_owner').get(
-            id=family_member_id
-        )
-        
-        # Check if already accepted
-        if family_member.has_access:
-            # Already accepted, token should not be reused
+
+    invitation = _get_invitation(token)
+    if invitation is not None:
+        if invitation.status != 'pending':
             return None
-        
-        return family_member
-        
+        if invitation.expires_at <= timezone.now():
+            FamilyInvitation.objects.filter(pk=invitation.pk, status='pending').update(status='expired')
+            return None
+        member = invitation.family_member
+        return None if member.has_access else member
+
+    # Legacy cache fallback (transitional)
+    family_member_id = cache.get(f"{CACHE_PREFIX}{token}")
+    if not family_member_id:
+        return None
+    try:
+        member = FamilyMember.objects.select_related('ai_owner').get(id=family_member_id)
     except FamilyMember.DoesNotExist:
         return None
+    return None if member.has_access else member
+
+
+def get_invitation_expiry(token: str):
+    """Actual expiry of a token, or None if unknown (e.g. legacy cache token)."""
+    invitation = _get_invitation(token) if token else None
+    return invitation.expires_at if invitation else None
+
+
+def consume_invitation_token(token: str, accepted_by=None) -> bool:
+    """
+    Atomically mark an invitation accepted. Returns True for exactly one caller;
+    expired, revoked or already-used tokens return False.
+    """
+    if not token:
+        return False
+    updated = FamilyInvitation.objects.filter(
+        token_hash=hash_token(token), status='pending', expires_at__gt=timezone.now()
+    ).update(status='accepted', accepted_at=timezone.now(), accepted_by=accepted_by)
+    if updated:
+        cache.delete(f"{CACHE_PREFIX}{token}")
+        return True
+    if FamilyInvitation.objects.filter(token_hash=hash_token(token)).exists():
+        return False
+    # Legacy cache token (transitional): deletion is the single-use gate.
+    return cache.delete(f"{CACHE_PREFIX}{token}") > 0
 
 
 def invalidate_invitation_token(token: str) -> bool:
-    """
-    Invalidate (delete) an invitation token.
-    Use this after successful acceptance or when canceling invitation.
-    
-    Args:
-        token: Invitation token to invalidate
-        
-    Returns:
-        True if token was found and deleted, False otherwise
-    """
-    cache_key = f"{CACHE_PREFIX}{token}"
-    return cache.delete(cache_key) > 0
+    """Revoke an invitation token (database and legacy cache)."""
+    revoked = FamilyInvitation.objects.filter(
+        token_hash=hash_token(token), status='pending'
+    ).update(status='revoked')
+    deleted = cache.delete(f"{CACHE_PREFIX}{token}")
+    return bool(revoked) or bool(deleted)
 
 
 def get_token_expiry_time() -> timezone.datetime:

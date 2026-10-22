@@ -163,7 +163,19 @@ export const chatApi = {
   transcribeVoice: async (audioBlob: Blob): Promise<{ transcript: string }> => {
     const formData = new FormData();
     const mime = audioBlob.type.split(';')[0];
-    const extension = ({ 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav' } as Record<string, string>)[mime] ?? 'webm';
+    const extension =
+      ({
+        'audio/ogg': 'ogg',
+        'audio/mp4': 'm4a',
+        'audio/x-m4a': 'm4a',
+        'audio/m4a': 'm4a',
+        'video/mp4': 'mp4',
+        'audio/aac': 'aac',
+        'audio/mpeg': 'mp3',
+        'audio/mp3': 'mp3',
+        'audio/wav': 'wav',
+        'audio/x-wav': 'wav',
+      } as Record<string, string>)[mime.toLowerCase()] ?? 'webm';
     formData.append('audio', audioBlob, `voice-input.${extension}`);
     const { data } = await apiClient.post<{ transcript: string }>(`${chatBase}/transcribe-voice/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

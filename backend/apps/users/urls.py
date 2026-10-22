@@ -3,7 +3,7 @@ URL routing for users app.
 """
 from django.urls import path
 from .views import ConsentRecordView, UserProfileView, HealthCheckView
-from .views_auth import ChangePasswordView, VerifyEmailView, ResendVerificationView, SignupView, LoginView, LogoutView, RefreshTokenView
+from .views_auth import ChangePasswordView, DeleteAccountView, PasswordResetConfirmView, PasswordResetRequestView, VerifyEmailView, ResendVerificationView, SignupView, LoginView, LogoutView, RefreshTokenView
 
 urlpatterns = [
     # Health check endpoint
@@ -16,6 +16,9 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('logout/', LogoutView.as_view(), name='logout'),
     path('refresh/', RefreshTokenView.as_view(), name='refresh-token'),
+    path('password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('delete-account/', DeleteAccountView.as_view(), name='delete-account'),
     path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     
     # Profile endpoints

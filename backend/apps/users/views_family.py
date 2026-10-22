@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from django.db import transaction
 from django.utils import timezone
 
 from apps.users.models import User, FamilyMember
@@ -14,7 +15,8 @@ from services.plan_limits import can_invite_family_member, is_premium, quota_sta
 from utils.invitation_tokens import (
     generate_invitation_token,
     validate_invitation_token,
-    invalidate_invitation_token,
+    consume_invitation_token,
+    get_invitation_expiry,
     get_token_expiry_time
 )
 from utils.email_service import (
@@ -128,10 +130,10 @@ def invite_family_member(request):
     record_family_invite(ai_owner, str(family_member.id))
     
     # Generate invitation token
-    token, invitation_link = generate_invitation_token(family_member)
+    token, invitation_link = generate_invitation_token(family_member, personal_message)
     
     # Get expiry time
-    expires_at = get_token_expiry_time()
+    expires_at = get_invitation_expiry(token) or get_token_expiry_time()
     
     # Send invitation email
     email_sent = send_invitation_email(
@@ -196,8 +198,8 @@ def get_invitation_details(request, token):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Get expiry time for this token
-    expires_at = get_token_expiry_time()
+    # Get expiry time for this token (legacy cache tokens fall back to the nominal window)
+    expires_at = get_invitation_expiry(token) or get_token_expiry_time()
     is_expired = timezone.now() > expires_at
     
     return Response({
@@ -272,16 +274,19 @@ def accept_invitation(request, token):
             status=status.HTTP_403_FORBIDDEN,
         )
 
-    # Grant access
-    family_member.has_access = True
-    family_member.invitation_accepted_at = timezone.now()
-    family_member.user_account = user_account
-    family_member.save(update_fields=['has_access', 'invitation_accepted_at', 'user_account'])
+    # Consume the token and grant access together (single use; rejects expired/revoked/replayed tokens)
+    with transaction.atomic():
+        if not consume_invitation_token(token, accepted_by=user_account):
+            return Response(
+                {'error': 'Invalid or expired invitation token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        family_member.has_access = True
+        family_member.invitation_accepted_at = timezone.now()
+        family_member.user_account = user_account
+        family_member.save(update_fields=['has_access', 'invitation_accepted_at', 'user_account'])
     
     logger.info("Invitation accepted: %s", family_member.id)
-    
-    # Invalidate token (one-time use)
-    invalidate_invitation_token(token)
     
     # Send confirmation emails
     # 1. To family member (welcome)
@@ -497,14 +502,14 @@ def resend_invitation(request, member_id):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Generate new invitation token
-    token, invitation_link = generate_invitation_token(family_member)
-    
-    # Get expiry time
-    expires_at = get_token_expiry_time()
-    
     # Get personal message if provided
     personal_message = request.data.get('personal_message', '')
+
+    # Generate new invitation token (revokes the previous pending one)
+    token, invitation_link = generate_invitation_token(family_member, personal_message or '')
+    
+    # Get expiry time
+    expires_at = get_invitation_expiry(token) or get_token_expiry_time()
     
     # Send invitation email
     email_sent = send_invitation_email(

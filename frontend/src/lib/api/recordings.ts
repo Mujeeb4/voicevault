@@ -7,7 +7,7 @@ import type { UploadResponse } from '@/types';
 const baseUrl = '/recordings';
 
 interface UploadMetadata {
-  file_format: 'mp3' | 'webm' | 'wav';
+  file_format: 'mp3' | 'webm' | 'wav' | 'm4a' | 'ogg';
   duration_seconds: number;
   file_size_bytes: number;
   questions_answered?: number;

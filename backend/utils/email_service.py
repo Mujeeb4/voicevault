@@ -333,3 +333,46 @@ def send_password_changed_email(to_email: str, to_name: str) -> bool:
     except Exception as e:
         _log_email_failure("password changed", e)
         return False
+
+
+def send_password_reset_email(to_email: str, to_name: str, reset_url: str) -> bool:
+    """One-time password reset link (valid for one hour)."""
+    try:
+        _send_branded_email(
+            to_email,
+            "Reset your VoiceVault password",
+            "Reset your password",
+            [
+                f"Hi {to_name or 'there'},",
+                "We received a request to reset the password for your VoiceVault account. "
+                "Use the button below to choose a new one. The link works once and expires in 1 hour.",
+            ],
+            cta_label="Reset password",
+            cta_url=reset_url,
+            note="If you didn't ask for this, you can safely ignore this email. Your password won't change.",
+        )
+        logger.info(f"Password reset email sent to {to_email}")
+        return True
+    except Exception as e:
+        _log_email_failure("password reset", e)
+        return False
+
+
+def send_account_deleted_email(to_email: str, to_name: str) -> bool:
+    """Confirmation that the account and its data are being permanently deleted."""
+    try:
+        _send_branded_email(
+            to_email,
+            "Your VoiceVault account was deleted",
+            "Account deleted",
+            [
+                f"Hi {to_name or 'there'},",
+                "Your VoiceVault account, recordings, AI voice and conversations have been permanently deleted.",
+                "If you didn't do this, please contact us right away at info@voicevault.life.",
+            ],
+        )
+        logger.info(f"Account deleted email sent to {to_email}")
+        return True
+    except Exception as e:
+        _log_email_failure("account deleted", e)
+        return False

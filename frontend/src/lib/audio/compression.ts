@@ -97,17 +97,20 @@ export async function splitAudioToMP3Chunks(
   }
 }
 
-export type SupportedAudioFormat = 'mp3' | 'webm' | 'wav';
+export type SupportedAudioFormat = 'mp3' | 'webm' | 'wav' | 'm4a' | 'ogg';
 
 export function getAudioFormat(blob: Blob): SupportedAudioFormat {
   const type = blob.type.toLowerCase();
   if (type.includes('mpeg') || type.includes('mp3')) return 'mp3';
   if (type.includes('wav') || type.includes('wave')) return 'wav';
+  // Safari/iOS MediaRecorder produces AAC in an MP4 container.
+  if (type.includes('mp4') || type.includes('m4a') || type.includes('aac')) return 'm4a';
+  if (type.includes('ogg')) return 'ogg';
   return 'webm';
 }
 
 function replaceAudioExtension(filename: string, format: SupportedAudioFormat): string {
-  return filename.replace(/\.(mp3|webm|wav)$/i, '') + `.${format}`;
+  return filename.replace(/\.(mp3|webm|wav|m4a|mp4|aac|ogg)$/i, '') + `.${format}`;
 }
 
 export function blobToFile(blob: Blob, filename: string): File {

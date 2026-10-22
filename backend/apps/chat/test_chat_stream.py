@@ -88,3 +88,45 @@ class ChatStreamTests(TestCase):
             self.assertEqual(playback['Content-Type'], 'audio/wav')
             self.assertIn('.wav', playback['Content-Disposition'])
             playback.close()
+
+
+class ChatStreamErrorSanitizationTests(TestCase):
+    def _stream_events(self, owner):
+        request = RequestFactory().post(
+            '/api/chat/stream/',
+            data=json.dumps({'ai_owner_id': str(owner.id), 'question': 'How are you?'}),
+            content_type='application/json',
+        )
+        request.supabase_user = SimpleNamespace(id=owner.id)
+        response = chat_streaming(request)
+        return [json.loads(line.removeprefix('data: ')) for chunk in response.streaming_content
+                for line in chunk.decode().splitlines() if line.startswith('data: ')]
+
+    def _owner(self):
+        owner = User.objects.create(email='err@example.com', full_name='Err', ai_ready=True, is_premium=True)
+        AIConfiguration.objects.create(user=owner, system_prompt='x')
+        Transcript.objects.create(user=owner, full_transcript='I grew up near the sea.')
+        return owner
+
+    @override_settings(CHAT_PROVIDER='qwen', QWEN_API_KEY='')
+    @patch('apps.chat.views.can_generate_voice_response', return_value=LimitResult(True))
+    @patch('apps.chat.views.get_cached_response', return_value=None)
+    def test_missing_api_key_does_not_leak_configuration_details(self, _cache, _voice):
+        events = self._stream_events(self._owner())
+        error = [e for e in events if e['type'] == 'error'][0]
+        self.assertNotIn('API key', error['message'])
+        self.assertNotIn('Qwen', error['message'])
+
+    @override_settings(CHAT_PROVIDER='qwen', QWEN_API_KEY='test-key')
+    @patch('apps.chat.views.can_generate_voice_response', return_value=LimitResult(True))
+    @patch('apps.chat.views.get_cached_response', return_value=None)
+    @patch('openai.OpenAI')
+    def test_provider_exception_text_is_not_sent_to_client(self, openai_client, _cache, _voice):
+        openai_client.return_value.chat.completions.create.side_effect = RuntimeError(
+            'postgres://user:secret@db/internal traceback'
+        )
+        with self.assertLogs('apps.chat.views', level='ERROR'):
+            events = self._stream_events(self._owner())
+        error = [e for e in events if e['type'] == 'error'][0]
+        self.assertEqual(error['message'], 'Unable to complete chat response')
+        self.assertNotIn('secret', json.dumps(events))

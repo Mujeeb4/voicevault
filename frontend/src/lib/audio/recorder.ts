@@ -138,6 +138,31 @@ export class AudioRecorder {
     return 'The microphone could not be started. Check browser and system permissions, then try again.';
   }
 
+  /**
+   * Preferred recording container, with fallbacks for Safari/iOS (audio/mp4, AAC).
+   * Returns undefined to let the browser choose its default when none match.
+   */
+  static pickMimeType(): string | undefined {
+    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+      return undefined;
+    }
+    return [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/mp4',
+      'audio/aac',
+      'audio/ogg;codecs=opus',
+      'audio/ogg',
+    ].find((type) => {
+      try {
+        return MediaRecorder.isTypeSupported(type);
+      } catch {
+        return false;
+      }
+    });
+  }
+
   async initialize(): Promise<void> {
     this.stream = await AudioRecorder.requestMicrophone();
     if (typeof MediaRecorder === 'undefined') {
@@ -145,12 +170,7 @@ export class AudioRecorder {
       throw new Error('Audio recording is not supported by this browser.');
     }
 
-    const mimeType = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/mp4',
-    ].find((type) => MediaRecorder.isTypeSupported(type));
+    const mimeType = AudioRecorder.pickMimeType();
 
     try {
       this.mediaRecorder = new MediaRecorder(this.stream, {
@@ -187,7 +207,9 @@ export class AudioRecorder {
         return;
       }
       this.mediaRecorder.onstop = () => {
-        const blob = new Blob(this.audioChunks, { type: this.mediaRecorder?.mimeType ?? 'audio/webm' });
+        // Some Safari versions report an empty mimeType; derive it from the first chunk instead.
+        const recorderType = this.mediaRecorder?.mimeType || this.audioChunks[0]?.type || 'audio/webm';
+        const blob = new Blob(this.audioChunks, { type: recorderType });
         const duration = (Date.now() - this.startTime) / 1000;
         this.cleanup();
         resolve({ blob, duration });

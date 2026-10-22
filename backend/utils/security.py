@@ -94,4 +94,12 @@ def validate_audio_magic(audio_file, extension: str) -> bool:
         return header.startswith(b"RIFF") and header[8:12] == b"WAVE"
     if extension == "mp3":
         return header.startswith(b"ID3") or (len(header) >= 2 and header[0] == 0xFF and (header[1] & 0xE0) == 0xE0)
+    if extension in ("m4a", "mp4"):
+        # ISO base media file: size(4) + "ftyp"
+        return len(header) >= 12 and header[4:8] == b"ftyp"
+    if extension == "aac":
+        # ADTS frame sync (0xFFF) with layer bits 00
+        return len(header) >= 2 and header[0] == 0xFF and (header[1] & 0xF6) == 0xF0
+    if extension == "ogg":
+        return header.startswith(b"OggS")
     return False

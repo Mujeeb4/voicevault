@@ -22,6 +22,7 @@ from services.plan_limits import (
     record_recording_usage,
     validate_audio_file,
 )
+from services.audio_normalize import AudioConversionError, audio_extension, normalize_audio_file
 from utils.supabase_client import upload_file_to_supabase, delete_file_from_supabase
 
 logger = logging.getLogger(__name__)
@@ -82,10 +83,17 @@ class AudioRecordingUploadView(APIView):
                     )
                 
                 # Determine file format
-                file_extension = audio_file.name.split('.')[-1].lower()
                 file_validation = validate_audio_file(audio_file)
                 if not file_validation.allowed:
                     return Response(file_validation.as_error(), status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    audio_file = normalize_audio_file(audio_file)
+                except AudioConversionError:
+                    return Response(
+                        {'error': 'audio_conversion_failed', 'message': 'This audio could not be processed. Please try recording again.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                file_extension = audio_extension(audio_file)
 
                 # Get duration from request (if provided)
                 duration_seconds = request.data.get('duration_seconds')
@@ -338,6 +346,13 @@ class AudioRecordingUploadView(APIView):
             file_validation = validate_audio_file(audio_file)
             if not file_validation.allowed:
                 return Response(file_validation.as_error(), status=status.HTTP_400_BAD_REQUEST)
+            try:
+                audio_file = normalize_audio_file(audio_file)
+            except AudioConversionError:
+                return Response(
+                    {'error': 'audio_conversion_failed', 'message': 'This audio could not be processed. Please try recording again.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             question_number = serializer.validated_data['question_number']
             question_text = serializer.validated_data['question_text']
@@ -370,7 +385,7 @@ class AudioRecordingUploadView(APIView):
             
             try:
                 # Determine file format
-                file_extension = audio_file.name.split('.')[-1].lower()
+                file_extension = audio_extension(audio_file)
                 
                 # Generate unique filename
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

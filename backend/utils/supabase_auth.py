@@ -5,9 +5,26 @@ from django.conf import settings
 from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 import jwt
+from django.core.exceptions import ValidationError as DjangoValidationError
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def token_is_current(user_id, token_version) -> bool:
+    """True when the user still exists and the token's version matches theirs."""
+    from apps.users.models import User
+
+    try:
+        current = User.objects.filter(id=user_id).values_list('token_version', flat=True).first()
+    except (ValueError, TypeError, DjangoValidationError):
+        return False
+    if current is None:
+        return False
+    try:
+        return int(token_version) == current
+    except (TypeError, ValueError):
+        return False
 
 
 class SupabaseUser:
@@ -39,6 +56,8 @@ class SupabaseAuthMiddleware(MiddlewareMixin):
         '/api/users/resend-verification/',
         '/api/users/login/',
         '/api/users/refresh/',
+        '/api/users/logout/',
+        '/api/users/password-reset/',
     ]
     
     def process_request(self, request):
@@ -98,6 +117,14 @@ class SupabaseAuthMiddleware(MiddlewareMixin):
                     status=401
                 )
             
+            # Revocation: one indexed primary-key lookup. Tokens minted before the
+            # `tv` claim existed count as version 0, matching the column default.
+            if not token_is_current(user_id, decoded.get('tv', 0)):
+                return JsonResponse(
+                    {'error': 'token_revoked', 'message': 'Session is no longer valid. Please sign in again.'},
+                    status=401
+                )
+
             # Create SupabaseUser object and attach to request
             request.supabase_user = SupabaseUser(
                 user_id=user_id,
@@ -155,6 +182,9 @@ def verify_supabase_token(token: str):
         token_type = decoded.get('type')
         
         if token_type != 'access' or not user_id or not email:
+            return None
+
+        if not token_is_current(user_id, decoded.get('tv', 0)):
             return None
         
         return SupabaseUser(

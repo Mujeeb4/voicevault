@@ -33,13 +33,21 @@ PREMIUM_LIMITS = {
     "ai_generations": 3,
 }
 
-SUPPORTED_AUDIO_EXTENSIONS = {"webm", "mp3", "wav"}
+SUPPORTED_AUDIO_EXTENSIONS = {"webm", "mp3", "wav", "m4a", "mp4", "aac", "ogg"}
 SUPPORTED_AUDIO_TYPES = {
     "audio/webm",
     "audio/mpeg",
     "audio/mp3",
     "audio/wav",
     "audio/x-wav",
+    "audio/mp4",
+    "audio/x-m4a",
+    "audio/m4a",
+    "audio/aac",
+    "audio/x-aac",
+    "audio/ogg",
+    "video/mp4",
+    "video/webm",
 }
 
 
@@ -140,9 +148,9 @@ def validate_audio_file(audio_file) -> LimitResult:
     file_name = getattr(audio_file, "name", "") or ""
     extension = file_name.rsplit(".", 1)[-1].lower() if "." in file_name else ""
     if extension not in SUPPORTED_AUDIO_EXTENSIONS:
-        return LimitResult(False, "Invalid file format. Allowed: webm, mp3, wav", False, "audio_format")
+        return LimitResult(False, "Invalid file format. Allowed: webm, mp3, wav, m4a, mp4, aac, ogg", False, "audio_format")
 
-    content_type = getattr(audio_file, "content_type", None)
+    content_type = (getattr(audio_file, "content_type", None) or "").split(";", 1)[0].strip().lower()
     if content_type and content_type not in SUPPORTED_AUDIO_TYPES:
         return LimitResult(False, "Invalid audio content type", False, "audio_type")
 

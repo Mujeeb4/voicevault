@@ -15,6 +15,9 @@ from rest_framework import status
 import openai
 from django.conf import settings
 
+from services.audio_normalize import AudioConversionError, normalize_audio_file
+from utils.security import validate_audio_magic
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,7 +66,9 @@ def transcribe_voice_input(request):
         # Validate file type
         allowed_types = {
             'audio/webm': '.webm', 'audio/ogg': '.ogg', 'audio/mp4': '.m4a',
-            'audio/mpeg': '.mp3', 'audio/wav': '.wav',
+            'audio/mpeg': '.mp3', 'audio/mp3': '.mp3', 'audio/wav': '.wav', 'audio/x-wav': '.wav',
+            'audio/x-m4a': '.m4a', 'audio/m4a': '.m4a', 'video/mp4': '.mp4',
+            'video/webm': '.webm', 'audio/aac': '.aac', 'audio/x-aac': '.aac',
         }
         content_type = (audio_file.content_type or '').split(';', 1)[0].strip().lower()
         if content_type not in allowed_types:
@@ -72,8 +77,27 @@ def transcribe_voice_input(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Verify the bytes really are audio of the declared type (not a disguised file)
+        suffix = allowed_types[content_type]
+        if not validate_audio_magic(audio_file, suffix.lstrip('.')):
+            return Response(
+                {'error': 'invalid_file_type', 'message': 'The uploaded file is not a valid audio recording.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if suffix == '.aac':
+            # Whisper does not accept raw ADTS AAC; transcode to MP3 first.
+            audio_file.name = 'voice-input.aac'
+            try:
+                audio_file = normalize_audio_file(audio_file)
+            except AudioConversionError:
+                return Response(
+                    {'error': 'invalid_file_type', 'message': 'The audio could not be processed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            suffix = '.mp3'
+
         # Save to temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=allowed_types[content_type]) as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
             for chunk in audio_file.chunks():
                 temp_file.write(chunk)
             temp_file_path = temp_file.name

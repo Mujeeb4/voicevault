@@ -63,7 +63,7 @@ class AudioRecordingUploadSerializer(serializers.Serializer):
             )
         
         # Check file extension
-        allowed_extensions = ['webm', 'mp3', 'wav']
+        allowed_extensions = ['webm', 'mp3', 'wav', 'm4a', 'mp4', 'aac', 'ogg']
         file_name = value.name.lower()
         extension = file_name.split('.')[-1] if '.' in file_name else ''
         

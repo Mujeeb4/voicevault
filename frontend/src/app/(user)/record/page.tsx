@@ -388,7 +388,21 @@ async function assertUploadableAudio(blob: Blob): Promise<void> {
     ((header[0] === 0x49 && header[1] === 0x44 && header[2] === 0x33) ||
       (header[0] === 0xff && (header[1] & 0xe0) === 0xe0));
 
-  if (!isWebm && !isWav && !isMp3) {
+  // MP4/M4A (Safari): box size (4 bytes) followed by 'ftyp'
+  const isM4a =
+    format === 'm4a' &&
+    header[4] === 0x66 &&
+    header[5] === 0x74 &&
+    header[6] === 0x79 &&
+    header[7] === 0x70;
+  const isOgg =
+    format === 'ogg' &&
+    header[0] === 0x4f &&
+    header[1] === 0x67 &&
+    header[2] === 0x67 &&
+    header[3] === 0x53;
+
+  if (!isWebm && !isWav && !isMp3 && !isM4a && !isOgg) {
     throw new Error(
       'A saved recording could not be decoded as audio. Please retake that recording before uploading.'
     );

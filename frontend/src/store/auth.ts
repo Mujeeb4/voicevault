@@ -108,6 +108,17 @@ export const useAuthStore = create<AuthState>()(
 
       // Logout action
       logout: () => {
+        // Revoke the refresh token server-side (best effort), then clear locally.
+        const refresh = session.getRefreshToken();
+        if (refresh) {
+          // keepalive lets the request survive the full-page navigation that follows logout.
+          fetch('/api/users/logout/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh }),
+            keepalive: true,
+          }).catch(() => undefined);
+        }
         // Clear tokens from session (which also clears API client)
         session.clearTokens();
 
