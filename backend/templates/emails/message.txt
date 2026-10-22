@@ -1,0 +1,19 @@
+{% autoescape off %}{{ heading }}
+
+{% for p in paragraphs %}{{ p }}
+
+{% endfor %}{% if quote %}"{{ quote }}"
+
+{% endif %}{% for label, value in details %}{{ label }}: {{ value }}
+{% endfor %}{% if details %}
+{% endif %}{% for b in bullets %}- {{ b }}
+{% endfor %}{% if bullets %}
+{% endif %}{% if cta_url %}{{ cta_label }}:
+{{ cta_url }}
+
+{% endif %}{% if note %}{{ note }}
+
+{% endif %}--
+{% if footer_note %}{{ footer_note }}
+{% endif %}VoiceVault - {{ frontend_url }}
+{% endautoescape %}

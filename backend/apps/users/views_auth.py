@@ -15,6 +15,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from utils.throttling import AuthEndpointThrottle
+from utils.email_service import send_account_welcome_email, send_password_changed_email
 from .models import User
 from .serializers import UserSerializer
 import logging
@@ -145,6 +146,8 @@ class SignupView(APIView):
             serializer = UserSerializer(user)
             
             logger.info("New user signed up: %s", user.id)
+            # Best-effort: the helper logs and swallows delivery failures.
+            send_account_welcome_email(user.email, user.full_name)
             
             return Response(
                 {
@@ -321,6 +324,7 @@ class ChangePasswordView(APIView):
         user.password_hash = make_password(new_password)
         user.save(update_fields=['password_hash', 'updated_at'])
         logger.info('Password changed for user: %s', user.id)
+        send_password_changed_email(user.email, user.full_name)
 
         return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
 

@@ -93,3 +93,55 @@ class CheckoutRegressionTests(TestCase):
         self.assertEqual(premium['price'], 149.99)
         self.assertEqual(premium['price_display'], '$149.99')
         self.assertEqual(premium['currency'], 'USD')
+
+
+class PaymentEmailTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create(
+            email='buyer2@example.com', full_name='Buyer Two', stripe_customer_id='cus_mail'
+        )
+
+    def session(self):
+        return {
+            'id': 'cs_mail',
+            'payment_intent': 'pi_mail',
+            'customer': 'cus_mail',
+            'amount_total': 14999,
+            'currency': 'usd',
+            'metadata': {'user_id': str(self.user.id), 'package_tier': 'premium'},
+        }
+
+    @patch('apps.payments.views.send_premium_activated_email')
+    def test_checkout_completed_sends_receipt_once(self, send_email):
+        views.handle_checkout_completed(self.session())
+        views.handle_checkout_completed(self.session())  # webhook retry / confirm endpoint
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.args[0], 'buyer2@example.com')
+
+    @patch('apps.payments.views.send_payment_failed_email')
+    def test_payment_failed_sends_once_per_intent(self, send_email):
+        intent = {'id': 'pi_fail', 'customer': 'cus_mail'}
+        views.handle_payment_failed(intent)
+        views.handle_payment_failed(intent)
+        send_email.assert_called_once_with('buyer2@example.com', 'Buyer Two')
+
+    @patch('apps.payments.views.send_payment_failed_email')
+    def test_payment_failed_unknown_customer_sends_nothing(self, send_email):
+        views.handle_payment_failed({'id': 'pi_x', 'customer': 'cus_unknown'})
+        send_email.assert_not_called()
+
+    def test_branded_emails_render_html_and_text(self):
+        from django.core import mail
+        from utils import email_service
+        self.assertTrue(email_service.send_premium_activated_email(
+            'buyer2@example.com', 'Buyer <b>Two</b>', 14999, 'usd'))
+        self.assertTrue(email_service.send_invitation_email(
+            'a@example.com', 'A', 'Owner', 'Son', 'http://x/y', '<script>x</script>'))
+        self.assertEqual(len(mail.outbox), 2)
+        html = mail.outbox[0].alternatives[0][0]
+        self.assertIn('#0A7552', html)
+        self.assertIn('$149.99', mail.outbox[0].body)
+        self.assertNotIn('<b>Two</b>', html)
+        self.assertNotIn('<script>', mail.outbox[1].alternatives[0][0])

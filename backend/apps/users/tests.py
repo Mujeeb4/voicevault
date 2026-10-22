@@ -4,6 +4,7 @@ import jwt
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
+from unittest.mock import patch
 from django.test import TestCase
 from rest_framework.test import APIRequestFactory
 
@@ -49,6 +50,16 @@ class SignupRegressionTests(TestCase):
             User.objects.get(email='new-owner@example.com').phone_number,
             '+1 202 555 0199',
         )
+
+    @patch('apps.users.views_auth.send_account_welcome_email')
+    def test_signup_sends_welcome_email(self, send_email):
+        request = APIRequestFactory().post('/api/users/signup/', {
+            'email': 'welcome@example.com',
+            'password': 'strong-pass-123',
+            'full_name': 'Welcome Owner',
+        }, format='json')
+        self.assertEqual(SignupView.as_view()(request).status_code, 201)
+        send_email.assert_called_once_with('welcome@example.com', 'Welcome Owner')
 
     def test_signup_rejects_malformed_email(self):
         request = APIRequestFactory().post('/api/users/signup/', {
@@ -161,3 +172,18 @@ class ChangePasswordRegressionTests(TestCase):
             'password': 'new-strong-pass-123',
         }, format='json')
         self.assertEqual(LoginView.as_view()(login_request).status_code, 200)
+
+
+class ChangePasswordEmailTests(ChangePasswordRegressionTests):
+    @patch('apps.users.views_auth.send_password_changed_email')
+    def test_successful_change_sends_notice(self, send_email):
+        response = ChangePasswordView.as_view()(
+            self.request('current-pass-123', 'new-strong-pass-123')
+        )
+        self.assertEqual(response.status_code, 200)
+        send_email.assert_called_once_with(self.user.email, 'Password Owner')
+
+    @patch('apps.users.views_auth.send_password_changed_email')
+    def test_failed_change_sends_nothing(self, send_email):
+        ChangePasswordView.as_view()(self.request('wrong-pass-123', 'new-strong-pass-123'))
+        send_email.assert_not_called()

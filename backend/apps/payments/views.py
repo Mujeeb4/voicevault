@@ -15,6 +15,8 @@ from rest_framework.response import Response
 from apps.users.models import User
 from apps.payments.models import Payment
 from services.plan_limits import quota_status
+from utils.email_service import send_payment_failed_email, send_premium_activated_email
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +276,7 @@ def stripe_webhook(request):
     elif event['type'] == 'payment_intent.payment_failed':
         payment_intent = event['data']['object']
         logger.warning(f"Payment failed: {payment_intent['id']}")
+        handle_payment_failed(payment_intent)
     
     return HttpResponse(status=200)
 
@@ -300,9 +303,11 @@ def handle_checkout_completed(session):
         logger.error(f"User not found for checkout: {user_id}")
         return
     
-    # Create Payment record
+    # Create Payment record. `created` marks the first time we see this payment,
+    # so webhook retries and the confirm endpoint never send duplicate emails.
+    payment_created = False
     try:
-        payment, _ = Payment.objects.update_or_create(
+        payment, payment_created = Payment.objects.update_or_create(
             stripe_payment_intent_id=payment_intent_id,
             defaults={
                 'user': user,
@@ -326,6 +331,30 @@ def handle_checkout_completed(session):
     )
     
     logger.info(f"User {user_id} payment completed: {package_tier}")
+
+    if payment_created:
+        send_premium_activated_email(
+            user.email,
+            user.full_name,
+            amount_cents=session.get('amount_total') or PREMIUM_PRICE['amount'],
+            currency=session.get('currency') or PREMIUM_PRICE['currency'],
+            receipt_url=session.get('receipt_url') or None,
+        )
+
+
+def handle_payment_failed(payment_intent):
+    """Email the customer once per failed PaymentIntent (webhooks may be retried)."""
+    intent_id = payment_intent.get('id')
+    customer_id = payment_intent.get('customer')
+    if not intent_id or not customer_id:
+        return
+    user = User.objects.filter(stripe_customer_id=customer_id).first()
+    if not user or user.has_premium_access:
+        return
+    # cache.add is atomic: only the first delivery for this intent sends.
+    if not cache.add(f'payment_failed_email:{intent_id}', 1, 60 * 60 * 24):
+        return
+    send_payment_failed_email(user.email, user.full_name)
 
 
 @api_view(['GET'])
