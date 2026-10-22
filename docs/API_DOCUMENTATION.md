@@ -1,764 +1,254 @@
-# VoiceVault Backend API Documentation
+# VoiceVault API reference
 
-**Version:** 1.0  
-**Base URL:** `https://api.voicevault.com` (or your deployment URL)  
-**Last Updated:** January 11, 2026
+Last reviewed: October 22, 2026.
 
----
+## Base URL and conventions
 
-## Table of Contents
+The browser uses the frontend origin and the `/api` prefix, for example `http://localhost:3000/api`. Next.js forwards `/api/*` to Django using the server-side `BACKEND_API_URL`. Keep browser requests and returned playback paths on this origin. The frontend does not need a public backend URL.
 
-1. [Authentication](#authentication)
-2. [Users & Profile](#users--profile)
-3. [Audio Recordings](#audio-recordings)
-4. [AI Processing](#ai-processing)
-5. [Chat System](#chat-system)
-6. [Family Management](#family-management)
-7. [Payments](#payments)
-8. [Error Codes](#error-codes)
-9. [Rate Limits](#rate-limits)
-10. [Webhooks](#webhooks)
+Every path below includes `/api` and its required trailing slash. Send JSON unless an endpoint specifies multipart data or returns a file/stream. UUID placeholders identify database records. Most protected operations derive the current account from its Bearer token; supplying a `user_id` does not authenticate a request.
 
----
+The authoritative routes live in `backend/config/urls.py` and `backend/apps/*/urls*.py`. Request/response handling lives in the corresponding views and serializers; frontend adapters live in `frontend/src/lib/api/`.
 
-## Authentication
+## Authentication and profiles
 
-All API requests require authentication using Supabase JWT tokens, except for public endpoints like invitation acceptance.
-
-### Headers Required
+Accounts authenticate through Django's own endpoints. Include the returned **access** token in protected requests:
 
 ```http
-Authorization: Bearer {supabase_jwt_token}
+Authorization: Bearer <access-token>
 Content-Type: application/json
 ```
 
-### Getting Auth Token
+| Method | Endpoint | Access | Request / result |
+| --- | --- | --- | --- |
+| POST | `/api/users/signup/` | Public | Creates an account; returns `201` with `{ user, tokens: { access, refresh } }`. |
+| POST | `/api/users/login/` | Public | `{ email, password }`; returns `200` with the same envelope. |
+| POST | `/api/users/refresh/` | Public, valid refresh token required | `{ "refresh": "<refresh-token>" }`; returns `{ access, refresh }`. |
+| POST | `/api/users/logout/` | Public; send Bearer token when available | Returns `{ "message": "Logged out successfully" }`; the client discards its stored tokens. |
+| GET | `/api/users/profile/` | Signed-in account | Returns the current user object. |
+| PATCH | `/api/users/profile/` | Signed-in account | Updates writable profile fields, including `full_name` and `phone_number`; returns the user object. |
+| POST | `/api/users/change-password/` | Signed-in account | `{ current_password, new_password }`; returns a success message. |
+| POST | `/api/users/consent/` | Signed-in account | `{ consent_type, accepted }`; records explicit consent. |
 
-Users authenticate through Supabase Auth, which returns a JWT token. Include this token in all API requests.
+Signup request:
 
-**Supabase Auth Endpoints:**
-- Sign Up: `POST https://{your-project}.supabase.co/auth/v1/signup`
-- Sign In: `POST https://{your-project}.supabase.co/auth/v1/token?grant_type=password`
-
----
-
-## Users & Profile
-
-### Get Current User Profile
-
-**GET** `/api/users/profile/`
-
-**Authentication:** Required
-
-**Response (200 OK):**
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "user@example.com",
-  "full_name": "John Smith",
-  "package_tier": "premium",
-  "recording_completed": true,
-  "ai_ready": true,
-  "ai_processing_started_at": "2026-01-10T10:00:00Z",
-  "ai_processing_completed_at": "2026-01-10T11:30:00Z",
-  "created_at": "2026-01-01T10:00:00Z"
+  "email": "person@example.com",
+  "password": "a-long-unique-password",
+  "full_name": "Example Person",
+  "phone_number": "+1234567890"
 }
 ```
 
-### Update Profile
+`phone_number` is optional. Passwords must contain 8–128 characters. Access tokens expire after one hour; refresh tokens after seven days. Use a refresh token only with the refresh endpoint, save the returned pair, and retry the original authenticated request once. Logout is stateless and does not revoke previously issued JWTs server-side.
 
-**PATCH** `/api/users/profile/`
+The user object includes `id`, `email`, `full_name`, `phone_number`, `plan_type`, `package_tier`, `is_premium`, `payment_completed`, `lifetime_access`, `recording_completed`, `ai_ready`, `is_admin`, `usage_quota`, and lifecycle timestamps. Entitlement, admin, email, and processing fields are read-only in profile updates. Refresh the profile after uploads, checkout confirmation, and processing completion before using these flags for navigation.
 
-**Authentication:** Required
+Consent types: `voice_cloning`, `ai_personality_generation`, `family_access`, `terms_of_service`, `privacy_policy`. Voice cloning requires Premium access and accepted voice-cloning consent. Consent returns `201` with `id`, `consent_type`, `accepted`, and `accepted_at`. Accepting voice consent can also queue voice processing and finalization when recordings already exist; this action can invoke a paid provider.
 
-**Request:**
+## Health probes
+
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| GET / HEAD | `/api/health/` | Public liveness: `{ "status": "ok" }`. |
+| GET / HEAD | `/api/ready/` | Public readiness: `{ "status": "ok", "checks": { "database": "ok", "cache": "ok" } }`; cache is included when Redis is configured. Returns `503` if a checked dependency fails. |
+| GET | `/api/users/health/` | Public legacy database health endpoint; returns service/database status. |
+
+## Questions and audio recordings
+
+| Method | Endpoint | Access / result |
+| --- | --- | --- |
+| GET | `/api/recordings/questions/` | Public active questions; optional `domain`, `search`, `page`, `per_page`, `is_active`. Returns `{ count, next, previous, results }`. Signed-in free accounts receive their guided-question allowance; admins can inspect inactive questions. |
+| POST | `/api/recordings/upload/` | Signed-in account; multipart upload described below. |
+| GET | `/api/recordings/` | Current account's recordings: `{ count, total_duration_seconds, recordings }`. Optional `domain` and `transcribed=true/false`. |
+| DELETE | `/api/recordings/{recording_id}/` | Recording owner; removes storage and database record; `204`. |
+| GET | `/api/recordings/{recording_id}/audio/?token=...` | Local-storage playback using the returned short-lived signed URL. |
+
+Question entries include `id`, `question_text`, `domain`, `order`, `is_active`, `tip`, and `suggested_duration_seconds`.
+
+### Combined upload used by the frontend
+
+Send multipart fields `audio_file` (a named file), `duration_seconds`, and `recording_metadata` (a JSON string). Supported recording formats are **WebM, MP3, WAV**; extension, content type, and file signature must match. Plan storage/duration quotas and deployment request limits also apply.
+
+Example `recording_metadata` for a single complete recording:
+
 ```json
 {
-  "full_name": "John Michael Smith"
+  "questions_answered": 5,
+  "recording_date": "2026-10-22T12:00:00Z",
+  "file_format": "wav",
+  "file_size_bytes": 320044,
+  "chunk_index": 1,
+  "total_chunks": 1,
+  "is_final_chunk": true,
+  "total_duration_seconds": 10
 }
 ```
 
-**Response (200 OK):** Updated profile object
+For multiple parts, upload sequentially with one-based `chunk_index`, the same `total_chunks`, each part's `duration_seconds`, and `is_final_chunk: true` only on the last part. Starting part 1 of a multipart upload replaces the account's previous combined recording set. A part is stored as its own recording; these are not resumable byte-range requests.
 
----
+A non-final part stores audio without completing the recording or queuing AI processing. The final part marks `recording_completed`, resets AI readiness when starting a new pipeline, and automatically queues transcription, personality analysis, eligible voice cloning, and finalization. These tasks can invoke external providers. An active processing pipeline suppresses a duplicate automatic start. An upload response confirms file storage; it does not confirm successful AI processing or queue submission. Poll processing status separately.
 
-## Audio Recordings
-
-### Upload Audio Recording
-
-**POST** `/api/recordings/upload/`
-
-**Authentication:** Required
-
-**Content-Type:** `multipart/form-data`
-
-**Request:**
-```
-file: (audio file, max 50MB)
-question_number: 1
-```
-
-**Supported Formats:** MP3, M4A, WAV
-
-**Response (201 Created):**
-```json
-{
-  "id": "recording-uuid",
-  "question_number": 1,
-  "audio_url": "https://supabase.co/storage/.../recording.mp3",
-  "file_size_bytes": 1024000,
-  "duration_seconds": 120,
-  "status": "uploaded",
-  "created_at": "2026-01-10T10:00:00Z"
-}
-```
-
-### Get Recording Status
-
-**GET** `/api/recordings/status/?user_id={uuid}`
-
-**Authentication:** Required
-
-**Response (200 OK):**
-```json
-{
-  "total_recordings": 30,
-  "completed_recordings": 25,
-  "pending_recordings": 5,
-  "recording_completed": false,
-  "recordings": [
-    {
-      "question_number": 1,
-      "status": "uploaded",
-      "audio_url": "...",
-      "duration_seconds": 120
-    }
-  ]
-}
-```
-
-### Delete Recording
-
-**DELETE** `/api/recordings/{recording_id}/`
-
-**Authentication:** Required
-
-**Response (204 No Content)**
-
----
-
-## AI Processing
-
-### Trigger AI Processing (Admin Only)
-
-**POST** `/api/ai-processing/start-processing/`
-
-**Authentication:** Admin Required
-
-**Request:**
-```json
-{
-  "user_id": "uuid"
-}
-```
-
-**Processing Pipeline:**
-1. **Transcription** (5-10 min) - OpenAI Whisper API
-2. **Personality Analysis** (2-3 min) - GPT-4 analysis
-3. **Voice Cloning** (10-15 min) - ElevenLabs Professional Voice Cloning
-4. **Quality Testing** (2-3 min) - Test voice quality
-5. **Finalization** (<1 min) - Mark AI as ready
-
-**Response (202 Accepted):**
-```json
-{
-  "message": "AI processing started",
-  "user_id": "uuid",
-  "processing_status": "started",
-  "estimated_completion": "20-30 minutes"
-}
-```
-
-### Check Processing Status
-
-**GET** `/api/ai-processing/status/?user_id={uuid}`
-
-**Authentication:** Required
-
-**Response (200 OK):**
-```json
-{
-  "user_id": "uuid",
-  "ai_ready": false,
-  "processing_started_at": "2026-01-10T10:00:00Z",
-  "current_stage": "voice_cloning",
-  "stages": {
-    "transcription": {
-      "status": "completed",
-      "completed_at": "2026-01-10T10:15:00Z"
-    },
-    "personality_analysis": {
-      "status": "completed",
-      "completed_at": "2026-01-10T10:20:00Z"
-    },
-    "voice_cloning": {
-      "status": "processing",
-      "started_at": "2026-01-10T10:21:00Z"
-    },
-    "quality_testing": {
-      "status": "pending"
-    },
-    "finalization": {
-      "status": "pending"
-    }
-  },
-  "estimated_completion_minutes": 15
-}
-```
-
-### Manual Task Triggers (Admin Only)
-
-#### Transcribe Audio
-**POST** `/api/ai-processing/transcribe/`
+Successful combined upload (`201`, or `200` in an existing-record recovery path):
 
 ```json
 {
-  "user_id": "uuid"
-}
-```
-
-#### Analyze Personality
-**POST** `/api/ai-processing/analyze-personality/`
-
-```json
-{
-  "user_id": "uuid"
-}
-```
-
-#### Clone Voice
-**POST** `/api/ai-processing/clone-voice/`
-
-```json
-{
-  "user_id": "uuid"
-}
-```
-
-#### Test AI Quality
-**POST** `/api/ai-processing/test-quality/`
-
-```json
-{
-  "user_id": "uuid"
-}
-```
-
-#### Finalize AI
-**POST** `/api/ai-processing/finalize/`
-
-```json
-{
-  "user_id": "uuid"
-}
-```
-
----
-
-## Chat System
-
-### Stream Chat with AI (CORE FEATURE)
-
-**POST** `/api/chat/stream/`
-
-**Authentication:** Required
-
-**Request:**
-```json
-{
-  "ai_owner_id": "uuid",
-  "question": "Dad, what advice do you have for me?"
-}
-```
-
-**Response:** Server-Sent Events (`text/event-stream`)
-
-**Event Stream:**
-```
-data: {"type": "text_chunk", "content": "Well", "timestamp": 0.3}
-
-data: {"type": "text_chunk", "content": " son,", "timestamp": 0.4}
-
-data: {"type": "text_chunk", "content": " I'd", "timestamp": 0.5}
-
-data: {"type": "text_complete", "full_text": "Well son, I'd say always...", "tokens": 150}
-
-data: {"type": "audio_processing", "task_id": "celery-task-id", "estimated_time_ms": 600}
-
-data: {"type": "complete", "conversation_id": "uuid", "total_time_ms": 1200}
-```
-
-**Performance:**
-- First text chunk: 200-400ms ⚡
-- Full text visible: 800ms-1.2s ⚡
-- Audio ready: 1-1.5s (parallel processing)
-- Cached responses: <50ms 🚀
-
-**Features:**
-- Real-time streaming with GPT-4o (109 tokens/sec)
-- Smart RAG context retrieval (70% token reduction)
-- Parallel audio generation (ElevenLabs Turbo v2.5)
-- Automatic caching for repeated questions
-- Conversation persistence
-
-### Get Conversation History
-
-**GET** `/api/chat/conversations/?ai_owner_id={uuid}&page=1&per_page=20`
-
-**Authentication:** Required
-
-**Response (200 OK):**
-```json
-{
-  "count": 47,
-  "next": "https://api.voicevault.com/api/chat/conversations/?page=2",
-  "previous": null,
-  "results": [
-    {
-      "id": "conv-uuid",
-      "question": "What was your childhood like?",
-      "response": "I had a wonderful childhood growing up in California...",
-      "audio_url": "https://supabase.co/storage/.../response.mp3",
-      "family_member": "Sarah Johnson",
-      "relationship": "child",
-      "created_at": "2026-01-11T09:00:00Z",
-      "response_time_ms": 1200,
-      "gpt_tokens_used": 150,
-      "user_rating": 5,
-      "user_feedback": "This was so helpful!"
-    }
-  ]
-}
-```
-
-### Rate Conversation
-
-**POST** `/api/chat/conversations/{conversation_id}/rate/`
-
-**Authentication:** Required
-
-**Request:**
-```json
-{
-  "rating": 5,
-  "feedback": "This was incredibly helpful and sounded just like Dad!"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "message": "Rating saved successfully",
-  "conversation_id": "uuid",
-  "rating": 5
-}
-```
-
-### Check Audio Generation Status
-
-**GET** `/api/chat/audio-status/{task_id}/`
-
-**Authentication:** Required
-
-**Response (200 OK):**
-```json
-{
+  "recording_id": "recording-uuid",
+  "storage_path": "account-id/combined_timestamp.wav",
+  "public_url": "/api/recordings/recording-uuid/audio/?token=...",
   "status": "complete",
-  "audio_url": "https://supabase.co/storage/.../response.mp3",
-  "generation_time_ms": 580,
-  "total_time_ms": 650
+  "created_at": "2026-10-22T12:00:00Z"
 }
 ```
 
-**Status Values:** `pending`, `processing`, `complete`, `failed`
-
----
-
-## Family Management
-
-### Invite Family Member
-
-**POST** `/api/family/invite/`
-
-**Authentication:** AI Owner Required
-
-**Request:**
-```json
-{
-  "email": "sarah@example.com",
-  "full_name": "Sarah Johnson",
-  "relationship": "child",
-  "personal_message": "Hi Sarah, I created this so we can always talk. Love, Dad"
-}
-```
-
-**Relationship Choices:** `spouse`, `child`, `parent`, `sibling`, `friend`
-
-**Response (201 Created):**
-```json
-{
-  "message": "Invitation sent successfully",
-  "family_member_id": "uuid",
-  "email": "sarah@example.com",
-  "full_name": "Sarah Johnson",
-  "relationship": "child",
-  "invitation_link": "https://voicevault.com/accept-invite/secure-token-123",
-  "expires_at": "2026-01-18T10:00:00Z",
-  "email_sent": true
-}
-```
-
-**Errors:**
-- `400 Bad Request` - Invalid email, AI not ready
-- `409 Conflict` - Email already invited
-
-### Accept Invitation
-
-**POST** `/api/family/accept-invite/{token}/`
-
-**Authentication:** Optional (public endpoint)
-
-**Request (optional):**
-```json
-{
-  "user_id": "uuid"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "message": "Invitation accepted successfully",
-  "ai_owner": {
-    "id": "uuid",
-    "name": "John Smith",
-    "relationship": "father"
-  },
-  "redirect_url": "/chat/uuid"
-}
-```
-
-**Process:**
-1. Validate token (7-day expiry)
-2. Grant access to family member
-3. Link to user account (if authenticated)
-4. Send welcome email to family member
-5. Send notification to AI owner
-6. Invalidate token (one-time use)
-
-### List Family Members
-
-**GET** `/api/family/members/?user_id={uuid}`
-
-**Authentication:** AI Owner Required
-
-**Response (200 OK):**
-```json
-{
-  "count": 5,
-  "members": [
-    {
-      "id": "uuid",
-      "email": "sarah@example.com",
-      "full_name": "Sarah Johnson",
-      "relationship": "child",
-      "has_access": true,
-      "invitation_sent_at": "2026-01-10T10:00:00Z",
-      "invitation_accepted_at": "2026-01-10T15:30:00Z",
-      "conversation_count": 12,
-      "last_conversation_at": "2026-01-11T09:00:00Z"
-    },
-    {
-      "id": "uuid2",
-      "email": "mom@example.com",
-      "full_name": "Mary Smith",
-      "relationship": "spouse",
-      "has_access": false,
-      "invitation_sent_at": "2026-01-11T08:00:00Z",
-      "invitation_accepted_at": null,
-      "conversation_count": 0,
-      "last_conversation_at": null
-    }
-  ]
-}
-```
+The `public_url` value is a signed playback path for local storage, despite its historical field name. Use returned URLs without constructing storage paths. Storage-backed deployments may return a storage URL instead.
 
-### Remove Family Member
-
-**DELETE** `/api/family/members/{member_id}/?user_id={ai_owner_uuid}`
-
-**Authentication:** AI Owner Required
-
-**Response (204 No Content)**
+The legacy individual-question upload accepts `audio_file`, `question_number` (1–30), `question_text`, `domain`, and optional `duration_seconds`; it returns a recording serializer with `id` and `upload_status`. Its allowed domains are `childhood`, `career`, `family`, `wisdom`, `challenges`, `personality`. It does not use the combined-upload automatic-finalization contract.
 
-**Process:**
-1. Verify AI owner permission
-2. Delete FamilyMember record
-3. Send notification email to removed person
-4. Past conversations remain in database
+## AI processing
 
-### Resend Invitation
+Despite their `/admin/` prefix, these endpoints allow the target account owner or a configured administrator. Use an empty JSON object for task triggers. Workers and the configured providers must be available.
 
-**POST** `/api/family/members/{member_id}/resend/?user_id={ai_owner_uuid}`
-
-**Authentication:** AI Owner Required
+| Method | Endpoint | Result |
+| --- | --- | --- |
+| GET | `/api/admin/process/status/{user_id}/` | Processing status envelope described below. |
+| POST | `/api/admin/process/full-pipeline/{user_id}/` | Queues the full eligible pipeline. |
+| POST | `/api/admin/process/transcribe/{user_id}/` | Queues transcription. |
+| POST | `/api/admin/process/personality/{user_id}/` | Queues personality analysis. |
+| POST | `/api/admin/process/voice-clone/{user_id}/` | Requires Premium and consent; queues voice preparation/cloning and finalization. |
+| POST | `/api/admin/process/finalize/{user_id}/` | Queues final validation/readiness. |
+| POST | `/api/admin/process/voice-preview/{user_id}/` | `{ text }`, 1–300 characters; requires a prepared Replicate voice reference. Returns `{ preview_id, status }` (`202` newly queued, `200` reused). |
+| GET | `/api/admin/process/voice-preview/{user_id}/{preview_id}/` | Returns `{ preview_id, status }`, plus `audio_url` when complete or `error` on failure. |
+| GET | `/api/admin/process/voice-preview/{user_id}/{preview_id}/audio/` | Authenticated audio file. Fetch with Bearer token and play a client Blob URL. |
 
-**Request (optional):**
-```json
-{
-  "personal_message": "Updated message here"
-}
-```
+Status contains `user_id`, `ai_ready`, `overall_status`, `steps`, `created_at`, and `updated_at`. `steps` has `transcription`, `personality_analysis`, and `voice_cloning`, each with `status`, `error`, and `result`; transcription also includes `full_transcript`. Step statuses are `pending`, `in_progress`, `complete`, `failed`. Overall status additionally supports `recorded_and_uploaded`. Voice is not required for the free text-only experience. Provider choice and timings depend on deployment configuration; the API makes no fixed latency guarantee.
 
-**Response (200 OK):**
-```json
-{
-  "message": "Invitation resent successfully",
-  "email": "sarah@example.com",
-  "invitation_link": "https://voicevault.com/accept-invite/new-token-456",
-  "expires_at": "2026-01-18T10:00:00Z"
-}
-```
+## Chat and response audio
 
-**Errors:**
-- `400 Bad Request` - Invitation already accepted
+The signed-in account must own the ready AI or have accepted family access. Chat authorization and conversation ownership are derived server-side from the authenticated account.
+
+| Method | Endpoint | Request / result |
+| --- | --- | --- |
+| POST | `/api/chat/stream/` | `{ ai_owner_id, question }`; streams SSE. Maximum backend question length: 1,000 characters. |
+| GET | `/api/chat/stream/?ai_owner_id=...&message=...` | Alternate streaming request; still requires the Authorization header. Prefer POST in browsers. |
+| GET | `/api/chat/conversations/?ai_owner_id=...&page=1&per_page=20` | Paginated current participant's history, newest first: `{ count, next, previous, results }`. Maximum page size: 100. |
+| POST | `/api/chat/conversations/{conversation_id}/rate/` | `{ rating, feedback }`; rating integer 1–5, optional feedback up to 1,000 characters; participant ownership required. |
+| POST | `/api/chat/transcribe-voice/` | Multipart `audio` file; maximum 25 MiB; returns `{ transcript, success }`. Supported MIME types: WebM, Ogg, MP4, MPEG, WAV. |
+| GET | `/api/chat/audio-status/{task_id}/?conversation_id=...` | Poll using both task and conversation IDs from the stream; returns `pending`, `processing`, `complete`, or `failed`, with `audio_url` or `error` when applicable. |
+| GET | `/api/chat/audio/{conversation_id}/?token=...` | Protected playback using the signed URL returned by history/stream/status. |
 
----
+Conversation entries contain nested `ai_owner` and `family_member`, `question_text`, `response_text`, `audio_url`, `created_at`, `response_time_ms`, `gpt_tokens_used`, `user_rating`, and `user_feedback`. The backend selects the participant from authentication; passing a different `family_member_id` does not grant access to another participant's history.
 
-## Payments
+### SSE protocol
 
-### Create Payment Intent
+Use `fetch` with the Authorization header and consume its response body. Each event is JSON in a `data: ...` line, separated by a blank line. Network chunks need buffering; a chunk can contain partial or multiple events.
 
-**POST** `/api/payments/create-intent/`
+| `type` | Relevant payload / meaning |
+| --- | --- |
+| `text_chunk` | `content`, optional `timestamp`; append text. |
+| `text_complete` | `full_text`, `tokens`; text is finished, audio may still be pending. |
+| `audio_processing` | `task_id`, `conversation_id`; poll audio status. |
+| `audio_generating` | `message`, `conversation_id`; synchronous generation progress. |
+| `audio_ready` | `audio_url`, `conversation_id`; playback is available. |
+| `audio_unavailable` | `message`, optional `upgrade_required` and `conversation_id`; text may still succeed. |
+| `audio_failed` | `error`, `conversation_id`; text may still succeed. |
+| `complete` | `conversation_id`, optional timing/cache fields; terminal success. |
+| `error` | `message`, optional `upgrade_required`; terminal failure. |
 
-**Authentication:** Required
+Not every stream emits every event. Validation, authentication, and access failures can be ordinary non-200 JSON responses before streaming begins. Handle both HTTP errors and in-stream `error`; an EOF without a terminal event is an interrupted request. Voice responses require the AI owner's Premium eligibility and configured voice.
 
-**Request:**
-```json
-{
-  "package_tier": "basic",
-  "payment_method": "card"
-}
-```
+## Family invitations
 
-**Response (200 OK):**
-```json
-{
-  "client_secret": "pi_xxx_secret_yyy",
-  "amount": 10000,
-  "currency": "pkr"
-}
-```
+| Method | Endpoint | Access / result |
+| --- | --- | --- |
+| POST | `/api/family/invite/` | Ready AI owner; `{ email, full_name, relationship, personal_message? }`; returns `201`. |
+| GET | `/api/family/invitation/{token}/` | Public preview of a valid invitation. |
+| POST | `/api/family/accept-invite/{token}/` | Authenticated invitation recipient; empty JSON body. |
+| GET | `/api/family/members/` | Current AI owner's members: `{ count, members }`. |
+| DELETE | `/api/family/members/{member_id}/` | Owner removes member and access; `204`. |
+| POST | `/api/family/members/{member_id}/resend/` | Owner regenerates a pending invitation; returns new link. |
+| GET | `/api/family/accessible-ais/` | Signed-in account's ready, accessible AIs: `{ results }`. Includes own ready AI. |
 
-### Webhook Handler
+Relationships: `spouse`, `child`, `parent`, `sibling`, `friend`.
 
-**POST** `/api/payments/webhook/`
+Invitation creation returns `family_member_id`, `email`, `full_name`, `relationship`, `invitation_link`, `expires_at`, `email_sent`, and `message`. Creation can succeed with `email_sent: false`; the owner can share the returned link or resend.
 
-**Authentication:** Stripe Signature
+Public preview returns `ai_owner: { id, full_name }`, `invitee_name`, `invitee_email`, `relationship`, `expires_at`, `is_expired`, and `already_accepted`. Token validity is enforced by the server-side cache. Tokens expire after seven days and are single-use; the response's displayed expiry is informational.
 
-**Process:** Handles Stripe webhook events (`payment_intent.succeeded`, etc.)
+Acceptance requires signing up or logging in with the invited email address. A different signed-in email returns `403`; anonymous requests return `401` for a valid token. Invalid/expired/consumed tokens return `400`. The server links the authenticated user, grants access, invalidates the token, and returns `{ message, ai_owner: { id, name, relationship }, redirect_url }`. Sending a `user_id` cannot select another account. Follow the returned `/chat/{ai_owner_id}` redirect.
 
----
+Member entries include access/invitation timestamps and conversation counts. Accessible AI entries include `id`, `full_name`, `ai_ready`, `relationship`, `plan_type`, `is_premium`, `voice_enabled`, and `usage_quota`. Family membership changes are owner-only; there is no member PATCH endpoint.
 
-## Error Codes
+## Packages, checkout, and billing
 
-### HTTP Status Codes
+The available plans are **free** (Memory Starter) and **premium** (one-time lifetime purchase). Get current prices/currency/features from the API rather than hardcoding pricing or obsolete package tiers. Usage limits remain plan-specific even with lifetime access.
 
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request succeeded |
-| 201 | Created | Resource created successfully |
-| 204 | No Content | Request succeeded, no content to return |
-| 400 | Bad Request | Invalid request data or parameters |
-| 401 | Unauthorized | Authentication required or failed |
-| 403 | Forbidden | Authenticated but not authorized |
-| 404 | Not Found | Resource not found |
-| 409 | Conflict | Resource already exists |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server error, please retry |
+| Method | Endpoint | Access / result |
+| --- | --- | --- |
+| GET | `/api/payments/packages/` | Public `{ packages }`; entries include `tier`, `name`, `price` in major currency units, `price_display`, `features`, `highlighted`; Premium also includes `currency`. |
+| POST | `/api/payments/create-checkout/` | Signed-in account; `{ "package_tier": "premium" }`; returns `{ checkout_url, session_id }`. Redirect to Stripe. |
+| POST | `/api/payments/confirm-checkout/` | Signed-in account; `{ session_id }`; verifies ownership/payment with Stripe. Returns `200` if paid, `202` if not yet paid. |
+| GET | `/api/payments/status/` | Current entitlement/payment flags and `usage_quota`. |
+| GET | `/api/payments/billing/` | `{ is_paid, plan_name, amount_paid_cents, paid_at, payment_method_display, is_lifetime, receipt_url }`; unavailable billing fields can be null. |
+| POST | `/api/payments/webhook/` | Stripe-signed webhook; no Bearer token. |
 
-### Error Response Format
+Checkout confirmation returns `payment_completed`, `is_premium`, `payment_status`, and `session_status`. A session belonging to another account returns `403`. Refresh the profile after confirmation. Successful Stripe checkout redirects to `${FRONTEND_URL}/pricing/success?session_id=...`; cancellation redirects to `${FRONTEND_URL}/pricing?canceled=true`.
 
-```json
-{
-  "error": "Detailed error message",
-  "details": {
-    "field": ["Specific field error"]
-  }
-}
-```
+The webhook verifies `Stripe-Signature` using `STRIPE_WEBHOOK_SECRET`. `checkout.session.completed` records payment and activates Premium. `payment_intent.succeeded` and `payment_intent.payment_failed` are logged. This is a one-time checkout flow, not a subscription API.
 
----
+## Administration
 
-## Rate Limits
+These endpoints require a backend-configured administrator. The user profile's `is_admin` is the frontend gate; server authorization remains authoritative. `/admin/` on the frontend is its own UI; Django's management UI is separate from the `/api/admin/` JSON endpoints.
 
-### Current Limits
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `/api/chat/stream/` | 30 requests | per minute |
-| `/api/recordings/upload/` | 100 requests | per hour |
-| `/api/family/invite/` | 20 requests | per hour |
-| All other endpoints | 100 requests | per minute |
-
-### Rate Limit Headers
-
-```http
-X-RateLimit-Limit: 30
-X-RateLimit-Remaining: 25
-X-RateLimit-Reset: 1610000000
-```
-
----
-
-## Webhooks
-
-### Stripe Webhooks
-
-**Endpoint:** `/api/payments/webhook/`
-
-**Events Handled:**
-- `payment_intent.succeeded` - Payment completed
-- `payment_intent.payment_failed` - Payment failed
-- `customer.subscription.created` - Subscription started
-- `customer.subscription.deleted` - Subscription canceled
-
-**Verification:** Stripe signature verification required
-
----
-
-## Performance Metrics
-
-### Chat System Performance
-
-| Metric | Target | Current | Status |
-|--------|--------|---------|--------|
-| Cache hit response | <50ms | <50ms | ✅ |
-| First text token | 200-400ms | 250ms avg | ✅ |
-| Full text visible | 800ms-1.2s | 1.1s avg | ✅ |
-| Audio ready | 1-1.5s | 600ms | ✅ Exceeded |
-
-### AI Processing Times
-
-| Stage | Average Time | Range |
-|-------|-------------|-------|
-| Transcription | 8 min | 5-10 min |
-| Personality Analysis | 2.5 min | 2-3 min |
-| Voice Cloning | 12 min | 10-15 min |
-| Quality Testing | 2 min | 1-3 min |
-| **Total** | **24.5 min** | **20-30 min** |
-
----
-
-## Cost Estimates (per user)
-
-### AI Processing (One-time)
-
-| Service | Usage | Cost |
-|---------|-------|------|
-| OpenAI Whisper | ~15 min audio | ~$0.18 |
-| GPT-4 Analysis | ~5K tokens | ~$0.23 |
-| ElevenLabs Voice Clone | 1 voice | $0.00 (included) |
-| Supabase Storage | ~50MB audio | ~$0.01 |
-| **Total** | | **~$0.42** |
-
-### Per Chat Session
-
-| Service | Usage | Cost |
-|---------|-------|------|
-| GPT-4o | ~300 tokens | $0.0018 |
-| ElevenLabs Turbo | ~120 chars | $0.0264 |
-| **Total** | | **~$0.028** |
-
-**Cached Chat:** $0.00 (FREE!)
-
----
-
-## SDK Examples
-
-### Python
-
-```python
-import requests
-
-# Authenticate
-headers = {
-    'Authorization': f'Bearer {supabase_jwt_token}',
-    'Content-Type': 'application/json'
-}
-
-# Stream chat
-response = requests.post(
-    'https://api.voicevault.com/api/chat/stream/',
-    headers=headers,
-    json={
-        'ai_owner_id': 'uuid',
-        'question': 'What advice do you have?'
-    },
-    stream=True
-)
-
-for line in response.iter_lines():
-    if line:
-        data = json.loads(line.decode('utf-8').replace('data: ', ''))
-        print(data)
-```
-
-### JavaScript
-
-```javascript
-const response = await fetch('https://api.voicevault.com/api/chat/stream/', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${supabaseJwt}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    ai_owner_id: 'uuid',
-    question: 'What advice do you have?'
-  })
-});
-
-const reader = response.body.getReader();
-const decoder = new TextDecoder();
-
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  
-  const chunk = decoder.decode(value);
-  const lines = chunk.split('\n');
-  
-  for (const line of lines) {
-    if (line.startsWith('data: ')) {
-      const data = JSON.parse(line.slice(6));
-      console.log(data);
-    }
-  }
-}
-```
-
----
-
-## Support
-
-**Documentation:** https://docs.voicevault.com  
-**Email:** support@voicevault.com  
-**Discord:** https://discord.gg/voicevault
-
----
-
-**Last Updated:** January 11, 2026  
-**Version:** 1.0  
-**Status:** Production Ready ✅
-
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/api/admin/me/` | Verify authenticated admin identity. |
+| GET | `/api/admin/stats/` | Counts, revenue, processing/API usage summaries. |
+| GET | `/api/admin/users/` | `page`, `limit`, `search`, `status`; returns `{ count, results }`. |
+| GET / PATCH / DELETE | `/api/admin/users/{user_id}/` | Inspect, update supported fields, or delete an account. |
+| GET | `/api/admin/processing/` | Processing jobs; optional `status`, `user`, `page`, `limit`. |
+| POST | `/api/admin/batch-process-pending/` | Queue pending account pipelines. |
+| POST | `/api/admin/batch-retry-failed/` | Retry eligible failed processing. |
+| GET | `/api/admin/payments/` | Payment records; optional `status`, `search`, `page`, `limit`. |
+| POST | `/api/admin/payments/{payment_id}/refund/` | Issue a real Stripe refund; returns the updated payment. |
+| GET | `/api/admin/logs/` | Optional `type=failures` or `type=audit`, and `limit`. |
+
+Admin list pagination uses `page >= 1`, `limit` 1–100 (default 20).
+
+Question administration uses `/api/recordings/questions/`:
+
+| Method | Suffix | Request / result |
+| --- | --- | --- |
+| GET | `{question_id}/` | Inspect one question. |
+| POST | `create/` | Question fields; returns created question. |
+| PUT / PATCH | `{question_id}/update/` | Update question fields. |
+| DELETE | `{question_id}/delete/` | Delete question. |
+| POST | `reorder/` | `{ "questions": [{ "id": "uuid", "order": 1 }] }`. |
+| POST | `seed/` | Seed default questions. |
+| POST | `bulk-update/` | `{ question_ids, is_active }`. |
+| POST | `bulk-delete/` | `{ question_ids }`. |
+| GET | `export/` | Download CSV. |
+
+Question fields: `question_text`, `domain`, `order`, `is_active`, `tip`, `suggested_duration_seconds`. All operations in this administration table require admin authorization.
+
+## Provider webhooks, errors, and verification
+
+`POST /api/chat/replicate/webhook/` accepts verified Replicate callbacks for response audio and voice previews. Provider callbacks use their signature verification instead of user Bearer tokens; configure their public backend callback URL for the deployment.
+
+Errors vary by endpoint: common forms are `{ error, message }`, `{ error, details }`, or DRF `{ detail }`. Quota errors can include `upgrade_required` and limit information. Do not assume every error has the same envelope.
+
+| Status | Meaning |
+| --- | --- |
+| 400 | Invalid request, unsupported state, or invalid invitation. |
+| 401 | Missing, invalid, or expired credentials. |
+| 402 | Plan quota/upgrade requirement on supported operations. |
+| 403 | Authenticated account lacks ownership/admin/recipient access, or a protected operation is ineligible. |
+| 404 | Resource not found. |
+| 409 | Conflicting resource, such as a duplicate invitation/question recording. |
+| 429 | Configured rate limit exceeded. |
+| 500 / 502 / 503 | Application failure, provider failure, or dependency unavailable. |
+
+Throttles are configured in `backend/config/settings.py` and `backend/utils/throttling.py`, with endpoint-specific exemptions. Do not rely on fixed request limits or custom rate-limit headers from this reference. Respect HTTP status and `Retry-After` when provided.
+
+For disposable local integration checks through the frontend proxy, run `python3 scripts/smoke.py --upload-draft` from the repository root. This validates authentication, questions, local multipart storage, signed playback, deletion, and authorization without finalizing an upload or invoking paid AI providers. See the [deployment guide](DEPLOYMENT.md) for service configuration.

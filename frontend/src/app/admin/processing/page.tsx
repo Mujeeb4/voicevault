@@ -116,12 +116,12 @@ function AdminProcessingContent() {
 
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Processing Monitor</h1>
           <p className="text-muted-foreground mt-1">Monitor AI processing jobs</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={handleBatchProcessPending} variant="outline" size="sm">
             <Play className="mr-2 h-4 w-4" />
             Process Pending
@@ -139,7 +139,7 @@ function AdminProcessingContent() {
           value={statusFilter}
           onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>

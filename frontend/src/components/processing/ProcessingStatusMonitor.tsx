@@ -76,7 +76,7 @@ export function ProcessingStatusMonitor({
   // Loading state
   if (isLoading) {
     return (
-      <div className="journey-card flex flex-col items-center justify-center py-12">
+      <div className="surface flex flex-col items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary-600 mb-4" />
         <p className="text-muted-foreground">Loading processing status...</p>
       </div>
@@ -86,7 +86,7 @@ export function ProcessingStatusMonitor({
   // Error state
   if (error) {
     return (
-      <div className="journey-card flex flex-col items-center justify-center py-12">
+      <div className="surface flex flex-col items-center justify-center py-12">
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-error-50">
           <AlertCircle className="w-8 h-8 text-error-500" />
         </div>
@@ -105,8 +105,8 @@ export function ProcessingStatusMonitor({
   // No data state
   if (!status) {
     return (
-      <div className="journey-card flex flex-col items-center justify-center py-12">
-        <AlertCircle className="w-12 h-12 text-gray-400 mb-4" />
+      <div className="surface flex flex-col items-center justify-center py-12">
+        <AlertCircle className="w-12 h-12 text-muted-foreground mb-4" />
         <p className="text-muted-foreground">No processing status found</p>
       </div>
     );
@@ -116,12 +116,12 @@ export function ProcessingStatusMonitor({
   return (
     <div className="space-y-6">
       {/* Status Info */}
-      <div className="journey-card p-4">
+      <div className="surface p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Last Updated</p>
+            <p className="text-sm text-muted-foreground">Last updated</p>
             <p className="text-lg font-semibold text-foreground">
-              {status?.updated_at ? new Date(status.updated_at).toLocaleString() : 'N/A'}
+              {status?.updated_at ? new Date(status.updated_at).toLocaleString() : 'Waiting for the first update'}
             </p>
           </div>
           <Button onClick={() => refetch()} variant="outline" size="sm">

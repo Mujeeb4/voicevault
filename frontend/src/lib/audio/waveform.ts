@@ -18,7 +18,7 @@ export function drawWaveform(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const { width, height, barWidth = 3, barGap = 2, color = '#3b82f6', backgroundColor = '#1f2937' } = options;
+  const { width, height, barWidth = 3, barGap = 2, color = '#0b8458', backgroundColor = '#eef4f1' } = options;
 
   ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, width, height);

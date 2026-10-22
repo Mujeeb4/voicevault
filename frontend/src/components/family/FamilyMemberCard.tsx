@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { PersonAvatar } from '@/components/ui/person-avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MoreVertical, Mail, Send, Trash2, Check, Clock, XCircle, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+
+function safeFormat(value: string | null | undefined, pattern: string): string {
+  if (!value) return '-';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '-' : format(date, pattern);
+}
 import type { FamilyMember } from '@/types';
 import { useFamilyStore } from '@/store/family';
 import { cn } from '@/lib/utils';
@@ -67,7 +73,7 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
   const getStatusBadge = () => {
     if (isAccepted) {
       return (
-        <Badge variant="default" className="bg-green-500">
+        <Badge variant="default" className="bg-primary">
           <Check className="mr-1 h-3 w-3" />
           Accepted
         </Badge>
@@ -94,14 +100,10 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
 
   return (
     <>
-      <Card className={cn('transition-all hover:shadow-md', isPending && 'border-yellow-200 bg-yellow-50/30')}>
+      <Card className={cn('transition-all hover:shadow-md', isPending && 'border-dashed bg-secondary/40')}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="flex items-center space-x-3">
-            <Avatar>
-              <AvatarFallback>
-                {member.full_name ? member.full_name.charAt(0).toUpperCase() : member.email.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <PersonAvatar name={member.full_name || member.email} />
             <div>
               <CardTitle className="text-base">{member.full_name || 'Pending'}</CardTitle>
               <CardDescription className="flex items-center gap-2 mt-1">
@@ -113,28 +115,28 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" disabled={isLoading}>
+              <Button variant="ghost" size="icon" disabled={isLoading} aria-label={`Actions for ${member.full_name || member.email}`}>
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
+
               {isPending && (
                 <DropdownMenuItem onClick={handleResend}>
                   <Send className="mr-2 h-4 w-4" />
                   Resend Invitation
                 </DropdownMenuItem>
               )}
-              
+
               {isAccepted && member.conversation_count > 0 && (
                 <DropdownMenuItem onClick={() => onViewConversations?.(member.id)}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   View Conversations ({member.conversation_count})
                 </DropdownMenuItem>
               )}
-              
+
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive" onClick={() => setIsRemoveDialogOpen(true)}>
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -160,7 +162,7 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
           <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Invited</p>
-              <p className="font-medium">{format(new Date(member.invitation_sent_at), 'MMM d, yyyy')}</p>
+              <p className="font-medium">{safeFormat(member.invitation_sent_at, 'MMM d, yyyy')}</p>
             </div>
             {isAccepted ? (
               <div>
@@ -170,14 +172,14 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
             ) : (
               <div>
                 <p className="text-muted-foreground">Status</p>
-                <p className="font-medium text-yellow-600">Awaiting Response</p>
+                <p className="font-medium text-amber-700">Awaiting response</p>
               </div>
             )}
           </div>
 
           {member.last_conversation_at && (
             <p className="mt-3 text-xs text-muted-foreground">
-              Last chat: {format(new Date(member.last_conversation_at), 'MMM d, yyyy h:mm a')}
+              Last chat: {safeFormat(member.last_conversation_at, 'MMM d, yyyy h:mm a')}
             </p>
           )}
         </CardContent>
@@ -192,7 +194,7 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({ member, onVi
               Are you sure you want to remove <strong>{member.full_name || member.email}</strong>? They will no longer
               be able to chat with your AI.
               {member.conversation_count > 0 && (
-                <span className="block mt-2 text-yellow-600">
+                <span className="block mt-2 text-amber-700">
                   ⚠️ They have {member.conversation_count} conversation{member.conversation_count > 1 ? 's' : ''} that
                   will be preserved.
                 </span>

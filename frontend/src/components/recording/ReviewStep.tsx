@@ -43,9 +43,9 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       className="max-w-5xl mx-auto space-y-8"
     >
       {/* Header */}
-      <div className="journey-card p-6 text-center sm:p-8">
-        <p className="journey-kicker">Final check</p>
-        <h2 className="mt-2 font-heading text-3xl font-semibold text-foreground">
+      <div className="surface p-6 text-center sm:p-8">
+        <p className="eyebrow">Final check</p>
+        <h2 className="mt-2 font-heading tracking-tight text-3xl font-semibold text-foreground">
           Review Your Recordings
         </h2>
         <p className="mx-auto mt-2 max-w-2xl text-muted-foreground">
@@ -75,21 +75,21 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
       )}
 
       {canProceed && skippedGuidedCount > 0 && (
-        <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+        <div className="rounded-lg border border-primary/25 bg-accent p-4">
           <p className="font-medium text-primary">
             {skippedGuidedCount} guided question{skippedGuidedCount === 1 ? '' : 's'} will be
             skipped.
           </p>
-          <p className="mt-1 text-sm text-primary/85">
+          <p className="mt-1 text-sm text-primary">
             That is okay. Only your recorded answers are uploaded and used for AI processing.
           </p>
         </div>
       )}
 
       {/* Recordings List */}
-      <div className="journey-card overflow-hidden">
+      <div className="surface overflow-hidden">
         <div className="border-b border-border p-5">
-          <h2 className="font-heading text-xl font-semibold text-foreground">All Recordings</h2>
+          <h2 className="font-heading tracking-tight text-xl font-semibold text-foreground">All Recordings</h2>
         </div>
 
         <div className="divide-y divide-border">
@@ -131,7 +131,7 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
           onClick={onProceed}
           disabled={!canProceed}
           size="lg"
-          className="w-full shimmer-btn text-primary-foreground"
+          className="w-full"
         >
           <Upload className="w-5 h-5 mr-2" />
           Upload all recordings
@@ -146,7 +146,7 @@ export function ReviewStep({ onBack, onProceed }: ReviewStepProps) {
  */
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="journey-card p-5">
+    <div className="surface p-5">
       <p className="mb-1 text-sm text-muted-foreground">{label}</p>
       <p className="text-2xl font-bold text-foreground">{value}</p>
     </div>
@@ -201,7 +201,7 @@ function RecordingRow({
     <div className="p-4 transition hover:bg-muted/35">
       <div className="flex items-center gap-4">
         {/* Question Number */}
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-accent">
           <span className="font-bold text-primary">{index + 1}</span>
         </div>
 

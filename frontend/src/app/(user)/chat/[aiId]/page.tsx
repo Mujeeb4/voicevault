@@ -83,14 +83,14 @@ export default function ChatWithAIPage({
                 <CardHeader>
                     <div className="flex items-center gap-2 text-destructive">
                         <AlertCircle className="h-5 w-5" />
-                        <CardTitle>Cannot Access Chat</CardTitle>
+                        <CardTitle>You can’t open this chat</CardTitle>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <p className="text-muted-foreground">{error}</p>
                     <Button onClick={() => router.push('/dashboard')} variant="outline">
                         <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Dashboard
+                        Back to home
                     </Button>
                 </CardContent>
             </Card>
@@ -102,18 +102,12 @@ export default function ChatWithAIPage({
     }
 
     return (
-        <div className="h-[calc(100vh-8rem)]">
-            <div className="mb-4 flex items-center gap-4">
+        <div className="h-[calc(100dvh-12.5rem)] lg:h-[calc(100dvh-8rem)]">
+            <div className="mb-2 flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')}>
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back
                 </Button>
-                <div>
-                    <h1 className="text-xl font-semibold">Chat with {aiOwner.full_name}&apos;s AI</h1>
-                    <p className="text-sm text-muted-foreground capitalize">
-                        Your {aiOwner.relationship}
-                    </p>
-                </div>
             </div>
 
             <ChatInterface
@@ -121,7 +115,7 @@ export default function ChatWithAIPage({
                 familyMemberId={user?.id || ''}
                 aiOwnerName={aiOwner.full_name}
                 voiceEnabled={!!aiOwner.voice_enabled}
-                className="h-[calc(100%-4rem)]"
+                className="h-[calc(100%-3rem)]"
             />
         </div>
     );

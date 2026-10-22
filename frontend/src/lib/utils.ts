@@ -16,3 +16,10 @@ export function getApiErrorMessage(err: unknown, fallback = 'An error occurred')
   const data = (err as { response?: { data?: { error?: string; message?: string; detail?: string } } }).response?.data;
   return data?.message ?? data?.error ?? data?.detail ?? fallback;
 }
+
+/** Keep post-authentication navigation on this site, including browser URL normalization. */
+export function safeRedirectPath(value: string | null, fallback: string): string {
+  return value?.startsWith('/') && !value.startsWith('//') && !/[\\\u0000-\u001f\u007f]/.test(value)
+    ? value
+    : fallback;
+}

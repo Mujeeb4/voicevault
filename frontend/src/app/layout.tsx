@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
-import { DM_Sans, Syne, Playfair_Display } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
+import { DM_Sans, Manrope } from 'next/font/google';
 import { connection } from 'next/server';
 import './globals.css';
 import { Providers } from './providers';
 import { AnalyticsWrapper } from '@/components/shared/AnalyticsWrapper';
+import { siteUrl } from '@/config/site';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -11,20 +12,19 @@ const dmSans = DM_Sans({
   variable: '--font-body',
 });
 
-/** Logo/brand wordmark — distinctive, modern */
-const syne = Syne({
+/** Headings: sleek, modern geometric sans */
+const manrope = Manrope({
   subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-logo',
-});
-
-/** Headings — emotional, prestigious, legacy-feel */
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800', '900'],
-  style: ['normal', 'italic'],
+  weight: ['500', '600', '700', '800'],
   variable: '--font-heading',
 });
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#0b8458',
+};
 
 export const metadata: Metadata = {
   title: {
@@ -45,11 +45,11 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://voicevault.com'),
+  metadataBase: new URL(siteUrl),
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://voicevault.com',
+    url: siteUrl,
     siteName: 'VoiceVault - Preserve Your Voice, Preserve Your Legacy',
     title: 'VoiceVault - Preserve Your Voice, Preserve Your Legacy',
     description:
@@ -96,8 +96,8 @@ export default async function RootLayout({
   await connection();
 
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${dmSans.variable} ${syne.variable} ${playfair.variable} font-sans antialiased`} suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+      <body className={`${dmSans.variable} ${manrope.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

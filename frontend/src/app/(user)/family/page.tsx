@@ -13,6 +13,7 @@ import { useFamilyStore } from '@/store/family';
 import { InviteFamilyDialog } from '@/components/family/InviteFamilyDialog';
 import { FamilyMemberCard } from '@/components/family/FamilyMemberCard';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -63,9 +64,9 @@ function FamilyManagementContent() {
   if (!user?.ai_ready) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="journey-hero p-6 sm:p-8">
-          <p className="journey-kicker">Family access</p>
-          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+        <div className="pb-2">
+          <p className="eyebrow">Family</p>
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl text-foreground sm:text-4xl">
             Finish your AI before inviting family
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
@@ -98,24 +99,19 @@ function FamilyManagementContent() {
   return (
     <div className="mx-auto max-w-7xl">
       {/* Header */}
-      <div className="journey-hero mb-8 flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
-        <div>
-          <p className="journey-kicker">Family access</p>
-          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-            Family Management
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            {familyMembers.length} of {inviteLimit} family invitations used
-          </p>
-        </div>
-        <InviteFamilyDialog />
-      </div>
+      <PageHeader
+        className="mb-8"
+        eyebrow="Family"
+        title="Family"
+        description={`${familyMembers.length} of ${inviteLimit} family invitations used`}
+        actions={<InviteFamilyDialog />}
+      />
 
       {/* Security Notice */}
-      <Alert className="mb-6 border-primary/25 bg-primary/10">
+      <Alert className="mb-6 border-primary/25 bg-accent">
         <Lock className="h-4 w-4 text-primary" />
         <AlertDescription className="text-foreground">
-          <strong>Access Control:</strong> Family members can only chat with your AI. They cannot
+          <strong>Access control:</strong> Family members can only chat with your AI. They cannot
           modify your voice, personality, or settings. You can revoke access at any time.
         </AlertDescription>
       </Alert>
@@ -199,7 +195,7 @@ function FamilyManagementContent() {
 
       {/* Info Box */}
       {familyMembers.length > 0 && (
-        <Alert className="mt-8 border-primary/25 bg-primary/10">
+        <Alert className="mt-8 border-primary/25 bg-accent">
           <Info className="h-4 w-4 text-primary" />
           <AlertDescription className="text-sm text-foreground">
             <strong>Tip:</strong> Pending invitations will show until accepted. You can resend

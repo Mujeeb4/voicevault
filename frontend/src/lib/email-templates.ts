@@ -127,7 +127,7 @@ export const getInvitationEmailHTML = (data: InvitationEmailData): string => {
 
     <div class="content">
       <p>Hi ${data.recipientName},</p>
-      
+
       <p>
         <strong>${data.senderName}</strong> has invited you to chat with their AI personality on VoiceVault.
         You've been added as their <strong>${getRelationshipLabel(data.relationship)}</strong>.
@@ -174,8 +174,8 @@ export const getInvitationEmailHTML = (data: InvitationEmailData): string => {
         If you didn't expect this invitation, you can safely ignore this email.
       </p>
       <p style="margin-top: 16px;">
-        <a href="https://voicevault.com" style="color: #9a7b4f; text-decoration: none;">Visit VoiceVault</a> · 
-        <a href="https://voicevault.com/privacy" style="color: #9a7b4f; text-decoration: none;">Privacy Policy</a> · 
+        <a href="https://voicevault.com" style="color: #9a7b4f; text-decoration: none;">Visit VoiceVault</a> ·
+        <a href="https://voicevault.com/privacy" style="color: #9a7b4f; text-decoration: none;">Privacy Policy</a> ·
         <a href="https://voicevault.com/terms" style="color: #9a7b4f; text-decoration: none;">Terms of Service</a>
       </p>
     </div>

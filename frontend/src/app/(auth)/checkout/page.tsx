@@ -84,23 +84,23 @@ export default function CheckoutPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#faf8f5]">
+      <div className="min-h-dvh bg-background">
         <OnboardingHeader />
         <main className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-16">
           <motion.div
-            className="w-full rounded-2xl border border-[#e8e4de] bg-white p-6 shadow-sm"
+            className="w-full rounded-2xl border border-border bg-white p-6 shadow-sm"
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4 }}
           >
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="rounded-full bg-red-50 p-3">
-                <AlertCircle className="h-10 w-10 text-red-500" />
+              <div className="rounded-full bg-destructive/10 p-3">
+                <AlertCircle className="h-10 w-10 text-destructive" />
               </div>
-              <h1 className="font-sans text-xl font-semibold text-[#2c2a26]">
+              <h1 className="font-sans text-xl font-semibold text-foreground">
                 Unable to start checkout
               </h1>
-              <p className="text-[#5c5853]">{error}</p>
+              <p className="text-muted-foreground">{error}</p>
               <Link
                 href="/pricing"
                 className="rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-primary-50 transition-all hover:bg-primary-700 hover:shadow-md"
@@ -115,24 +115,24 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5]">
+    <div className="min-h-dvh bg-background">
       <OnboardingHeader />
       <main className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-16">
         <motion.div
-          className="w-full rounded-2xl border border-[#e8e4de] bg-white p-8 shadow-sm"
+          className="w-full rounded-2xl border border-border bg-white p-8 shadow-sm"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary-600" />
-            <h1 className="font-sans text-lg font-semibold text-[#2c2a26]">
+            <h1 className="font-sans text-lg font-semibold text-foreground">
               Redirecting to secure checkout
             </h1>
-            <p className="text-sm text-[#5c5853]">
+            <p className="text-sm text-muted-foreground">
               You&apos;re making sure your voice never disappears.
             </p>
-            <p className="text-xs text-[#6b6560]">
+            <p className="text-xs text-muted-foreground">
               You&apos;ll continue automatically when your secure checkout is ready.
             </p>
           </div>

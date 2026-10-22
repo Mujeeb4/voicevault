@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { familyApi } from '@/lib/api/family';
+import { getApiErrorMessage } from '@/lib/utils';
 import {
   Card,
   CardContent,
@@ -28,7 +29,7 @@ import { toast } from 'sonner';
 export default function AcceptInvitationPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = React.use(params);
   const router = useRouter();
-  const { user, isAuthenticated, login, signup } = useAuthStore();
+  const { user, isAuthenticated, login, signup, logout } = useAuthStore();
 
   const [isLoading, setIsLoading] = useState(true);
   const [invitationDetails, setInvitationDetails] = useState<Awaited<
@@ -58,6 +59,9 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
         setError('This invitation has expired. Please contact the sender for a new invitation.');
       } else {
         setInvitationDetails(details);
+        setFullName(details.invitee_name);
+        setEmail(details.invitee_email);
+        setLoginEmail(details.invitee_email);
       }
     } catch {
       setError('Invalid or expired invitation link.');
@@ -96,17 +100,17 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
       await signup({ email, password, full_name: fullName });
 
       // 2. Accept invitation
-      await familyApi.acceptInvitation({ token, full_name: fullName, password });
+      const accepted = await familyApi.acceptInvitation(token);
 
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
 
       // Redirect to chat after 2 seconds
       setTimeout(() => {
-        router.push('/chat');
+        router.replace(accepted.redirect_url);
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      setError(getApiErrorMessage(err, 'Failed to accept invitation'));
       toast.error('Failed to accept invitation');
     } finally {
       setIsLoading(false);
@@ -129,48 +133,46 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
       await login({ email: loginEmail, password: loginPassword });
 
       // 2. Accept invitation
-      await familyApi.acceptInvitation({ token });
+      const accepted = await familyApi.acceptInvitation(token);
 
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
 
       // Redirect to chat after 2 seconds
       setTimeout(() => {
-        router.push('/chat');
+        router.replace(accepted.redirect_url);
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      setError(getApiErrorMessage(err, 'Failed to accept invitation'));
       toast.error('Failed to accept invitation');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const acceptInvitationAutomatically = useCallback(async () => {
+  const acceptInvitation = async () => {
+    if (user?.email.toLowerCase() !== invitationDetails?.invitee_email.toLowerCase()) {
+      setError('Sign in with the email address this invitation was sent to.');
+      return;
+    }
     try {
       setIsLoading(true);
-      await familyApi.acceptInvitation({ token });
+      const accepted = await familyApi.acceptInvitation(token);
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
       setTimeout(() => {
-        router.push('/chat');
+        router.replace(accepted.redirect_url);
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to accept invitation');
+      setError(getApiErrorMessage(err, 'Failed to accept invitation'));
     } finally {
       setIsLoading(false);
     }
-  }, [token, router]);
-
-  useEffect(() => {
-    if (isAuthenticated && user && invitationDetails && !isAccepted) {
-      acceptInvitationAutomatically();
-    }
-  }, [isAuthenticated, user, invitationDetails, isAccepted, acceptInvitationAutomatically]);
+  };
 
   if (isLoading && !invitationDetails) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+      <main className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="flex flex-col items-center space-y-4">
@@ -185,7 +187,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
   if (error && !invitationDetails) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+      <main className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md border-destructive">
           <CardHeader>
             <div className="flex items-center gap-2 text-destructive">
@@ -212,18 +214,18 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
   if (isAccepted) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
-        <Card className="w-full max-w-md border-green-500">
+      <main className="min-h-dvh flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md border-primary">
           <CardHeader>
-            <div className="flex items-center gap-2 text-green-600">
+            <div className="flex items-center gap-2 text-primary">
               <CheckCircle className="h-5 w-5" />
-              <CardTitle>Invitation Accepted!</CardTitle>
+              <CardTitle>Invitation accepted</CardTitle>
             </div>
             <CardDescription>Redirecting you to chat...</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col items-center space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground text-center">
                 You can now chat with {invitationDetails?.ai_owner.full_name}&apos;s AI personality!
               </p>
@@ -235,7 +237,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center bg-[#faf8f5] p-4">
+    <main className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <UserCheck className="h-12 w-12 mx-auto mb-4 text-primary" />
@@ -253,6 +255,21 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
             </Alert>
           )}
 
+          {isAuthenticated ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">Signed in as {user?.email}.</p>
+              {user?.email.toLowerCase() === invitationDetails?.invitee_email.toLowerCase() ? (
+                <Button className="w-full" disabled={isLoading} onClick={acceptInvitation}>
+                  {isLoading ? 'Accepting...' : 'Accept invitation'}
+                </Button>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">This invitation was sent to {invitationDetails?.invitee_email}.</p>
+                  <Button className="w-full" onClick={logout}>Sign in with the invited email</Button>
+                </>
+              )}
+            </div>
+          ) : <>
           {/* Toggle between new user and existing user */}
           <div className="flex gap-2 mb-6">
             <Button
@@ -275,7 +292,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
             // New User Form
             <form method="post" onSubmit={handleAcceptAsNewUser} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name *</Label>
+                <Label htmlFor="fullName">Full name *</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -294,7 +311,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly
                   required
                   disabled={isLoading}
                 />
@@ -315,7 +332,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                <Label htmlFor="confirmPassword">Confirm password *</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -352,7 +369,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                   type="email"
                   placeholder="you@example.com"
                   value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
+                  readOnly
                   required
                   disabled={isLoading}
                 />
@@ -386,6 +403,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
               </Button>
             </form>
           )}
+          </>}
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2">

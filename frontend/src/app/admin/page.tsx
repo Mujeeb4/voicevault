@@ -63,7 +63,7 @@ function AdminDashboardContent() {
       value: compactNumber(stats?.total_recordings),
       detail: `${stats?.ai_ready_count ?? 0} AI profiles ready`,
       icon: Mic,
-      tone: 'text-amber-500 bg-amber-500/10',
+      tone: 'text-primary bg-accent',
     },
     {
       title: 'Failures',
@@ -132,7 +132,7 @@ function AdminDashboardContent() {
             <ShieldCheck className="h-5 w-5 text-primary" />
             <span className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Admin Console</span>
           </div>
-          <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">VoiceVault Operations</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl text-foreground sm:text-4xl">VoiceVault Operations</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Monitor users, payments, question prompts, processing health, and failure signals from one authorized view.
           </p>
@@ -144,7 +144,7 @@ function AdminDashboardContent() {
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => (
-          <Card key={stat.title} className="overflow-hidden border-border bg-card/70">
+          <Card key={stat.title} className="overflow-hidden border-border bg-card">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
               <div>
                 <CardDescription>{stat.title}</CardDescription>
@@ -170,10 +170,10 @@ function AdminDashboardContent() {
                 key={action.title}
                 type="button"
                 onClick={() => router.push(action.href)}
-                className="group flex min-h-[88px] items-center justify-between rounded-lg border border-border bg-card/60 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
+                className="group flex min-h-[88px] items-center justify-between rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-muted/50"
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                  <div className="rounded-lg bg-accent p-2 text-primary">
                     <action.icon className="h-4 w-4" />
                   </div>
                   <div>
@@ -188,7 +188,7 @@ function AdminDashboardContent() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-border bg-card/70">
+          <Card className="border-border bg-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Recent Payments</CardTitle>
@@ -235,7 +235,7 @@ function AdminDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card/70">
+          <Card className="border-border bg-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Failure Signals</CardTitle>

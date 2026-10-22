@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import tailwindcssAnimate from 'tailwindcss-animate';
 
 const config: Config = {
   darkMode: ['class'],
@@ -10,14 +11,15 @@ const config: Config = {
   theme: {
     container: {
       center: true,
-      padding: '2rem',
-      screens: { '2xl': '1400px' },
+      padding: '1.5rem',
+      screens: { '2xl': '1120px' },
     },
     extend: {
       fontFamily: {
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
-        logo: ['var(--font-logo)', 'var(--font-body)', 'system-ui', 'sans-serif'],
-        heading: ['var(--font-heading)', 'Georgia', 'serif'],
+        logo: ['var(--font-body)', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-heading)', 'var(--font-body)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-heading)', 'var(--font-body)', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -27,19 +29,20 @@ const config: Config = {
         foreground: 'hsl(var(--foreground))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
-          50: 'hsl(38 100% 97%)',
-          100: 'hsl(38 96% 92%)',
-          200: 'hsl(38 95% 82%)',
-          300: 'hsl(38 95% 70%)',
-          400: 'hsl(38 95% 62%)',
-          500: 'hsl(38 95% 55%)',
-          600: 'hsl(34 92% 46%)',
-          700: 'hsl(30 88% 38%)',
-          800: 'hsl(26 80% 28%)',
-          900: 'hsl(22 72% 20%)',
-          950: 'hsl(18 68% 12%)',
+          50: 'hsl(152 52% 96%)',
+          100: 'hsl(152 52% 92%)',
+          200: 'hsl(153 48% 83%)',
+          300: 'hsl(155 46% 68%)',
+          400: 'hsl(157 52% 50%)',
+          500: 'hsl(159 78% 36%)',
+          600: 'hsl(160 84% 28%)',
+          700: 'hsl(161 84% 23%)',
+          800: 'hsl(162 80% 18%)',
+          900: 'hsl(163 75% 14%)',
+          950: 'hsl(165 70% 8%)',
           foreground: 'hsl(var(--primary-foreground))',
         },
+        rose: { DEFAULT: 'hsl(var(--rose))' },
         secondary: {
           DEFAULT: 'hsl(var(--secondary))',
           foreground: 'hsl(var(--secondary-foreground))',
@@ -88,6 +91,10 @@ const config: Config = {
         xl: 'var(--radius)',
         '2xl': 'var(--radius)',
       },
+      boxShadow: {
+        card: '0 1px 2px hsl(160 30% 10% / 0.04), 0 8px 24px -16px hsl(160 30% 10% / 0.10)',
+        lift: '0 2px 4px hsl(160 30% 10% / 0.05), 0 18px 40px -18px hsl(160 30% 10% / 0.22)',
+      },
       transitionTimingFunction: {
         smooth: 'cubic-bezier(0.16, 1, 0.3, 1)',
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -113,6 +120,10 @@ const config: Config = {
           from: { opacity: '0', transform: 'scale(0.94)' },
           to: { opacity: '1', transform: 'scale(1)' },
         },
+        wave: {
+          '0%, 100%': { transform: 'scaleY(1)' },
+          '50%': { transform: 'scaleY(0.45)' },
+        },
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-10px)' },
@@ -128,6 +139,7 @@ const config: Config = {
         'fade-in': 'fade-in 0.4s cubic-bezier(0.16,1,0.3,1)',
         'fade-in-up': 'fade-in-up 0.5s cubic-bezier(0.16,1,0.3,1)',
         'scale-in': 'scale-in 0.35s cubic-bezier(0.16,1,0.3,1)',
+        wave: 'wave 1s ease-in-out infinite',
         float: 'float 4.5s ease-in-out infinite',
         'glow-pulse': 'glow-pulse 2.5s ease-in-out infinite',
       },
@@ -142,7 +154,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [tailwindcssAnimate],
 };
 
 export default config;

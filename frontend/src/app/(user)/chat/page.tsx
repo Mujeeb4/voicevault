@@ -162,7 +162,7 @@ const ChatPage: React.FC = () => {
           <CardHeader>
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              <CardTitle>Select an AI to Chat With</CardTitle>
+              <CardTitle>Choose who to chat with</CardTitle>
             </div>
             <CardDescription>
               Choose which AI personality you&apos;d like to talk to
@@ -189,7 +189,7 @@ const ChatPage: React.FC = () => {
             <Alert>
               <Lock className="h-4 w-4" />
               <AlertDescription className="text-xs">
-                <strong>Security Notice:</strong> All conversations are encrypted and stored
+                <strong>Security notice:</strong> All conversations are encrypted and stored
                 securely. You can only chat with AI personalities where you&apos;ve accepted an
                 invitation. You cannot modify their voice, personality, or settings.
               </AlertDescription>
@@ -214,7 +214,7 @@ const ChatPage: React.FC = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)]">
+    <div className="h-[calc(100dvh-12rem)] lg:h-[calc(100dvh-8rem)]">
       <ChatInterface
         aiOwnerId={selectedAIId}
         familyMemberId={user?.id || ''}

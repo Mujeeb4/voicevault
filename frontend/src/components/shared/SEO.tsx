@@ -6,6 +6,7 @@
 
 import Head from 'next/head';
 import React from 'react';
+import { siteUrl } from '@/config/site';
 
 interface SEOProps {
   title?: string;
@@ -23,7 +24,7 @@ const defaultTitle = 'VoiceVault - AI Voice Memory System';
 const defaultDescription =
   'Create an AI version of yourself that your family and friends can chat with. Preserve your voice, personality, and memories forever.';
 const defaultImage = '/og-image.png';
-const defaultUrl = 'https://voicevault.com';
+const defaultUrl = siteUrl;
 
 export const SEO: React.FC<SEOProps> = ({
   title = defaultTitle,
@@ -72,7 +73,7 @@ export const SEO: React.FC<SEOProps> = ({
 
       {/* Additional Meta Tags */}
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <meta name="theme-color" content="#3b82f6" />
+      <meta name="theme-color" content="#0b8458" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       <meta name="apple-mobile-web-app-title" content={siteName} />
@@ -100,8 +101,8 @@ export const OrganizationSchema = () => {
     '@context': 'https://schema.org',
     '@type': 'Organization',
     name: 'VoiceVault',
-    url: 'https://voicevault.com',
-    logo: 'https://voicevault.com/logo.png',
+    url: siteUrl,
+    logo: `${siteUrl}/icon.png`,
     description: defaultDescription,
     sameAs: [
       // Add social media links
@@ -119,13 +120,13 @@ export const WebsiteSchema = () => {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: 'VoiceVault',
-    url: 'https://voicevault.com',
+    url: siteUrl,
     description: defaultDescription,
     potentialAction: {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: 'https://voicevault.com/search?q={search_term_string}',
+        urlTemplate: `${siteUrl}/search?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },

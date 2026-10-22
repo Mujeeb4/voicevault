@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * Dashboard Header Component
- * Top navigation bar with hamburger menu and user actions
+ * App top bar: page context on mobile, plan badge and account menu.
  */
 
 import React from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
+import { PersonAvatar } from '@/components/ui/person-avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,74 +18,64 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Menu, Settings, LogOut, User, CreditCard } from 'lucide-react';
-import { toast } from 'sonner';
+import { Settings, LogOut, CreditCard } from 'lucide-react';
 
-interface HeaderProps {
-  onMenuToggle: () => void;
-}
-
-export function Header({ onMenuToggle }: HeaderProps) {
+export function Header() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const planLabel = user?.is_premium || user?.plan_type === 'premium' ? 'Premium' : 'Free';
+  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
 
   const handleLogout = () => {
     logout();
-    toast.success('Logged out successfully');
-    router.push('/');
+    // A full navigation completes logout teardown without competing with the route guard.
+    window.location.assign('/');
   };
 
   return (
-    <header className="h-16 border-b border-border bg-background/78 px-4 flex items-center justify-between backdrop-blur-xl sm:px-6">
-      {/* Left: Menu Toggle */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onMenuToggle} className="lg:hidden">
-          <Menu className="h-5 w-5" />
-        </Button>
-        <span className="font-logo text-lg font-bold text-foreground lg:hidden">VoiceVault</span>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
+      <div className="flex items-center gap-2.5 lg:hidden">
+        <Image src="/logo.png" alt="" width={32} height={32} className="h-8 w-8" />
+        <span className="font-logo text-lg font-bold text-foreground">VoiceVault</span>
       </div>
+      <div className="hidden lg:block" />
 
-      {/* Right: User Menu */}
-      <div className="flex items-center gap-2">
-        {/* Package Badge */}
+      <div className="flex items-center gap-3">
         {user && (
-          <span className="hidden sm:inline-flex rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-            {planLabel}
+          <span
+            className={
+              isPremium
+                ? 'rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground'
+                : 'rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground'
+            }
+          >
+            {isPremium ? 'Premium' : 'Free plan'}
           </span>
         )}
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-2 hover:bg-muted/70">
-              <div className="w-8 h-8 rounded-lg border border-primary/20 bg-primary/12 flex items-center justify-center">
-                <User className="h-4 w-4 text-primary" />
-              </div>
-              <span className="hidden sm:inline text-foreground font-medium">
-                {user?.full_name}
-              </span>
+            <Button variant="ghost" className="h-10 gap-2 px-2" aria-label="Account menu">
+              <PersonAvatar name={user?.full_name || user?.email} size="sm" tone="solid" />
+              <span className="hidden text-sm font-medium text-foreground sm:inline">{user?.full_name}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
-              <div>
-                <p className="font-medium text-foreground">{user?.full_name}</p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
-              </div>
+              <p className="font-medium text-foreground">{user?.full_name}</p>
+              <p className="text-xs font-normal text-muted-foreground">{user?.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => router.push('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              Account
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/settings#billing')}>
               <CreditCard className="mr-2 h-4 w-4" />
-              Plan & Billing
+              Plan and billing
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

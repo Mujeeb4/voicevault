@@ -89,7 +89,7 @@ export function RecordingControls({
         {/* Progress Bar */}
         {maxDuration && (
         <div className="mt-3 max-w-md mx-auto">
-          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
             <motion.div
               className={`h-full ${
                 currentDuration >= maxDuration

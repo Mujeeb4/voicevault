@@ -46,7 +46,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Still loading authentication
   if (!hasCheckedAuth || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="text-lg text-muted-foreground">Verifying admin permissions...</p>
@@ -58,7 +58,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="text-lg text-muted-foreground">Redirecting to login...</p>
@@ -70,7 +70,7 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
   // Not an admin
   if (!isAdmin(user)) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
+      <main className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="w-full max-w-md border-destructive">
           <CardHeader>
             <div className="flex items-center gap-2 text-destructive mb-2">
@@ -89,10 +89,10 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
               please contact support.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={() => router.push('/dashboard')} className="flex-1">
+              <Button onClick={() => router.push('/dashboard')} className="sm:flex-1">
                 Go to Dashboard
               </Button>
-              <Button onClick={() => router.push('/')} variant="outline" className="flex-1">
+              <Button onClick={() => router.push('/')} variant="outline" className="sm:flex-1">
                 Go to Homepage
               </Button>
             </div>

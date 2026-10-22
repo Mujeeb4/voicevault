@@ -71,13 +71,13 @@ export default function TermsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <OnboardingHeader />
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:py-12">
         <Link
           href="/"
-          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Home
@@ -86,7 +86,7 @@ export default function TermsPage() {
         <div className="flex flex-col gap-8 lg:flex-row lg:gap-16">
           <aside className="shrink-0 lg:order-1 lg:w-52 lg:pt-24">
             <div className="overflow-x-auto pb-2 lg:sticky lg:top-24 lg:overflow-visible lg:pb-0">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 On this page
               </p>
               <nav aria-label="Terms of service sections">
@@ -95,7 +95,7 @@ export default function TermsPage() {
                     <li key={s.id}>
                       <a
                         href={`#${s.id}`}
-                        className={`inline-block rounded-md py-1.5 pl-0 pr-2 text-[13px] transition-colors sm:text-sm lg:block lg:pl-2 ${
+                        className={`inline-block rounded-md py-3 pl-0 pr-3 text-sm lg:py-1.5 transition-colors sm:text-sm lg:block lg:pl-2 ${
                           activeSection === s.id
                             ? 'font-medium text-primary'
                             : 'text-muted-foreground hover:text-foreground'
@@ -118,7 +118,7 @@ export default function TermsPage() {
               className="mb-8"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent">
                   <FileText className="h-5 w-5 text-primary" strokeWidth={1.5} />
                 </div>
                 <div>

@@ -53,14 +53,14 @@ export function ProcessingStepCard({
   // Status configuration
   const statusConfig = {
     pending: {
-      icon: <Clock className="w-5 h-5 text-gray-400" />,
+      icon: <Clock className="w-5 h-5 text-muted-foreground" />,
       badge: <Badge variant="outline">Pending</Badge>,
-      color: 'border-border bg-card/68',
+      color: 'border-border bg-card',
     },
     in_progress: {
       icon: <Loader2 className="w-5 h-5 text-primary-600 animate-spin" />,
-      badge: <Badge variant="default">In Progress</Badge>,
-      color: 'border-primary/40 bg-primary/10',
+      badge: <Badge variant="default">In progress</Badge>,
+      color: 'border-primary/40 bg-accent',
     },
     complete: {
       icon: <CheckCircle2 className="w-5 h-5 text-success-500" />,
@@ -113,7 +113,7 @@ export function ProcessingStepCard({
           {status === 'in_progress' && (
             <div className="space-y-2">
               <Progress value={progress || 0} className="h-2" />
-              <p className="text-xs text-gray-500 text-right">{progress || 0}%</p>
+              <p className="text-xs text-muted-foreground text-right">{progress || 0}%</p>
             </div>
           )}
 
@@ -130,13 +130,13 @@ export function ProcessingStepCard({
           {/* Error Message */}
           {status === 'failed' && error && (
             <div className="mt-3 rounded-lg border border-error-500/45 bg-error-500/12 p-3">
-              <p className="mb-3 text-sm font-medium text-red-100">{error}</p>
+              <p className="mb-3 text-sm font-medium text-destructive">{error}</p>
               {onRetry && (
                 <Button
                   onClick={onRetry}
                   size="sm"
                   variant="destructive"
-                  className="border border-red-300/35 bg-error-500 px-4 text-white shadow-[0_8px_20px_rgba(239,68,68,0.24)] hover:bg-error-600 focus-visible:ring-error-500"
+                  className="px-4"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Retry
@@ -152,12 +152,12 @@ export function ProcessingStepCard({
                 onClick={() => setShowTranscription(!showTranscription)}
                 size="sm"
                 variant="outline"
-                className="w-full border-primary/55 bg-primary/10 text-primary-700 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.08)] hover:border-primary/80 hover:bg-primary/20 hover:text-primary-800 dark:text-primary-200 dark:hover:text-primary-100"
+                className="w-full border-primary/55 bg-accent text-primary-700 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.08)] hover:border-primary/80 hover:bg-primary/20 hover:text-primary-800 dark:text-primary-200 dark:hover:text-primary-100"
               >
                 <FileText className="w-4 h-4 mr-2" />
-                {showTranscription ? 'Hide Transcribed Text' : 'View Transcribed Text'}
+                {showTranscription ? 'Hide transcript' : 'View transcript'}
               </Button>
-              
+
               {showTranscription && transcriptionText && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
@@ -201,8 +201,8 @@ export function ProcessingStepCard({
                   <dl className="space-y-2">
                     {Object.entries(result).map(([key, value]) => (
                       <div key={key} className="flex justify-between text-sm">
-                        <dt className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}:</dt>
-                        <dd className="text-gray-900 font-medium">
+                        <dt className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}:</dt>
+                        <dd className="text-foreground font-medium">
                           {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                         </dd>
                       </div>

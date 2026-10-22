@@ -15,12 +15,12 @@ import { toast } from 'sonner';
 
 import { useAuthStore } from '@/store/auth';
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth';
-import { getApiErrorMessage } from '@/lib/utils';
+import { getApiErrorMessage, safeRedirectPath } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { OnboardingHeader, SiteFooter } from '@/components/layout';
+import { AuthShell } from '@/components/layout';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,8 +53,7 @@ export default function LoginPage() {
       await login(data);
       toast.success('Signed in successfully.');
       const redirect = searchParams.get('redirect');
-      const safeRedirect =
-        redirect?.startsWith('/') && !redirect.startsWith('//') ? redirect : '/dashboard';
+      const safeRedirect = safeRedirectPath(redirect, '/dashboard');
       router.replace(safeRedirect);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Invalid email or password'));
@@ -62,36 +61,33 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <OnboardingHeader />
-
-      <main className="mx-auto max-w-md px-4 py-8 sm:py-12">
+    <AuthShell>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <div className="mb-6 sm:mb-8">
-            <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+          <div className="mb-6 text-center sm:mb-8">
+            <h1 className="text-2xl font-semibold sm:text-3xl text-foreground sm:text-4xl">
               Welcome back
             </h1>
             <p className="mt-2 text-muted-foreground">Sign in to your account</p>
           </div>
 
           {logoutReason && (
-            <Alert className="mb-6 border-primary/20 bg-primary/5 text-foreground">
+            <Alert className="mb-6 border-primary/20 bg-accent text-foreground">
               <AlertCircle className="h-4 w-4 text-primary" />
               <AlertDescription>{logoutReason}</AlertDescription>
             </Alert>
           )}
 
           <motion.div
-            className="archive-panel rounded-lg p-5 sm:p-8"
+            className="surface p-6 shadow-sm sm:p-8"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
+            <form method="post" noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
               <div>
                 <Label htmlFor="email" className="text-foreground">
                   Email
@@ -124,7 +120,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -135,7 +131,7 @@ export default function LoginPage() {
               <div className="flex items-center justify-end">
                 <Link
                   href="/forgot-password"
-                  className="text-sm font-medium text-primary hover:text-primary/90 transition-colors"
+                  className="inline-flex min-h-11 items-center text-sm font-medium text-primary transition-colors hover:underline"
                 >
                   Forgot password?
                 </Link>
@@ -162,25 +158,14 @@ export default function LoginPage() {
               Don&apos;t have an account?{' '}
               <Link
                 href="/signup"
-                className="font-medium text-primary hover:text-primary/90 transition-colors"
+                className="font-medium text-primary hover:text-primary transition-colors"
               >
                 Create account
               </Link>
             </p>
           </motion.div>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link href="/pricing" className="hover:text-primary transition-colors">
-              Pricing
-            </Link>
-            {' · '}
-            <Link href="/" className="hover:text-primary transition-colors">
-              Home
-            </Link>
-          </p>
         </motion.div>
-      </main>
-      <SiteFooter />
-    </div>
+      </AuthShell>
   );
 }

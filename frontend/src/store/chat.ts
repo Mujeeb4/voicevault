@@ -138,6 +138,7 @@ export const useChatStore = create<ChatState>()(
             aiOwnerId,
             familyMemberId || undefined
           );
+          if (get().aiOwnerId !== aiOwnerId || get().familyMemberId !== familyMemberId) return;
           set(state => ({
             conversations: response.results.map(c => ({
               ...c, audio_url: c.audio_url || state.readyAudioUrls[c.id],
@@ -158,7 +159,10 @@ export const useChatStore = create<ChatState>()(
             : [...state.processingAudioIds, conversationId],
         }));
 
+        const ownerId = get().aiOwnerId;
+        const memberId = get().familyMemberId;
         const check = async (attempt = 1) => {
+          if (get().aiOwnerId !== ownerId || get().familyMemberId !== memberId) return;
           try {
             const existingConversation = get().conversations.find((c) => c.id === conversationId);
             if (existingConversation?.audio_url) {
@@ -167,6 +171,7 @@ export const useChatStore = create<ChatState>()(
             }
 
             const status = await chatApi.checkAudioStatus(taskId, conversationId);
+            if (get().aiOwnerId !== ownerId || get().familyMemberId !== memberId) return;
 
             if (status.status === 'complete' && status.audio_url) {
               get().queueAudio(status.audio_url, conversationId);
@@ -247,6 +252,7 @@ export const useChatStore = create<ChatState>()(
 
               // Add to conversations (optimistic update turned real)
               set((state) => ({
+                eventSource: null,
                 isStreaming: false,
                 streamingText: '',
                 conversations: [
@@ -267,12 +273,14 @@ export const useChatStore = create<ChatState>()(
               // Reload conversations after a delay to ensure DB consistency
               // This prevents the "disappearing message" issue if read replica is lagging
               setTimeout(() => {
-                get().loadConversations();
+                if (get().aiOwnerId === aiOwnerId && get().familyMemberId === familyMemberId) {
+                  void get().loadConversations().catch(() => undefined);
+                }
               }, 2000);
             },
             (error) => {
               // Error occurred
-              set({ isStreaming: false, streamingText: '', error });
+              set({ eventSource: null, isStreaming: false, streamingText: '', error });
             }
           );
 

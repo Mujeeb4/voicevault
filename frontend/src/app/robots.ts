@@ -1,7 +1,8 @@
 import { MetadataRoute } from 'next';
+import { siteUrl } from '@/config/site';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://voicevault.com';
+  const baseUrl = siteUrl;
 
   return {
     rules: [

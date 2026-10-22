@@ -1,716 +1,472 @@
 'use client';
 
-import { useState } from 'react';
+import { StickyCta } from '@/components/home/StickyCta';
+import { VoiceSample } from '@/components/home/VoiceSample';
+import { FamilyStories } from '@/components/home/FamilyStories';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion';
 import {
   ArrowRight,
   Mic,
   Brain,
   Users,
-  Shield,
-  ChevronRight,
-  Star,
+  ShieldCheck,
+  Lock,
+  Infinity as InfinityIcon,
+  BadgeCheck,
   Play,
-  CheckCircle,
+  Check,
+  X,
+  ChevronDown,
+  AudioLines,
+  MessageSquare,
+  ListChecks,
+  UserCheck,
+  Trash2,
 } from 'lucide-react';
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
-import { Button } from '@/components/ui/button';
-import { SoundWave } from '@/components/home/SoundWave';
+import { ProgressRing } from '@/components/ui/progress-ring';
 import { useAuthStore } from '@/store/auth';
 
-const HeroBackground = dynamic(
-  () => import('@/components/home/HeroBackground').then((mod) => mod.HeroBackground),
-  { ssr: false }
-);
-
-const featureData = [
-  {
-    icon: Mic,
-    label: 'For Your Children',
-    title: 'Your children will still hear your advice.',
-    description:
-      'Answer guided questions about life, love, and lessons learned. Your wisdom stays close when they need it most.',
-    accent: 'amber' as const,
-    number: '01',
-  },
-  {
-    icon: Brain,
-    label: 'For Your Grandkids',
-    title: 'Your grandchildren will know your stories.',
-    description:
-      'AI learns your personality, humor, and way of speaking. Future generations connect with the real you.',
-    accent: 'teal' as const,
-    number: '02',
-  },
-  {
-    icon: Users,
-    label: 'For Your Partner',
-    title: 'Your spouse will still hear you say "I love you."',
-    description:
-      'Preserve intimate moments, pet names, inside jokes, and the warmth only you could offer.',
-    accent: 'purple' as const,
-    number: '03',
-  },
-  {
-    icon: Shield,
-    label: 'Forever',
-    title: "Your wisdom won't disappear. Your laughter won't fade into memory.",
-    description:
-      'One recording session creates a living legacy that speaks, answers, and loves — in your own voice.',
-    accent: 'amber' as const,
-    number: '04',
-  },
-];
-
-const bannerLines = [
-  "They'll hear you say I love you. Forever.",
-  'Your story deserves more than silence.',
-  'One hour now. Forever for them.',
-  "Don't wait until it's too late.",
-  "Give them what they'll cherish most — you.",
-  'Your laughter. Your wisdom. Your voice. Preserved.',
-  'Preserve it before it becomes a memory.',
-  'Leave a legacy that speaks.',
+const trustBar = [
+  { icon: Lock, label: '256-bit encryption' },
+  { icon: ShieldCheck, label: 'Private by default' },
+  { icon: InfinityIcon, label: 'Lifetime access' },
+  { icon: BadgeCheck, label: '30-day guarantee' },
 ];
 
 const steps = [
   {
-    number: '01',
-    title: 'Record Your Voice',
-    description:
-      'Answer 30 guided questions plus an optional reflection about your life, values, and memories.',
     icon: Mic,
-    color: 'amber',
+    title: 'Record',
+    body: 'Answer 30 guided questions about your life, values and memories. Pause any time and pick up where you left off.',
   },
   {
-    number: '02',
-    title: 'AI Learns You',
-    description:
-      'Our AI studies your voice patterns, personality, and stories to build your living memory.',
     icon: Brain,
-    color: 'teal',
+    title: 'Build',
+    body: 'VoiceVault learns how you speak and what matters to you, and prepares a voice that sounds like yours.',
   },
   {
-    number: '03',
-    title: 'Family Hears You',
-    description:
-      'Your loved ones chat with your AI — in your voice — anytime they need guidance or comfort.',
     icon: Users,
-    color: 'purple',
+    title: 'Share',
+    body: 'Invite the people you choose. They can ask questions and hear answers in your voice, whenever they need.',
   },
 ];
 
-const testimonials = [
-  {
-    name: 'Michael R.',
-    initials: 'MR',
-    role: 'Father of 3',
-    body: "I lost my dad young. VoiceVault gave me the chance to give my own children what I never had. This isn't just an app. It's a gift.",
-    date: 'Jan 15, 2025',
-  },
-  {
-    name: 'Patricia L.',
-    initials: 'PL',
-    role: 'Grandmother',
-    body: "I've been wanting to pass down our family history for years. Now when my grandkids ask questions, they can hear me in my own voice. It feels like I'm really there.",
-    date: 'Feb 3, 2025',
-  },
-  {
-    name: 'David & Sarah K.',
-    initials: 'DS',
-    role: 'Married couple',
-    body: "We both recorded our voices for our spouse. Knowing we can still say 'I love you' in our real voices one day brings us so much peace.",
-    date: 'Feb 8, 2025',
-  },
-  {
-    name: 'Jennifer M.',
-    initials: 'JM',
-    role: 'Widow',
-    body: 'My husband passed last year. What I miss most is his voice. For anyone who still has time—please do this. Your family will thank you forever.',
-    date: 'Feb 12, 2025',
-  },
-  {
-    name: 'Robert T.',
-    initials: 'RT',
-    role: 'Retired teacher',
-    body: "Recording wasn't just checking a box. Now my wisdom, my values, and my voice are preserved. I feel like I've done something that matters.",
-    date: 'Feb 18, 2025',
-  },
-  {
-    name: 'Linda H.',
-    initials: 'LH',
-    role: 'Grandmother',
-    body: 'My daughter moved abroad. VoiceVault lets her children hear their grandma whenever they want. We feel closer than ever.',
-    date: 'Feb 5, 2025',
-  },
-  {
-    name: 'James W.',
-    initials: 'JW',
-    role: 'Father',
-    body: "I've always been bad at expressing myself. The questions guided me. Now my kids will finally understand who I am.",
-    date: 'Feb 9, 2025',
-  },
-  {
-    name: 'Maria S.',
-    initials: 'MS',
-    role: 'Mother',
-    body: 'I have a health scare. Knowing my voice will be there for my teenagers no matter what—I sleep better at night.',
-    date: 'Feb 14, 2025',
-  },
-  {
-    name: 'Thomas B.',
-    initials: 'TB',
-    role: 'Grandfather',
-    body: 'Took less than an hour. The result feels like a lifetime. My grandchildren will know exactly how their grandpa sounds.',
-    date: 'Feb 16, 2025',
-  },
-  {
-    name: 'Susan P.',
-    initials: 'SP',
-    role: 'Wife',
-    body: 'My husband and I recorded together. Our kids cried when they first heard us. They said it felt like we were in the room.',
-    date: 'Feb 20, 2025',
-  },
+const comparison = [
+  { feature: 'Answers new questions', vv: true, photos: false, voicemail: false },
+  { feature: 'Sounds like you', vv: true, photos: false, voicemail: true },
+  { feature: 'Shares your stories and advice', vv: true, photos: false, voicemail: false },
+  { feature: 'You choose who has access', vv: true, photos: true, voicemail: true },
 ];
 
-const trustItems = [
-  '256-bit encryption',
-  'Private & secure',
-  'Lifetime access',
-  '30-day guarantee',
+const faqs = [
+  {
+    q: 'How long does recording take?',
+    a: 'Most people finish in about an hour. You can stop at any point and continue later, and your answers are saved as you go.',
+  },
+  {
+    q: 'Who can talk to my AI?',
+    a: 'Only the family members you invite. You can see who has access and remove anyone from the Family page.',
+  },
+  {
+    q: 'What do I get for free?',
+    a: 'The free plan lets you try the experience with 5 guided questions and text chat. Voice cloning and the full 30 questions are part of Premium.',
+  },
+  { q: 'Is Premium a subscription?', a: 'No. Premium is a single payment for lifetime access.' },
+  { q: 'Can I get a refund?', a: 'Yes. There is a 30-day guarantee on Premium.' },
 ];
 
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
-};
+const bars = [30, 55, 40, 75, 50, 90, 60, 80, 45, 70, 35, 60, 85, 50, 65, 40, 55, 30, 70, 45, 60, 35];
 
-const accentColorMap = {
-  amber: {
-    bg: 'bg-primary/12',
-    text: 'text-primary',
-    border: 'border-primary/20',
-    bar: 'bg-primary',
-  },
-  teal: {
-    bg: 'bg-teal-500/12',
-    text: 'text-teal-400',
-    border: 'border-teal-500/20',
-    bar: 'bg-teal-500',
-  },
-  purple: {
-    bg: 'bg-purple-500/12',
-    text: 'text-purple-400',
-    border: 'border-purple-500/20',
-    bar: 'bg-purple-500',
-  },
-};
+function Check2({ ok }: { ok: boolean }) {
+  return ok ? (
+    <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-accent text-primary">
+      <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+      <span className="sr-only">Yes</span>
+    </span>
+  ) : (
+    <span className="mx-auto flex h-6 w-6 items-center justify-center rounded-full bg-muted text-muted-foreground/60">
+      <X className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+      <span className="sr-only">No</span>
+    </span>
+  );
+}
 
 export default function HomePage() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isAuthenticated } = useAuthStore();
+  const startHref = isAuthenticated ? '/dashboard' : '/signup';
+  const startLabel = isAuthenticated ? 'Open my vault' : 'Start free';
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <OnboardingHeader />
 
       <main>
-        {/* ─── HERO ────────────────────────────────────────────────── */}
-        <section className="relative overflow-hidden py-14 sm:py-18 md:py-24">
-          <HeroBackground />
-
-          <div className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="mx-auto max-w-4xl text-center"
-            >
-              {/* Eyebrow badge */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/8 px-4 py-1.5"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping-slow absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-                <span className="text-[12px] font-semibold text-primary">
-                  AI Voice Preservation Technology
-                </span>
-              </motion.div>
-
-              {/* Main heading */}
-              <h1 className="font-heading text-4xl font-bold leading-[1.08] text-foreground sm:text-5xl md:text-6xl lg:text-7xl">
-                One Day, Your Voice
-                <br />
-                Will Be
-                <br />
-                <span className="text-gradient-amber italic">the Thing They Miss Most.</span>
+        {/* Hero */}
+        <section className="relative overflow-hidden border-b border-border">
+          <div className="dot-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(70%_60%_at_70%_30%,black,transparent)]" aria-hidden />
+          <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[1.05fr_0.95fr]">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-card">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                Voice legacy for families
+              </span>
+              <h1 className="mt-5 text-4xl font-semibold leading-[1.08] text-foreground text-balance sm:text-5xl lg:text-6xl">
+                One day, your voice will be what they miss most.
               </h1>
-
-              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg md:text-xl">
-                Give your family something no photo or video ever could — a living memory that
-                speaks back, tells stories, and says{' '}
-                <em className="text-foreground/80 not-italic font-medium">
-                  &ldquo;I love you&rdquo;
-                </em>{' '}
-                in your own voice. Forever.
+              <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+                Record your stories once. Your family can ask questions and hear your answers in your own voice, for as long as they need.
               </p>
-
-              {/* CTAs */}
-              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center sm:gap-4">
-                <Button
-                  asChild
-                  size="lg"
-                  className="shimmer-btn glow-amber-sm h-12 gap-2 rounded-lg px-8 text-sm font-semibold text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.04] sm:h-14 sm:px-10 sm:text-base"
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link
+                  href={startHref}
+                  className="inline-flex h-12 items-center justify-center gap-2 rounded-[10px] bg-primary px-7 text-base font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90"
                 >
-                  <Link href="/pricing">
-                    Preserve My Voice
-                    <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="lg"
-                  className="h-12 gap-2 rounded-lg border border-border bg-card/50 px-8 text-sm font-medium text-muted-foreground backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-muted/70 hover:text-foreground sm:h-14 sm:px-8"
+                  {startLabel}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="#how-it-works"
+                  className="inline-flex h-12 items-center justify-center rounded-[10px] border border-input bg-card px-7 text-base font-semibold text-foreground transition-colors hover:bg-muted"
                 >
-                  <Link href={isAuthenticated ? '/dashboard' : '/login'}>
-                    <Play className="h-4 w-4 fill-current" strokeWidth={0} />
-                    {isAuthenticated ? 'Open My Vault' : 'Sign In'}
-                  </Link>
-                </Button>
+                  See how it works
+                </Link>
               </div>
-
-              {/* Trust badges */}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-                {trustItems.map((item) => (
-                  <span
-                    key={item}
-                    className="flex items-center gap-1.5 text-[12px] text-muted-foreground/70"
-                  >
-                    <CheckCircle className="h-3.5 w-3.5 text-teal-500/80" strokeWidth={2} />
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Sound wave visualization */}
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="mt-12 flex flex-col items-center gap-3"
-            >
-              <p className="text-[11px] font-semibold uppercase text-muted-foreground/60">
-                Your voice, preserved forever
-              </p>
-              <SoundWave barCount={36} className="h-14 sm:h-16" />
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── MARQUEE BANNER ──────────────────────────────────────── */}
-        <section
-          className="relative border-y py-3"
-          aria-label="Why preserve"
-          style={{ borderColor: 'hsl(38 95% 55% / 0.12)' }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(180deg, hsl(38 95% 55% / 0.04) 0%, transparent 100%)',
-            }}
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute left-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-r from-background to-transparent"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute right-0 top-0 bottom-0 z-10 w-10 bg-gradient-to-l from-background to-transparent"
-            aria-hidden
-          />
-          <div className="overflow-hidden">
-            <div className="flex w-max animate-banner-marquee items-center gap-x-10">
-              {[...bannerLines, ...bannerLines].flatMap((line, i) => [
-                <span
-                  key={`banner-${i}`}
-                  className="whitespace-nowrap text-[12px] font-medium text-primary/70 sm:text-[13px]"
-                >
-                  {line}
-                </span>,
-                <span
-                  key={`sep-${i}`}
-                  className="h-1 w-1 shrink-0 rounded-full bg-primary/20"
-                  aria-hidden
-                />,
-              ])}
+              <p className="mt-4 text-sm text-muted-foreground">Free to start. No card needed.</p>
             </div>
-          </div>
-        </section>
 
-        {/* ─── WHAT YOU'RE PRESERVING ──────────────────────────────── */}
-        <section className="py-16 sm:py-20 md:py-24" aria-label="What you preserve">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div {...fadeUp} className="mb-10 sm:mb-12">
-              <p className="text-[11px] font-semibold uppercase text-primary/80">
-                What you preserve
-              </p>
-              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
-                A Gift That Speaks
-                <span className="text-gradient-amber italic"> Across Time</span>
-              </h2>
-              <p className="mt-3 max-w-xl text-base text-muted-foreground">
-                Your voice carries decades of love, laughter, and wisdom. Don&apos;t let it
-                disappear.
-              </p>
-            </motion.div>
+            {/* Product preview (illustration) */}
+            <div className="relative" aria-label="Illustration of the VoiceVault dashboard">
+              <div className="surface relative p-6 shadow-lift">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Vault overview (sample)</p>
+                    <p className="mt-1 text-lg font-semibold text-foreground">Your voice vault</p>
+                  </div>
+                  <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">AI ready</span>
+                </div>
 
-            <ExpandableFeatureCards />
-          </div>
-        </section>
-
-        {/* ─── HOW IT WORKS ────────────────────────────────────────── */}
-        <section
-          id="how-it-works"
-          className="relative scroll-mt-16 py-16 sm:scroll-mt-[4.25rem] sm:py-20 md:py-24"
-          style={{
-            background:
-              'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
-          }}
-        >
-          {/* Section top separator */}
-          <div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.18), hsl(var(--secondary) / 0.14), transparent)',
-            }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, hsl(var(--secondary) / 0.14), hsl(var(--primary) / 0.1), transparent)',
-            }}
-          />
-
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div {...fadeUp} className="mb-12 sm:mb-14">
-              <p className="text-[11px] font-semibold uppercase text-primary/80">How it works</p>
-              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl md:text-5xl">
-                Don&apos;t Let Your Story{' '}
-                <span className="text-gradient-amber italic">End With You.</span>
-              </h2>
-              <p className="mt-3 max-w-lg text-base text-muted-foreground">
-                Three simple steps. One hour of your time. A lifetime gift for everyone you love.
-              </p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:gap-6 lg:gap-8">
-              {steps.map((step, i) => {
-                const Icon = step.icon;
-                const colors = accentColorMap[step.color as keyof typeof accentColorMap];
-                return (
-                  <motion.div
-                    key={step.number}
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <div className="group relative h-full rounded-lg border border-border bg-card/50 p-6 transition-all duration-300 hover:border-primary/30 hover:bg-muted/40 sm:p-7">
-                      {/* Step number — large background art */}
-                      <div className="absolute right-5 top-4 font-heading text-[72px] font-bold leading-none text-white/[0.03] select-none">
-                        {step.number}
-                      </div>
-
-                      {/* Icon */}
-                      <div
-                        className={`mb-5 flex h-12 w-12 items-center justify-center rounded-lg ${colors.bg} ${colors.text} transition-colors duration-300 group-hover:scale-110`}
-                      >
-                        <Icon className="h-6 w-6" strokeWidth={1.75} />
-                      </div>
-
-                      {/* Step label */}
-                      <p className={`mb-2 text-[11px] font-semibold uppercase ${colors.text}`}>
-                        Step {step.number}
-                      </p>
-
-                      <h3 className="font-heading text-xl font-semibold text-foreground sm:text-2xl">
-                        {step.title}
-                      </h3>
-                      <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                        {step.description}
-                      </p>
+                <div className="mt-6 flex items-center gap-6">
+                  <ProgressRing value={100} size={108} stroke={9} sublabel="complete" />
+                  <dl className="grid flex-1 grid-cols-2 gap-4">
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Questions</dt>
+                      <dd className="num text-2xl font-semibold text-foreground">30</dd>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Family</dt>
+                      <dd className="num text-2xl font-semibold text-foreground">4</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Hours</dt>
+                      <dd className="num text-2xl font-semibold text-foreground">1.2</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Voice</dt>
+                      <dd className="text-2xl font-semibold text-primary">Ready</dd>
+                    </div>
+                  </dl>
+                </div>
 
-        {/* ─── EMOTIONAL CTA BANNER ────────────────────────────────── */}
-        <section
-          className="relative overflow-hidden py-16 sm:py-20 md:py-24"
-          aria-label="Preserve your voice"
-        >
-          {/* Background */}
-          <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(135deg, hsl(var(--primary) / 0.08), transparent 44%, hsl(var(--secondary) / 0.06))',
-            }}
-            aria-hidden
-          />
-
-          <div className="relative z-10 mx-auto max-w-3xl px-4 text-center sm:px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/30">
-                <Mic className="h-7 w-7 text-primary" strokeWidth={1.75} />
+                <div className="mt-6 rounded-xl bg-muted p-4">
+                  <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+                    Dad, how did you know Mum was the one?
+                  </div>
+                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 shadow-card">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Play className="h-3.5 w-3.5 translate-x-px" fill="currentColor" />
+                    </span>
+                    <div className="flex h-8 min-w-0 flex-1 items-center gap-[3px] overflow-hidden" aria-hidden>
+                      {bars.map((h, i) => (
+                        <span key={i} className="w-1 shrink-0 rounded-full bg-primary/55" style={{ height: `${h}%` }} />
+                      ))}
+                    </div>
+                    <span className="num text-xs text-muted-foreground">0:14</span>
+                  </div>
+                </div>
               </div>
 
-              <h2 className="font-heading text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl">
-                Your voice is <span className="text-gradient-amber italic">irreplaceable.</span>
-              </h2>
-
-              <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-                Don&apos;t let it become a memory they can&apos;t hear.{' '}
-                <strong className="font-semibold text-foreground/90">One hour today</strong> gives
-                your family a living legacy — forever.
-              </p>
-
-              <div className="mt-8">
-                <Button
-                  asChild
-                  size="lg"
-                  className="shimmer-btn glow-amber h-auto min-h-14 w-full max-w-full gap-2.5 whitespace-normal rounded-lg px-4 py-3 text-center text-sm font-semibold leading-snug text-primary-foreground shadow-none transition-all duration-300 hover:scale-[1.02] sm:w-auto sm:px-10 sm:text-base sm:hover:scale-[1.04]"
-                >
-                  <Link href="/pricing">
-                    Preserve My Voice — $149.99 Lifetime
-                    <ArrowRight className="h-5 w-5" strokeWidth={2.5} />
-                  </Link>
-                </Button>
-              </div>
-
-              <p className="mt-4 text-sm text-muted-foreground/60">
-                One-time payment · Lifetime access · 30-day guarantee
-              </p>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ─── TESTIMONIALS ────────────────────────────────────────── */}
-        <section
-          className="relative py-16 sm:py-20 md:py-24"
-          aria-label="Testimonials"
-          style={{
-            background:
-              'linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--surface-raised)) 50%, hsl(var(--background)) 100%)',
-          }}
-        >
-          <div
-            className="absolute top-0 left-0 right-0 h-px"
-            style={{
-              background:
-                'linear-gradient(90deg, transparent, hsl(var(--accent) / 0.18), hsl(var(--primary) / 0.18), transparent)',
-            }}
-          />
-
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <motion.div {...fadeUp} className="mb-10">
-              <p className="text-[11px] font-semibold uppercase text-primary/80">Testimonials</p>
-              <h2 className="mt-2 font-heading text-3xl font-bold text-foreground sm:text-4xl">
-                What <span className="text-gradient-amber">Families</span> Say
-              </h2>
-            </motion.div>
-
-            <div className="relative">
-              <div
-                className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
-                aria-hidden
-              />
-              <div
-                className="pointer-events-none absolute right-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-l from-[hsl(var(--surface-raised))] to-transparent sm:w-16"
-                aria-hidden
-              />
-              <div className="overflow-hidden">
-                <div className="flex w-max gap-3 animate-testimonials-scroll">
-                  {[...testimonials, ...testimonials].map((t, i) => (
-                    <TestimonialCard key={`${t.name}-${i}`} t={t} />
-                  ))}
+              <div className="surface absolute -bottom-5 -left-3 hidden items-center gap-3 px-4 py-3 shadow-lift sm:flex">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-primary">
+                  <ShieldCheck className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Encrypted</p>
+                  <p className="text-xs text-muted-foreground">Only your family</p>
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Trust bar */}
+        <section className="border-b border-border bg-card">
+          <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-y-4 px-4 py-6 sm:px-6 md:grid-cols-4">
+            {trustBar.map((t) => (
+              <li key={t.label} className="flex items-center justify-center gap-2.5 text-sm font-medium text-foreground">
+                <t.icon className="h-4.5 w-4.5 text-primary" />
+                {t.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* How it works */}
+        <section id="how-it-works" className="scroll-mt-20 py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow mb-3">How it works</p>
+              <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Three steps, about an hour</h2>
+            </div>
+            <ol className="relative mt-14 grid gap-6 md:grid-cols-3">
+              <div className="absolute left-[16.6%] right-[16.6%] top-6 hidden h-px bg-border md:block" aria-hidden />
+              {steps.map((s, i) => (
+                <li key={s.title} className="relative text-center">
+                  <span className="relative z-10 mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-card">
+                    <s.icon className="h-5 w-5" />
+                  </span>
+                  <p className="num mt-4 text-xs font-semibold text-muted-foreground">Step {i + 1}</p>
+                  <h3 className="mt-1 text-lg font-semibold text-foreground">{s.title}</h3>
+                  <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-muted-foreground">{s.body}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* Feature bento */}
+        <section className="border-y border-border bg-card py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow mb-3">What you get</p>
+              <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Built around the people who will listen</h2>
+            </div>
+            <div className="mt-12 grid gap-4 md:grid-cols-3">
+              <div className="brand-wash min-w-0 rounded-2xl border border-border p-7 md:col-span-2">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <AudioLines className="h-5 w-5" />
+                </span>
+                <h3 className="mt-5 text-xl font-semibold text-foreground">A voice that sounds like yours</h3>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  With Premium, your recordings are used to create a voice for your AI, so the answers your family hears sound like you.
+                </p>
+                <div className="mt-6 flex h-14 items-center gap-[3px] overflow-hidden" aria-hidden>
+                  {[...bars, ...bars].map((h, i) => (
+                    <span key={i} className="w-1 shrink-0 rounded-full bg-primary/45" style={{ height: `${h}%` }} />
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-background p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-primary">
+                  <ListChecks className="h-5 w-5" />
+                </span>
+                <h3 className="mt-5 text-xl font-semibold text-foreground">Guided questions</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Thirty prompts on family, career, wisdom and personality, so you are never staring at a blank page.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-background p-7">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-primary">
+                  <MessageSquare className="h-5 w-5" />
+                </span>
+                <h3 className="mt-5 text-xl font-semibold text-foreground">Real conversations</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Your family asks in their own words and gets answers shaped by your stories and way of speaking.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border bg-background p-7 md:col-span-2">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-primary">
+                      <Users className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-5 text-xl font-semibold text-foreground">Access you control</h3>
+                    <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                      Invite family by email, see who has joined, and remove access whenever you choose.
+                    </p>
+                  </div>
+                  <ul className="hidden w-60 shrink-0 space-y-2 sm:block" aria-label="Example family list">
+                    {[
+                      { n: 'Sarah', s: 'Active', ok: true },
+                      { n: 'Daniel', s: 'Active', ok: true },
+                      { n: 'Maya', s: 'Invited', ok: false },
+                    ].map((m) => (
+                      <li key={m.n} className="flex items-center justify-between rounded-xl bg-card px-3 py-2 shadow-card">
+                        <span className="flex items-center gap-2.5 text-sm font-medium text-foreground">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-semibold text-primary">
+                            {m.n[0]}
+                          </span>
+                          {m.n}
+                        </span>
+                        <span className={`text-xs font-medium ${m.ok ? 'text-primary' : 'text-muted-foreground'}`}>{m.s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <VoiceSample />
+
+        {/* Comparison */}
+        <section className="border-y border-border bg-card py-14 md:py-20">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow mb-3">Why VoiceVault</p>
+              <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">More than a photo or a voicemail</h2>
+            </div>
+            <div className="surface mt-10 overflow-hidden">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[38%]" />
+                  <col />
+                  <col />
+                  <col />
+                </colgroup>
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="p-3 font-medium text-muted-foreground sm:p-4"><span className="sr-only">Feature</span></th>
+                    <th className="p-2 text-center text-xs font-semibold text-primary sm:p-4 sm:text-sm">VoiceVault</th>
+                    <th className="p-2 text-center text-xs font-medium text-muted-foreground sm:p-4 sm:text-sm"><span className="sm:hidden">Photos</span><span className="hidden sm:inline">Photos and video</span></th>
+                    <th className="p-2 text-center text-xs font-medium text-muted-foreground sm:p-4 sm:text-sm">Voicemail<span className="hidden sm:inline">s</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparison.map((row) => (
+                    <tr key={row.feature} className="border-b border-border last:border-0">
+                      <td className="p-3 text-[13px] font-medium leading-snug text-foreground sm:p-4 sm:text-sm">{row.feature}</td>
+                      <td className="bg-accent/50 p-2 sm:p-4"><Check2 ok={row.vv} /></td>
+                      <td className="p-2 sm:p-4"><Check2 ok={row.photos} /></td>
+                      <td className="p-2 sm:p-4"><Check2 ok={row.voicemail} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <FamilyStories />
+
+        {/* Privacy and security */}
+        <section className="border-y border-border bg-card py-14 md:py-20">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow mb-3">Privacy and security</p>
+              <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">
+                Your voice stays yours
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                A voice is personal. We protect it the way a bank protects money.
+              </p>
+            </div>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                { icon: Lock, title: 'Encrypted end to end', body: 'Recordings are encrypted in transit and at rest, and never sold or used to advertise to you.' },
+                { icon: UserCheck, title: 'Only people you invite', body: 'Your family joins by your invitation. You see who has access and can remove anyone at any time.' },
+                { icon: Trash2, title: 'Delete whenever you choose', body: 'Your recordings and cloned voice can be removed from your account whenever you decide.' },
+              ].map(({ icon: Icon, title, body }) => (
+                <div key={title} className="surface p-6">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-primary">
+                    <Icon className="h-5 w-5" strokeWidth={1.75} />
+                  </span>
+                  <h3 className="mt-4 text-base font-semibold text-foreground">{title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing teaser */}
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="eyebrow mb-3">Pricing</p>
+              <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Start free. Pay once to keep it forever.</h2>
+            </div>
+            <div className="mt-12 grid gap-6 md:grid-cols-2">
+              <div className="surface p-7">
+                <h3 className="text-lg font-semibold text-foreground">Memory Starter</h3>
+                <p className="num mt-3 text-4xl font-semibold text-foreground">$0</p>
+                <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
+                  {['5 guided questions', 'Text chat with your AI', '1 family invitation'].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-xl border-2 border-primary bg-card p-7 shadow-lift">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-foreground">VoiceVault Premium</h3>
+                  <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">Recommended</span>
+                </div>
+                <p className="num mt-3 text-4xl font-semibold text-foreground">
+                  $149.99 <span className="text-sm font-medium text-muted-foreground">one time</span>
+                </p>
+                <ul className="mt-6 space-y-3 text-sm text-muted-foreground">
+                  {['All 30 guided questions', 'Voice cloning included', 'Up to 10 family members', 'Lifetime access'].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-8 text-center">
+              <Link href="/pricing" className="inline-flex min-h-11 items-center text-sm font-semibold text-primary hover:underline">
+                Compare plans in detail
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <h2 className="text-center text-3xl font-semibold text-foreground sm:text-4xl">Questions</h2>
+            <div className="surface mt-10 divide-y divide-border">
+              {faqs.map((f) => (
+                <details key={f.q} className="group px-5 py-4">
+                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 text-base font-medium text-foreground">
+                    {f.q}
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
+                  </summary>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="px-4 pb-20 sm:px-6">
+          <div className="relative mx-auto max-w-5xl overflow-hidden rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground">
+            <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:22px_22px]" aria-hidden />
+            <h2 className="relative text-3xl font-semibold text-balance sm:text-4xl">Don&apos;t wait until it&apos;s too late.</h2>
+            <p className="relative mx-auto mt-3 max-w-xl text-primary-foreground/85">Give your family something no photo or video can.</p>
+            <Link
+              href={startHref}
+              className="relative mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-[10px] bg-white px-7 text-base font-semibold text-primary transition-colors hover:bg-white/90"
+            >
+              {startLabel}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </section>
       </main>
 
       <SiteFooter />
+      <div className="h-20 md:hidden" aria-hidden />
+      <StickyCta href={startHref} label={startLabel} />
     </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   EXPANDABLE FEATURE CARDS
-══════════════════════════════════════════════════════════════════ */
-function ExpandableFeatureCards() {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
-
-  return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:gap-2.5 lg:h-56">
-      {featureData.map((card, idx) => {
-        const isExpanded = expandedIndex === idx;
-        const colors = accentColorMap[card.accent];
-        const Icon = card.icon;
-
-        return (
-          <motion.article
-            key={card.label}
-            layout
-            transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-            className={`group relative overflow-hidden rounded-lg border cursor-pointer transition-all duration-300 ${
-              isExpanded
-                ? `border-primary/25 bg-card/60 lg:flex-[2.5] lg:min-w-[280px]`
-                : 'border-border bg-card/35 hover:bg-muted/45 hover:border-primary/25 lg:flex-1 lg:min-w-[90px]'
-            }`}
-            onClick={() => setExpandedIndex(isExpanded ? null : idx)}
-            role="button"
-            aria-expanded={isExpanded}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setExpandedIndex(isExpanded ? null : idx);
-              }
-            }}
-          >
-            {/* Accent bar */}
-            <div
-              className={`absolute left-0 top-0 bottom-0 w-0.5 ${colors.bar} ${isExpanded ? 'opacity-60' : 'opacity-20'} transition-opacity duration-300`}
-            />
-
-            {/* Background glow when expanded */}
-            {isExpanded && (
-              <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background: `linear-gradient(90deg, ${card.accent === 'amber' ? 'hsl(var(--primary) / 0.07)' : card.accent === 'teal' ? 'hsl(var(--secondary) / 0.07)' : 'hsl(var(--accent) / 0.08)'}, transparent 72%)`,
-                }}
-                aria-hidden
-              />
-            )}
-
-            <div className={`relative p-4 sm:p-5 ${isExpanded ? 'pr-10' : ''}`}>
-              {/* Number + icon row */}
-              <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`text-[10px] font-mono font-semibold tabular-nums ${colors.text} opacity-60`}
-                >
-                  {card.number}
-                </span>
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-lg ${colors.bg} ${colors.text} transition-transform duration-300 ${isExpanded ? 'scale-110' : 'group-hover:scale-105'}`}
-                >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </div>
-              </div>
-
-              {/* Label */}
-              <p className="font-heading text-sm font-semibold text-foreground lg:text-base">
-                {card.label}
-              </p>
-
-              {/* Expanded content */}
-              {isExpanded && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="mt-2"
-                >
-                  <p className="text-sm leading-relaxed text-muted-foreground">{card.title}</p>
-                  <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground/70">
-                    {card.description}
-                  </p>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Expand chevron */}
-            <div
-              className={`absolute right-3 top-4 flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${isExpanded ? 'bg-muted text-foreground' : 'bg-muted/55 text-muted-foreground group-hover:text-foreground'}`}
-            >
-              <motion.span
-                animate={{ rotate: isExpanded ? 90 : 0 }}
-                transition={{ duration: 0.22, ease: 'easeInOut' }}
-                className="inline-flex"
-              >
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />
-              </motion.span>
-            </div>
-          </motion.article>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   TESTIMONIAL CARD
-══════════════════════════════════════════════════════════════════ */
-const avatarGradients = [
-  'from-amber-500/30 to-orange-600/20',
-  'from-teal-500/30 to-emerald-600/20',
-  'from-purple-500/30 to-indigo-600/20',
-  'from-rose-500/30 to-pink-600/20',
-  'from-blue-500/30 to-cyan-600/20',
-];
-
-function TestimonialCard({ t, idx = 0 }: { t: (typeof testimonials)[0]; idx?: number }) {
-  const gradIdx = idx % avatarGradients.length;
-  return (
-    <article className="flex w-[260px] shrink-0 flex-col gap-3 rounded-lg border border-border bg-card/55 px-4 py-4 transition-all duration-200 hover:border-primary/25 hover:bg-muted/40 sm:w-[290px]">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${avatarGradients[gradIdx]} text-[11px] font-bold text-foreground ring-1 ring-border`}
-          >
-            {t.initials}
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-foreground leading-tight">{t.name}</p>
-            <p className="text-[11px] text-muted-foreground/60 leading-tight mt-0.5">{t.role}</p>
-          </div>
-        </div>
-        <div className="flex gap-0.5" aria-label="5 stars">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Star key={i} className="h-3 w-3 fill-primary/60 text-primary/60" strokeWidth={0} />
-          ))}
-        </div>
-      </div>
-
-      {/* Quote */}
-      <p className="text-sm leading-[1.65] text-muted-foreground line-clamp-4">{t.body}</p>
-
-      {/* Date */}
-      <span className="text-[10px] text-muted-foreground/40 mt-auto">{t.date}</span>
-    </article>
   );
 }

@@ -32,14 +32,14 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
   const transcriptionComplete = stepsData.transcription?.status === 'complete';
   const shouldShowTranscriptionStep = !transcriptionComplete;
   const transcriptionText = stepsData.transcription?.result?.transcript ?? '';
-  
+
   const steps = [
     ...(shouldShowTranscriptionStep
       ? [
           {
             key: 'transcription' as const,
-            title: 'Transcribing Audio',
-            description: 'Turning your recording into text with OpenAI Whisper',
+            title: 'Transcribing audio',
+            description: 'Turning your recording into text',
             icon: <Sparkles className="w-6 h-6 text-primary-600" />,
             stepData: stepsData.transcription || { status: 'pending' },
           },
@@ -47,8 +47,8 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
       : []),
     {
       key: 'voice_cloning' as const,
-      title: 'Generating Voice',
-      description: 'Preparing your recording for Qwen3 voice cloning',
+      title: 'Generating voice',
+      description: 'Preparing your recording to create your voice',
       icon: <Mic className="w-6 h-6 text-primary-600" />,
       stepData: stepsData.voice_cloning || { status: 'pending' },
       showTranscriptionButton: transcriptionComplete && transcriptionText.length > 0,
@@ -56,7 +56,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     },
     {
       key: 'personality_analysis' as const,
-      title: 'Personality Analysis',
+      title: 'Personality analysis',
       description: 'Analyzing your speech patterns and personality with GPT-4',
       icon: <Brain className="w-6 h-6 text-primary-600" />,
       stepData: stepsData.personality_analysis || { status: 'pending' },
@@ -67,7 +67,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     <div className="space-y-6">
       {/* Overall Progress Header */}
       <div className="mb-8 text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-4 py-2">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-accent px-4 py-2">
           <Sparkles className="w-5 h-5 text-primary-600 animate-pulse" />
           <span className="text-sm font-medium text-primary">
             {(status?.overall_status === 'complete' || allStepsComplete)
@@ -78,7 +78,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
                   ? 'Processing Your AI...'
                   : status?.overall_status === 'recorded_and_uploaded'
                     ? 'Recorded and Uploaded - Processing Starting Soon...'
-                    : 'Waiting to Start'}
+                    : 'Waiting to start'}
           </span>
         </div>
       </div>

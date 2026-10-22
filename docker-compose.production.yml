@@ -1,0 +1,100 @@
+# Standalone production stack: managed PostgreSQL and Supabase storage.
+# Configure backend/.env and root .env; terminate HTTPS at your reverse proxy.
+name: voicevault-production
+
+x-backend: &backend
+  image: voicevault-backend:production
+  build:
+    context: ./backend
+  env_file:
+    - ${BACKEND_ENV_FILE:-./backend/.env}
+  environment:
+    DEBUG: "False"
+    REDIS_URL: redis://redis:6379/0
+    PORT: "8000"
+    RUN_MIGRATIONS: "false"
+    SECURE_SSL_REDIRECT: "True"
+    SESSION_COOKIE_SECURE: "True"
+    CSRF_COOKIE_SECURE: "True"
+  restart: unless-stopped
+  volumes:
+    - media_data:/app/media
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    restart: "no"
+    healthcheck:
+      disable: true
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  backend:
+    <<: *backend
+    command: ["web"]
+    ports:
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    image: voicevault-frontend:production
+    build:
+      context: ./frontend
+      args:
+        BACKEND_API_URL: http://backend:8000/api
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:?Set SITE_URL to your public HTTPS frontend URL}
+        NEXT_PUBLIC_MEDIA_ORIGINS: ${MEDIA_ORIGINS:-}
+        NEXT_PUBLIC_GA_TRACKING_ID: ${GA_TRACKING_ID:-}
+    environment:
+      BACKEND_API_URL: http://backend:8000/api
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL:?Set SITE_URL to your public HTTPS frontend URL}
+      NEXT_PUBLIC_MEDIA_ORIGINS: ${MEDIA_ORIGINS:-}
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  beat:
+    <<: *backend
+    command: ["beat"]
+    volumes:
+      - media_data:/app/media
+      - beat_data:/app/run
+    healthcheck:
+      disable: true
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  redis_data:
+  media_data:
+  beat_data:

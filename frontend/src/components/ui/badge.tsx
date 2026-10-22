@@ -12,11 +12,11 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground hover:bg-primary/90',
+        default: 'border-transparent bg-accent text-accent-foreground',
         secondary: 'border-border bg-muted text-foreground hover:bg-muted/80',
-        success: 'border-transparent bg-success-500 text-white',
-        warning: 'border-transparent bg-warning-500 text-white',
-        error: 'border-transparent bg-error-500 text-white',
+        success: 'border-transparent bg-green-100 text-green-800',
+        warning: 'border-transparent bg-amber-100 text-amber-800',
+        error: 'border-transparent bg-red-100 text-red-800',
         outline: 'border-border text-foreground',
       },
     },

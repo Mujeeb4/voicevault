@@ -12,6 +12,7 @@ import { ProcessingComplete } from '@/components/processing/ProcessingComplete';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { authApi } from '@/lib/api/auth';
 import { processingApi } from '@/lib/api/processing';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
@@ -97,9 +98,9 @@ export default function ProcessingPage() {
   if (!user.recording_completed) {
     return (
       <div className="mx-auto max-w-3xl">
-        <div className="journey-hero p-6 sm:p-8">
-          <p className="journey-kicker">AI build room</p>
-          <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
+        <div className="pb-2">
+          <p className="eyebrow">Your AI</p>
+          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl text-foreground sm:text-4xl">
             Record before starting AI processing
           </h1>
           <p className="mt-3 max-w-2xl text-muted-foreground">
@@ -117,15 +118,11 @@ export default function ProcessingPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="journey-hero p-5 sm:p-6">
-        <p className="journey-kicker">AI build room</p>
-        <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-          AI Processing
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {isComplete ? 'Processing complete!' : 'Processing your voice and memories...'}
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="My voice"
+        title="Building your AI"
+        description={isComplete ? 'Your AI is ready.' : 'We are processing your voice and memories.'}
+      />
 
       {isComplete ? (
         <ProcessingComplete
@@ -136,9 +133,9 @@ export default function ProcessingPage() {
       ) : (
         <div className="space-y-6">
           {/* Info Banner */}
-          <div className="journey-card p-6">
+          <div className="surface p-6">
             <h2 className="mb-2 text-lg font-semibold text-foreground">
-              {isPremium ? 'Creating Your Premium AI Vault' : 'Creating Your Text AI Preview'}
+              {isPremium ? 'Creating your Premium vault' : 'Creating your text preview'}
             </h2>
             <p className="mb-4 text-muted-foreground">
               {isPremium
@@ -146,7 +143,7 @@ export default function ProcessingPage() {
                 : 'Your free preview includes personality analysis and text chat. Premium unlocks voice cloning and voice responses.'}
             </p>
             {isPremium && !voiceConsentAccepted && (
-              <div className="mb-4 rounded-lg border border-primary/25 bg-primary/8 p-4">
+              <div className="mb-4 rounded-lg border border-primary/25 bg-accent p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
@@ -186,8 +183,8 @@ export default function ProcessingPage() {
           />
 
           {isPremium && (
-            <div className="journey-card p-6">
-              <h2 className="mb-2 text-lg font-semibold text-foreground">Hear your Qwen3 voice</h2>
+            <div className="surface p-6">
+              <h2 className="mb-2 text-lg font-semibold text-foreground">Hear your voice</h2>
               <p className="mb-3 text-sm text-muted-foreground">
                 A preview uses your saved recording and matching transcript. Replicate charges for a new request when you press Generate; repeating the same text reuses its result.
               </p>
@@ -208,7 +205,7 @@ export default function ProcessingPage() {
           )}
 
           {/* Help Section */}
-          <div className="journey-card p-6">
+          <div className="surface p-6">
             <h3 className="mb-2 font-semibold text-foreground">What happens next?</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li className="flex items-start gap-2">
@@ -221,7 +218,7 @@ export default function ProcessingPage() {
                 <span className="font-bold text-primary">2.</span>
                 <span>
                   {isPremium
-                    ? "After you consent, we'll prepare a recording and matching transcript for Qwen3 voice cloning"
+                    ? "After you consent, we'll prepare a recording and matching transcript to create your voice"
                     : "We'll create your text-based AI preview; voice cloning remains locked unless you upgrade"}
                 </span>
               </li>

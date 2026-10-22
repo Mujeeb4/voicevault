@@ -68,7 +68,7 @@ export function ProcessingComplete({
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl p-12 text-white text-center shadow-2xl"
+        className="bg-primary rounded-2xl p-12 text-white text-center shadow-sm"
       >
         {/* Success Icon */}
         <motion.div
@@ -132,18 +132,18 @@ export function ProcessingComplete({
           <Button
             onClick={onChatNow}
             size="lg"
-            className="bg-white text-[#2c2a26] hover:bg-primary-50 shadow-lg border border-[#e8e4de]"
+            className="bg-white text-foreground hover:bg-primary-50 shadow-lg border border-border"
           >
-            <MessageCircle className="w-5 h-5 mr-2 text-[#2c2a26]" />
+            <MessageCircle className="w-5 h-5 mr-2 text-foreground" />
             Try Chatting Now
           </Button>
           <Button
             onClick={onInviteFamily}
             size="lg"
             variant="outline"
-            className="border-2 border-[#2c2a26] text-[#2c2a26] bg-white hover:bg-primary-50 shadow-lg"
+            className="border-2 border-foreground text-foreground bg-white hover:bg-primary-50 shadow-lg"
           >
-            <Users className="w-5 h-5 mr-2 text-[#2c2a26]" />
+            <Users className="w-5 h-5 mr-2 text-foreground" />
             Invite Family
           </Button>
         </motion.div>

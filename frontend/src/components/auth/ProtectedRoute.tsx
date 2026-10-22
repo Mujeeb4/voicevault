@@ -5,8 +5,8 @@
 
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 
@@ -16,27 +16,31 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
     // Check authentication status on mount
-    checkAuth();
+    let mounted = true;
+    void checkAuth().finally(() => { if (mounted) setHasCheckedAuth(true); });
+    return () => { mounted = false; };
   }, [checkAuth]);
 
   useEffect(() => {
     // Redirect to login if not authenticated
-    if (!isLoading && !isAuthenticated) {
-      router.push('/login');
+    if (hasCheckedAuth && !isLoading && !isAuthenticated) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname || '/dashboard')}`);
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [hasCheckedAuth, isAuthenticated, isLoading, pathname, router]);
 
   // Show loading spinner while checking auth
-  if (isLoading) {
+  if (!hasCheckedAuth || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );

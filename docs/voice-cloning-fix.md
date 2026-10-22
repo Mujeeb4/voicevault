@@ -1,3 +1,4 @@
+<!-- Backend commands in this document run from backend/. -->
 # Voice cloning preset substitution — 2026-10-11
 
 The installed ElevenLabs Python SDK is 2.68.0. The old worker called
@@ -18,7 +19,7 @@ preset audio is not reused after a re-clone.
 
 ## Verification
 
-- `.venv/bin/python manage.py test apps.ai_processing --settings=config.settings_test --noinput`
+- `../.venv/bin/python manage.py test apps.ai_processing --settings=config.settings_test --noinput`
 - SDK multipart request tested with an HTTP mock transport, including labels and sample bytes.
 - Live IVC test used `media/storage/recordings/1c1053b1-f1f0-405f-994a-6a6196182108/combined_20260609_163133.mp3` (356.64 seconds).
 - ElevenLabs created `gvnkFW0f6g9avsqNp0PV`, confirmed category `cloned`, and returned a 75,276-byte MP3 preview with `eleven_v3`, stability 0.75 and similarity boost 0.85.
@@ -39,7 +40,7 @@ as “VoiceVault diagnostic” for comparison with the saved preview.
 Once database access is restored:
 
 1. Install the updated requirements and stop the old Celery voice workers.
-2. Run `.venv/bin/python manage.py migrate` against the intended application database.
+2. Run `../.venv/bin/python manage.py migrate` against the intended application database.
 3. Restart the backend and Celery workers with this code.
 4. Retry voice cloning for affected users through the existing processing flow.
 

@@ -56,8 +56,7 @@ function getOrigins(value?: string): string[] {
 function buildContentSecurityPolicy(nonce: string): string {
   const isDevelopment = process.env.NODE_ENV !== 'production';
   const backendOrigin = getOrigin(process.env.BACKEND_API_URL)
-    || getOrigin(process.env.NEXT_PUBLIC_API_URL)
-    || 'https://voicevault-backend-production.up.railway.app';
+    || 'http://127.0.0.1:8000';
   const siteOrigin = getOrigin(process.env.NEXT_PUBLIC_SITE_URL);
   const storageOrigin = getOrigin(process.env.LOCAL_STORAGE_PUBLIC_URL);
   const mediaOrigins = getOrigins(process.env.NEXT_PUBLIC_MEDIA_ORIGINS);

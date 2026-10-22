@@ -1,6 +1,5 @@
 /**
  * Admin API - users, questions, processing
- * Some endpoints may not exist in backend - stubbed for compatibility
  */
 import apiClient from './client';
 import type {
@@ -18,15 +17,8 @@ const adminBase = '/admin';
 const processBase = `${adminBase}/process`;
 const recordingsQuestions = '/recordings/questions';
 
-export function isAdmin(user: { id?: string; email?: string; is_admin?: boolean } | null): boolean {
-  if (!user) return false;
-  if (user.is_admin) return true;
-  // Backend may not have is_staff - check for admin email pattern or env
-  const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAILS ?? '').split(',').filter(Boolean);
-  if (adminEmails.length && user.email) {
-    return adminEmails.some((e) => e.trim().toLowerCase() === user.email?.toLowerCase());
-  }
-  return false;
+export function isAdmin(user: { is_admin?: boolean } | null): boolean {
+  return user?.is_admin === true;
 }
 
 export const adminApi = {

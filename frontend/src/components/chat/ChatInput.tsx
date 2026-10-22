@@ -120,14 +120,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     try {
       setIsRecording(false);
       setIsTranscribing(true);
-      
+
       const result = await audioRecorderRef.current.stop();
       audioRecorderRef.current.cleanup();
       audioRecorderRef.current = null;
 
       // Send voice blob for transcription
       await onSendVoice(result.blob);
-      
+
       setIsTranscribing(false);
       toast.success('Voice message sent!');
     } catch {
@@ -174,7 +174,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             disabled={disabled || isStreaming || isTranscribing}
             size="icon"
             variant={isRecording ? 'destructive' : 'outline'}
-            className="h-10 w-10 flex-shrink-0"
+            className="h-11 w-11 flex-shrink-0"
             aria-label={isRecording ? 'Stop recording' : 'Start voice recording'}
           >
             {isTranscribing ? (
@@ -208,7 +208,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           onClick={handleSend}
           disabled={disabled || isStreaming || message.trim().length === 0 || isRecording || isTranscribing}
           size="icon"
-          className="h-10 w-10 flex-shrink-0"
+          className="h-11 w-11 flex-shrink-0"
           aria-label="Send message"
         >
           {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -224,7 +224,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ? 'Transcribing voice...'
               : isStreaming
                 ? 'AI is responding...'
-                : 'Press Enter to send, Shift+Enter for new line'}
+                : 'Enter to send · Shift+Enter for a new line'}
         </span>
         <span
           className={cn(
@@ -232,7 +232,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             isAtLimit ? 'text-destructive font-semibold' : isNearLimit ? 'text-warning' : 'text-muted-foreground'
           )}
         >
-          {remainingChars} chars left
+          {remainingChars} left
         </span>
       </div>
     </div>

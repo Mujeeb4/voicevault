@@ -5,7 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type { FamilyMember, InviteRequest, InviteResponse, RelationshipType } from '@/types';
+import type { FamilyMember, InviteRequest, InviteResponse } from '@/types';
 import { familyApi } from '@/lib/api/family';
 import { toast } from 'sonner';
 
@@ -29,7 +29,6 @@ interface FamilyState {
   removeMember: (memberId: string) => Promise<void>;
   resendInvitation: (memberId: string) => Promise<void>;
   loadAccessibleAIs: () => Promise<void>;
-  updateMember: (memberId: string, updates: { relationship?: RelationshipType; has_access?: boolean }) => Promise<void>;
   clearError: () => void;
   reset: () => void;
 }
@@ -151,31 +150,6 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
       set({ accessibleAIs: response.results, isLoading: false });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load accessible AIs';
-      set({ error: errorMessage, isLoading: false });
-      toast.error(errorMessage);
-      throw error;
-    }
-  },
-
-  /**
-   * Update family member
-   * Can change relationship or revoke access
-   */
-  updateMember: async (memberId: string, updates: { relationship?: RelationshipType; has_access?: boolean }) => {
-    try {
-      set({ isLoading: true, error: null });
-
-      const updatedMember = await familyApi.updateFamilyMember(memberId, updates);
-
-      // Update local state
-      set((state) => ({
-        familyMembers: state.familyMembers.map((m) => (m.id === memberId ? updatedMember : m)),
-        isLoading: false,
-      }));
-
-      toast.success('Family member updated successfully');
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update family member';
       set({ error: errorMessage, isLoading: false });
       toast.error(errorMessage);
       throw error;

@@ -1,632 +1,104 @@
-# VoiceVault - AI Voice Memory System
+# VoiceVault
 
-<div align="center">
+VoiceVault preserves recordings and lets invited family members talk with an AI built from them.
 
-**Preserve your voice, personality, and memories forever**
+The repository has two independent applications:
 
-Create an AI version of yourself that your family and friends can chat with, powered by advanced voice cloning and personality analysis.
+| Directory | Responsibility | Runtime |
+| --- | --- | --- |
+| `frontend/` | New VoiceVault interface, browser recording, authentication UI, API client | Next.js / Node.js 22 |
+| `backend/` | API, permissions, data, storage, billing, AI pipelines and background tasks | Django / Python 3.12 |
+| `docs/` | Shared API and deployment documentation | — |
 
-[![Django](https://img.shields.io/badge/Django-5.0+-green.svg)](https://www.djangoproject.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-black.svg)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.14+-blue.svg)](https://www.python.org/)
+The previous frontend and combined Django/Next.js container have been removed. Frontend browser requests use the same-origin `/api` proxy. Django owns the API; Celery workers use the backend image and have no frontend dependencies. Each application has its own dependencies, environment template, Dockerfile and ignore file.
 
-</div>
+## Local development
 
----
-
-## 🎯 Project Overview
-
-VoiceVault is a full-stack AI-powered platform that allows users to:
-
-1. **Record** 30 audio answers to life story questions
-2. **Process** recordings using AI to extract personality, transcribe voice, and clone voice
-3. **Share** with family members who can chat with the AI using the user's voice and personality
-4. **Preserve** memories and stories for future generations
-
-### Key Features
-
-- 🎤 **Voice Recording**: Record answers to 30 guided questions about life, memories, and wisdom
-- 🧠 **AI Processing**: Advanced AI analyzes voice patterns, personality traits, and speech patterns
-- 🎭 **Voice Cloning**: Create a realistic voice clone using ElevenLabs
-- 💬 **Chat Interface**: Family members can have natural conversations with the AI
-- 🎙️ **Voice Input**: Family members can ask questions using voice (transcribed automatically)
-- 👨‍👩‍👧‍👦 **Family Management**: Invite and manage family member access
-- 💳 **Payment Integration**: Stripe integration for package tiers (Lite, Premium, Family)
-- 📊 **Admin Dashboard**: Complete admin interface for managing users, questions, and processing
-- ⚡ **Real-time Streaming**: Sub-1 second perceived response time with SSE streaming
-- 🔊 **Audio Responses**: AI responds with cloned voice audio
-
----
-
-## 🏗️ Architecture
-
-### System Architecture
-
-```
-┌─────────────────┐
-│   Frontend      │  Next.js 14 (App Router)
-│   (Next.js)     │  TypeScript + Tailwind CSS
-└────────┬────────┘  Zustand + React Query
-         │
-         │ HTTPS/REST API
-         │
-┌────────▼────────┐
-│   Backend       │  Django 5.1 + DRF
-│   (Django)      │  PostgreSQL (Supabase)
-└────────┬────────┘  Celery + Redis
-         │
-    ┌────┴────┬──────────┬──────────┐
-    │         │          │          │
-┌───▼───┐ ┌──▼───┐ ┌────▼────┐ ┌───▼────┐
-│OpenAI │ │Eleven│ │Supabase │ │ Stripe │
-│Whisper│ │Labs  │ │Storage  │ │Payment │
-│GPT-4o │ │Voice │ │Postgres │ │        │
-└───────┘ └──────┘ └─────────┘ └────────┘
+```sh
+cp backend/.env.example backend/.env   # skip if you already have this file
+cp frontend/.env.example frontend/.env.local
 ```
 
-### Data Flow
+The existing root backend `.env` has moved to `backend/.env`. Existing local media is preserved in `backend/media/`; import it into the Compose media volume before attaching an existing database (see the deployment guide). Review its values before using the environment file; it may point to an existing hosted database or paid services. For local work, set `DEBUG=True`, use a local `DATABASE_URL` and Redis, set `STORAGE_BACKEND=local`, and set `FRONTEND_URL=http://localhost:3000`.
 
-1. **Recording Flow**: User records → Uploads to Supabase → Backend stores metadata
-2. **Processing Flow**: Celery tasks → Transcription → Personality Analysis → Voice Cloning
-3. **Chat Flow**: Family member asks question → RAG context → GPT-4o response → ElevenLabs voice → Return to frontend
+Run the complete local stack:
 
----
-
-## 🛠️ Tech Stack
-
-### Backend
-
-- **Framework**: Django 5.1+ with Django REST Framework 3.14+
-- **Database**: PostgreSQL (via Supabase)
-- **Storage**: Supabase Storage (audio files)
-- **Authentication**: Supabase Auth (JWT tokens)
-- **Task Queue**: Celery 5.3+ with Redis 5.0+
-- **AI Services**:
-  - OpenAI Whisper (transcription)
-  - OpenAI GPT-4o (personality analysis & chat)
-  - ElevenLabs (voice cloning & TTS)
-- **Payments**: Stripe API
-- **Email**: Django email backend (SMTP/Gmail)
-
-### Frontend
-
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript 5.0+
-- **Styling**: Tailwind CSS 3.4+
-- **UI Components**: shadcn/ui (Radix UI primitives)
-- **State Management**: Zustand 4.4+
-- **Server State**: React Query (@tanstack/react-query) 5.0+
-- **Forms**: React Hook Form + Zod validation
-- **Audio**: Web Audio API, MediaRecorder API, FFmpeg.wasm
-- **Animations**: Framer Motion 10.0+
-- **Notifications**: Sonner (toast notifications)
-
-### Infrastructure
-
-- **Database**: Supabase PostgreSQL (with connection pooling)
-- **File Storage**: Supabase Storage buckets
-- **Cache**: Redis (for Celery broker & result backend)
-- **Deployment**: Ready for Vercel (frontend) + Railway/Render (backend)
-
----
-
-## 📁 Project Structure
-
-```
-voice_vault/
-├── backend/                    # Django backend
-│   ├── apps/
-│   │   ├── users/            # User & family management
-│   │   ├── recordings/       # Audio upload & questions
-│   │   ├── ai_processing/    # AI tasks (transcription, personality, voice)
-│   │   ├── chat/             # Chat system & RAG
-│   │   └── payments/        # Stripe integration
-│   ├── config/               # Django settings
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │   └── celery.py        # Celery configuration
-│   ├── utils/                # Utilities
-│   │   ├── supabase_client.py
-│   │   ├── supabase_auth.py
-│   │   └── exceptions.py
-│   ├── manage.py
-│   └── requirements.txt
-│
-├── frontend/                  # Next.js frontend
-│   ├── src/
-│   │   ├── app/              # Next.js App Router pages
-│   │   │   ├── (auth)/       # Auth pages (login, signup)
-│   │   │   ├── (user)/       # User pages (dashboard, record, chat)
-│   │   │   └── (admin)/      # Admin pages
-│   │   ├── components/       # React components
-│   │   │   ├── ui/           # shadcn/ui components
-│   │   │   ├── recording/    # Recording components
-│   │   │   ├── chat/         # Chat components
-│   │   │   ├── processing/   # Processing status components
-│   │   │   └── admin/        # Admin components
-│   │   ├── lib/              # Utilities & API clients
-│   │   │   ├── api/          # API client functions
-│   │   │   ├── audio/        # Audio utilities
-│   │   │   └── hooks/        # Custom React hooks
-│   │   ├── store/            # Zustand stores
-│   │   └── types/            # TypeScript types
-│   ├── public/               # Static assets
-│   ├── package.json
-│   └── next.config.js
-│
-├── docs/                      # Documentation
-│   └── API_DOCUMENTATION.md
-│
-├── .env.example              # Environment variables template
-├── README.md                 # This file
-└── setup.md                 # Detailed setup guide
+```sh
+docker compose up --build -d
 ```
 
----
+Open <http://localhost:3000>. Django is available at <http://localhost:8000/api/health/>. Local Compose overrides database, Redis, storage and security settings for the local containers; optional provider credentials come from `backend/.env`. Default host ports are 3000/8000; use a root `.env` copied from `.env.example` to change them. PostgreSQL uses the persistent `postgres_data` volume, Redis uses `redis_data`, and recordings use `media_data`.
 
-## 🚀 Quick Start
+For development with live reload, start just the dependencies:
 
-### Prerequisites
-
-- **Python 3.14+** (or 3.10+)
-- **Node.js 18+** and npm
-- **Redis** (for Celery)
-- **Supabase Account** (free tier works)
-- **OpenAI API Key**
-- **ElevenLabs API Key**
-- **Stripe Account** (for payments)
-
-### Backend Setup
-
-1. **Clone repository**
-```bash
-git clone <repository-url>
-cd voice_vault
+```sh
+docker compose up -d postgres redis
+python3 -m venv .venv
+.venv/bin/pip install -r backend/requirements.lock
 ```
 
-2. **Create virtual environment**
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+In `backend/.env`, set `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:15432/voicevault`. Set `REDIS_URL=redis://127.0.0.1:16379/0` for the local Redis container. These dependency ports bind only to loopback.
+
+```sh
+cd backend
+../.venv/bin/python manage.py migrate
+../.venv/bin/python manage.py runserver
 ```
 
-3. **Install dependencies**
-```bash
-pip install -r requirements.txt
-```
+In another terminal:
 
-4. **Configure environment variables**
-```bash
-cp .env.example .env
-# Edit .env with your credentials
-```
-
-**Required Environment Variables:**
-```bash
-# Django
-SECRET_KEY=your-secret-key
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-
-# Database (Supabase PostgreSQL)
-DATABASE_URL=postgresql://user:pass@host:port/db
-# OR individual variables:
-DB_NAME=postgres
-DB_USER=postgres
-DB_PASSWORD=your-password
-DB_HOST=db.xxx.supabase.co
-DB_PORT=5432
-
-# Supabase
-SUPABASE_URL=https://xxx.supabase.co
-SUPABASE_KEY=your-anon-key
-SUPABASE_SERVICE_KEY=your-service-key
-
-# Redis
-CELERY_BROKER_URL=redis://localhost:6379/0
-CELERY_RESULT_BACKEND=redis://localhost:6379/0
-
-# AI Services
-OPENAI_API_KEY=sk-xxx
-ELEVENLABS_API_KEY=xxx
-
-# Stripe
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# Email (optional)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-```
-
-5. **Run migrations**
-```bash
-python manage.py migrate
-```
-
-6. **Create superuser**
-```bash
-python manage.py createsuperuser
-```
-
-7. **Seed questions** (optional)
-```bash
-python seed_questions.py
-```
-
-8. **Start development server**
-```bash
-python manage.py runserver
-# Server runs on http://localhost:8000
-```
-
-9. **Start Celery worker** (in separate terminal)
-```bash
-celery -A config worker -l info -Q default,transcription,voice,analysis
-```
-
-10. **Start Celery beat** (optional, for scheduled tasks)
-```bash
-celery -A config beat -l info
-```
-
-### Frontend Setup
-
-1. **Navigate to frontend directory**
-```bash
+```sh
 cd frontend
-```
-
-2. **Install dependencies**
-```bash
-npm install
-```
-
-3. **Configure environment variables**
-```bash
-cp .env.example .env.local
-# Edit .env.local
-```
-
-**Required Environment Variables:**
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
-4. **Run development server**
-```bash
-npm run dev
-# Frontend runs on http://localhost:3000
-```
-
-5. **Build for production** (optional)
-```bash
-npm run build
-npm start
-```
-
-### Docker + Traefik on Hostinger
-
-The default Compose file now contains the labels required by Hostinger's
-host-network Traefik. Put the deployment values in `.env` once:
-
-```dotenv
-TRAEFIK_RULE=Host(`voicevault-web.srv1183929.hstgr.cloud`) || Host(`web.srv1183929.hstgr.cloud`)
-TRAEFIK_CERT_RESOLVER=letsencrypt
-STORAGE_BACKEND=local
-LOCAL_STORAGE_PUBLIC_URL=https://voicevault-web.srv1183929.hstgr.cloud
-BACKEND_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_SITE_URL=https://voicevault-web.srv1183929.hstgr.cloud
-ALLOWED_HOSTS=voicevault-web.srv1183929.hstgr.cloud,web.srv1183929.hstgr.cloud,localhost,127.0.0.1
-CSRF_TRUSTED_ORIGINS=https://voicevault-web.srv1183929.hstgr.cloud,https://web.srv1183929.hstgr.cloud
-CORS_ALLOWED_ORIGINS=https://voicevault-web.srv1183929.hstgr.cloud,https://web.srv1183929.hstgr.cloud
-FRONTEND_URL=https://voicevault-web.srv1183929.hstgr.cloud
-```
-
-After that, deployment is just:
-
-```bash
-docker compose up -d --build
-```
-
-`--force-recreate` is normally unnecessary: Compose recreates services when
-their image or configuration changes. Use it only when you intentionally need
-to replace unchanged containers.
-
-For local development, override the URL and Traefik values in your local `.env`,
-or disable Traefik discovery with `TRAEFIK_ENABLE=false` if your environment
-uses a Traefik constraints rule.
-
-### Transactional email with Brevo
-
-VoiceVault uses Django's SMTP backend, so Brevo does not require an application
-code change. Create and verify a sender in Brevo, create an SMTP key, and put
-these values in `.env`:
-
-```dotenv
-EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
-EMAIL_HOST=smtp-relay.brevo.com
-EMAIL_PORT=587
-EMAIL_USE_TLS=True
-EMAIL_HOST_USER=your-brevo-smtp-login
-EMAIL_HOST_PASSWORD=your-brevo-smtp-key
-DEFAULT_FROM_EMAIL=VoiceVault <the-verified-sender@example.com>
-```
-
-Use an SMTP key, not a Brevo API key. For short-term testing, Brevo lets you
-verify an individual sender address even when its domain is not authenticated.
-Use a custom domain with DKIM and DMARC before production for reliable delivery.
-
----
-
-## 📚 API Documentation
-
-### Authentication
-
-All API endpoints (except public ones) require Supabase JWT token:
-
-```http
-Authorization: Bearer {supabase_jwt_token}
-```
-
-### Main Endpoints
-
-#### Users
-- `GET /api/users/profile/` - Get current user profile
-- `POST /api/users/signup/` - Sign up new user
-- `POST /api/users/login/` - Login user
-- `POST /api/users/refresh/` - Refresh token
-
-#### Recordings
-- `POST /api/recordings/upload/` - Upload audio file
-- `GET /api/recordings/` - List recordings
-- `DELETE /api/recordings/{id}/` - Delete recording
-- `GET /api/recordings/questions/` - Get all questions
-
-#### AI Processing
-- `GET /api/admin/process/status/{user_id}/` - Get processing status
-- `POST /api/admin/process/transcribe/{user_id}/` - Trigger transcription
-- `POST /api/admin/process/personality/{user_id}/` - Trigger personality analysis
-- `POST /api/admin/process/voice-clone/{user_id}/` - Trigger voice cloning
-- `POST /api/admin/process/full-pipeline/{user_id}/` - Run full pipeline
-
-#### Chat
-- `GET /api/chat/stream/?ai_owner_id=xxx&message=xxx` - Streaming chat (SSE)
-- `POST /api/chat/transcribe-voice/` - Transcribe voice input
-- `GET /api/chat/conversations/` - Get conversation history
-- `POST /api/chat/conversations/{id}/rate/` - Rate conversation
-
-#### Family Management
-- `POST /api/family/invite/` - Invite family member
-- `POST /api/family/accept-invite/{token}/` - Accept invitation
-- `GET /api/family/members/` - List family members
-- `DELETE /api/family/members/{id}/` - Remove member
-
-**📖 See `docs/API_DOCUMENTATION.md` for complete API reference**
-
----
-
-## 🎨 Frontend Features
-
-### User Pages
-
-- **Dashboard**: Overview of recording progress, AI status, and quick actions
-- **Recording**: Step-by-step recording interface with 30 questions
-- **Processing**: Real-time status monitoring with manual trigger buttons
-- **Chat**: Chat interface with voice input and audio responses
-- **Family**: Manage family member invitations and access
-- **Settings**: User profile and preferences
-
-### Admin Pages
-
-- **Dashboard**: System statistics and overview
-- **Users**: User management table with filters
-- **Questions**: Question management with drag-and-drop reordering
-- **Processing**: Monitor all AI processing tasks
-
-### Key Components
-
-- **AudioRecorder**: Real-time waveform visualization
-- **ChatInterface**: SSE streaming with voice playback
-- **ProcessingTimeline**: Step-by-step processing status
-- **VoiceInput**: Voice recording with transcription
-- **AdminRoute**: Protected admin routes
-
----
-
-## 🔄 Development Workflow
-
-### Running Both Servers
-
-**Terminal 1 - Backend:**
-```bash
-cd voice_vault
-source venv/bin/activate
-python manage.py runserver
-```
-
-**Terminal 2 - Celery Worker:**
-```bash
-cd voice_vault
-source venv/bin/activate
-celery -A config worker -l info -Q default,transcription,voice,analysis
-```
-
-**Terminal 3 - Frontend:**
-```bash
-cd frontend
+npm ci
 npm run dev
 ```
 
-### Testing
+Run a worker for asynchronous processing using the backend environment:
 
-**Backend Tests:**
-```bash
-python manage.py test
-python manage.py test apps.recordings
+```sh
+cd backend
+../.venv/bin/celery -A config worker -l info -Q celery,default,transcription,voice,analysis
 ```
 
-**Frontend Tests:**
-```bash
+## Verification
+
+```sh
+cd backend
+../.venv/bin/python manage.py test --settings=config.settings_test --noinput
+```
+
+```sh
 cd frontend
+npm ci
+npm run type-check
+npm run lint
 npm test
+npm run build
 ```
 
-**End-to-End Flow:**
-Use the backend and frontend test suites above. Avoid running ad hoc scripts that call live AI/payment providers unless they are isolated and reviewed.
+CI runs both applications' checks independently. Test settings use isolated SQLite and in-memory services.
 
----
+For an end-to-end API smoke check on a disposable local stack with local storage and blank provider credentials:
 
-## 🗄️ Database Models
+```sh
+python3 scripts/smoke.py --upload-draft
+```
 
-### Core Models
+Run the connected browser flow against that same disposable stack:
 
-- **User**: Main user model (AI owners and family members)
-- **FamilyMember**: Tracks family member access and relationships
-- **AudioRecording**: Metadata for uploaded audio files
-- **RecordingQuestion**: 30 life story questions
-- **Transcript**: Full transcript of all recordings
-- **AIConfiguration**: AI personality and voice configuration
-- **ProcessingQueue**: Tracks async Celery tasks
-- **Conversation**: Chat conversations between family and AI
-- **Payment**: Stripe payment tracking
+```sh
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
 
-**See `apps/*/models.py` for detailed model definitions**
+These checks create test accounts and verify real auth, API proxying, token refresh, upload, protected audio playback and deletion. It skips final upload processing and payments to avoid provider calls.
 
----
+## Hosting
 
-## 🔐 Security
+Use [the deployment guide](docs/DEPLOYMENT.md) for independent services or the production Compose stack. Configure real domains, secrets, PostgreSQL, Redis, storage and provider credentials before launch. No live service is deployed by this repository change.
 
-- **Authentication**: Supabase JWT tokens verified via middleware
-- **Authorization**: User-scoped data access (users can only access their own data)
-- **File Uploads**: Validated for size, type, and content
-- **API Keys**: Stored in environment variables (never committed)
-- **HTTPS**: Required in production
-- **CORS**: Configured for frontend domain only
-- **SQL Injection**: Protected by Django ORM
-- **XSS**: React automatically escapes content
-
----
-
-## 📦 Deployment
-
-### Backend Deployment
-
-**Recommended Platforms:**
-- Railway
-- Render
-- Heroku
-- DigitalOcean App Platform
-
-**Steps:**
-1. Set all environment variables
-2. Run migrations: `python manage.py migrate`
-3. Collect static files: `python manage.py collectstatic`
-4. Start Celery worker as background process
-5. Configure Redis for Celery
-
-### Frontend Deployment
-
-**Recommended Platform:**
-- Vercel (optimized for Next.js)
-
-**Steps:**
-1. Connect GitHub repository
-2. Set environment variables
-3. Deploy automatically on push
-
-**See `setup.md` for detailed deployment guide**
-
----
-
-## 🧪 Testing Status
-
-- ✅ **Module 1**: Foundation, Auth & Database (100% complete)
-- ✅ **Module 2**: Async AI Pipeline (100% complete)
-- ✅ **Module 3**: Chat System & RAG (100% complete)
-- ✅ **Module 4**: Family Management (100% complete)
-- ✅ **Frontend**: All phases complete (Phases 1-7)
-
-**Total Tests**: 66/66 Passed (100%) 🎉
-
----
-
-## 📖 Documentation
-
-- **README.md** (this file) - Project overview and quick start
-- **setup.md** - Detailed setup and implementation guide
-- **docs/API_DOCUMENTATION.md** - Complete API reference
-- **frontend/README.md** - Frontend-specific documentation
-
----
-
-## 🛣️ Roadmap
-
-### Completed ✅
-- [x] User authentication and profile management
-- [x] Audio recording and upload system
-- [x] AI processing pipeline (transcription, personality, voice cloning)
-- [x] Chat system with streaming responses
-- [x] Voice input for family members
-- [x] Family invitation system
-- [x] Admin dashboard
-- [x] Payment integration
-- [x] Processing status monitoring
-- [x] Voice cloning with ElevenLabs
-
-### Future Enhancements 🚀
-- [ ] Mobile app (React Native)
-- [ ] Multi-language support
-- [ ] Video recording option
-- [ ] Advanced personality customization
-- [ ] Conversation analytics
-- [ ] Export conversations
-- [ ] Voice quality improvements
-- [ ] Batch processing optimizations
-
----
-
-## 🤝 Contributing
-
-This is a proprietary project. For questions or issues:
-
-- **Email**: support@voicevault.com
-- **Documentation**: See `setup.md` for detailed guides
-
----
-
-## 📄 License
-
-Proprietary - All rights reserved
-
----
-
-## 🙏 Acknowledgments
-
-- **OpenAI** - Whisper transcription and GPT-4o
-- **ElevenLabs** - Voice cloning and TTS
-- **Supabase** - Database and storage
-- **Django** - Backend framework
-- **Next.js** - Frontend framework
-- **shadcn/ui** - UI component library
-
----
-
-## 📞 Support
-
-For technical support or questions:
-- Check `setup.md` for detailed implementation guides
-- Review `docs/API_DOCUMENTATION.md` for API details
-- Email: support@voicevault.com
-
----
-
-**Status**: ✅ **PRODUCTION READY**  
-**Last Updated**: January 21, 2026  
-**Version**: 1.0.0
+- [Frontend setup](frontend/README.md)
+- [Backend setup](backend/README.md)
+- [API reference](docs/API_DOCUMENTATION.md)
+- [Validation results](docs/VALIDATION.md)

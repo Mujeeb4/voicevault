@@ -1,99 +1,103 @@
 'use client';
 
 /**
- * Sticky brand header for onboarding and marketing pages.
+ * Public site header: logo, four links, one primary action.
+ * Used on marketing, pricing and legal pages.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { cn } from '@/lib/utils';
+
+const links = [
+  { href: '/#how-it-works', label: 'How it works' },
+  { href: '/pricing', label: 'Pricing' },
+];
 
 export function OnboardingHeader() {
   const pathname = usePathname();
   const { isAuthenticated, checkAuth } = useAuthStore();
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     void checkAuth();
   }, [checkAuth]);
 
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/78 backdrop-blur-xl supports-[backdrop-filter]:bg-background/72">
-      <div className="archive-rule absolute left-0 right-0 top-0 h-px" />
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-[4.25rem] sm:px-6">
-        {/* Logo */}
-        <Link
-          href="/"
-          className="group flex items-center gap-2.5 text-foreground transition-all duration-200 hover:opacity-90"
-          aria-label="VoiceVault Home"
-        >
-          <Image
-            src="/logo.png"
-            alt="VoiceVault"
-            width={40}
-            height={40}
-            className="h-9 w-9 shrink-0 rounded-lg ring-1 ring-primary/20 transition-all duration-200 group-hover:ring-primary/40 sm:h-10 sm:w-10"
-          />
-          <span className="font-logo text-lg font-bold sm:text-xl">
-            Voice<span className="text-gradient-amber">Vault</span>
-          </span>
+  const accountHref = isAuthenticated ? '/dashboard' : '/login';
+  const accountLabel = isAuthenticated ? 'My vault' : 'Sign in';
+  const ctaHref = isAuthenticated ? '/dashboard' : '/signup';
+  const ctaLabel = isAuthenticated ? 'Open my vault' : 'Get started';
+
+  const linkClass = (active: boolean) =>
+    cn(
+      'inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium transition-colors',
+      active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+    );
+
+  return (
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/90 backdrop-blur">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <Link href="/" className="flex min-h-11 items-center gap-2.5" aria-label="VoiceVault home">
+          <Image src="/logo.png" alt="" width={40} height={40} className="h-9 w-9 shrink-0" priority />
+          <span className="font-logo text-xl font-bold text-foreground">VoiceVault</span>
         </Link>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-1 sm:gap-1.5" aria-label="Main navigation">
-          <Link
-            href="/"
-            className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 md:inline-block md:px-4 ${
-              pathname === '/'
-                ? 'bg-primary/12 text-primary'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-            }`}
-          >
-            Home
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} className={linkClass(pathname === l.href)}>
+              {l.label}
+            </Link>
+          ))}
+          <Link href={accountHref} className={linkClass(pathname === accountHref)}>
+            {accountLabel}
           </Link>
           <Link
-            href="/pricing"
-            className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 md:inline-block md:px-4 ${
-              pathname === '/pricing'
-                ? 'bg-primary/12 text-primary'
-                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-            }`}
+            href={ctaHref}
+            className="ml-2 inline-flex h-10 items-center rounded-[10px] bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Pricing
-          </Link>
-          {isAuthenticated ? (
-            <Link
-              href="/settings"
-              className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 sm:inline-flex sm:px-4 ${
-                pathname === '/settings'
-                  ? 'bg-primary/12 text-primary'
-                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-              }`}
-            >
-              Settings
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              className={`hidden rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 sm:inline-flex sm:px-4 ${
-                pathname === '/login'
-                  ? 'bg-primary/12 text-primary'
-                  : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-              }`}
-            >
-              Sign in
-            </Link>
-          )}
-          <Link
-            href={isAuthenticated ? '/dashboard' : '/signup'}
-            className="shimmer-btn glow-amber-sm ml-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-all duration-300 hover:scale-[1.03] hover:shadow-md sm:px-5"
-          >
-            {isAuthenticated ? 'Open My Vault' : 'Start Free'}
+            {ctaLabel}
           </Link>
         </nav>
+
+        <button
+          type="button"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground hover:bg-muted md:hidden"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
+
+      {open && (
+        <nav className="border-t border-border bg-background px-4 pb-4 pt-2 md:hidden" aria-label="Mobile navigation">
+          <div className="flex flex-col">
+            {links.map((l) => (
+              <Link key={l.href} href={l.href} className="rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-muted">
+                {l.label}
+              </Link>
+            ))}
+            <Link href={accountHref} className="rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-muted">
+              {accountLabel}
+            </Link>
+            <Link
+              href={ctaHref}
+              className="mt-2 inline-flex h-12 items-center justify-center rounded-[10px] bg-primary text-base font-semibold text-primary-foreground"
+            >
+              {ctaLabel}
+            </Link>
+          </div>
+        </nav>
+      )}
     </header>
   );
 }

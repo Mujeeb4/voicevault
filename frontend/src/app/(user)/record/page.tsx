@@ -43,7 +43,7 @@ type PreparedUploadPart = { blob: Blob; duration: number };
 
 function RecordingContent() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, refreshUser, updateUser } = useAuthStore();
   const {
     questions,
     setQuestions,
@@ -238,6 +238,9 @@ function RecordingContent() {
         }
       }
 
+      // The upload response confirms completion before the profile request catches up.
+      updateUser({ recording_completed: true });
+      await refreshUser();
       setUploadProgress(100);
       setStatus('complete');
       toast.success('Upload complete!');
@@ -266,14 +269,13 @@ function RecordingContent() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="journey-hero p-5 sm:p-6">
+      <div className="pb-2">
         <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="journey-kicker">Guided voice archive</p>
-            <h1 className="mt-2 font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-              Voice Recording
+            <p className="eyebrow">My voice</p>
+            <h1 className="mt-1.5 text-2xl font-semibold text-foreground sm:text-3xl">
+              Record your voice
             </h1>
-            <p className="mt-1 text-muted-foreground">{getStepTitle(currentStep)}</p>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
               {isPremium
                 ? 'Premium includes 30 guided questions plus an optional reflection, local encrypted draft saving, and up to 5 hours of recordings.'
@@ -458,15 +460,15 @@ function JourneyStageRail({ currentStep }: { currentStep: Step }) {
             key={stage.id}
             className={`rounded-lg border px-3 py-2 text-sm transition ${
               isActive
-                ? 'journey-step-active'
+                ? 'border-primary/40 bg-accent text-foreground'
                 : isDone
-                  ? 'border-primary/28 bg-primary/8 text-foreground'
+                  ? 'border-primary/28 bg-accent text-foreground'
                   : 'border-border bg-background/36 text-muted-foreground'
             }`}
           >
             <div className="flex items-center gap-2">
               <span
-                className={`flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                   isActive || isDone
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted text-muted-foreground'
@@ -476,25 +478,12 @@ function JourneyStageRail({ currentStep }: { currentStep: Step }) {
               </span>
               <span className="font-semibold">{stage.label}</span>
             </div>
-            <p className="mt-1 text-xs opacity-80">{stage.helper}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{stage.helper}</p>
           </div>
         );
       })}
     </div>
   );
-}
-
-/**
- * Get step title for header
- */
-function getStepTitle(step: Step): string {
-  const titles = {
-    intro: 'Getting Started',
-    recording: 'Recording Your Answers',
-    review: 'Review Your Recordings',
-    upload: 'Uploading...',
-  };
-  return titles[step];
 }
 
 /**
@@ -526,7 +515,7 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-destructive/12">
         <AlertCircle className="w-8 h-8 text-error-500" />
       </div>
-      <h2 className="mb-2 text-2xl font-bold text-foreground">Something Went Wrong</h2>
+      <h2 className="mb-2 text-2xl font-bold text-foreground">Something went wrong</h2>
       <p className="mb-6 text-muted-foreground">{error}</p>
       <Button onClick={onRetry} size="lg">
         Try Again

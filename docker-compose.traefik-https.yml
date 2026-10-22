@@ -7,12 +7,12 @@
 #
 # Example:
 #   TRAEFIK_RULE='Host(`voicevault.example.com`)' \
-#   TRAEFIK_NETWORK=traefik-yuy7_default \
+#   TRAEFIK_NETWORK=traefik \
 #   TRAEFIK_CERT_RESOLVER=letsencrypt \
 #   docker compose -f docker-compose.yml -f docker-compose.traefik-host.yml -f docker-compose.traefik-https.yml up -d --build
 
 services:
-  web:
+  frontend:
     labels:
       traefik.http.routers.voicevault-http.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
       traefik.http.routers.voicevault-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}

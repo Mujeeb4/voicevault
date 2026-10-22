@@ -16,11 +16,11 @@ import { toast } from 'sonner';
 
 import { useAuthStore } from '@/store/auth';
 import { signupSchema, type SignupFormData } from '@/lib/validations/auth';
-import { getApiErrorMessage } from '@/lib/utils';
+import { getApiErrorMessage, safeRedirectPath } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { OnboardingHeader, SiteFooter } from '@/components/layout';
+import { AuthShell } from '@/components/layout';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -44,10 +44,7 @@ export default function SignupPage() {
       await signup({ email, password, full_name, phone_number });
       toast.success('Your free Memory Starter vault is ready.');
       const requestedNext = searchParams.get('next');
-      const safeNext =
-        requestedNext?.startsWith('/') && !requestedNext.startsWith('//')
-          ? requestedNext
-          : '/dashboard?welcome=1';
+      const safeNext = safeRedirectPath(requestedNext, '/dashboard?welcome=1');
       router.replace(safeNext);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Failed to create account'));
@@ -55,26 +52,23 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <OnboardingHeader />
-
-      <main className="mx-auto max-w-md px-4 py-8 sm:py-12">
+    <AuthShell>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
           <div className="mb-6 text-center sm:mb-8">
-            <h1 className="font-heading text-3xl font-semibold text-foreground sm:text-4xl">
-              Begin Your Forever Memory
+            <h1 className="text-2xl font-semibold sm:text-3xl text-foreground sm:text-4xl">
+              Create your free account
             </h1>
             <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              Start free. Record your first memories today. Upgrade only when you choose.
+              Start free and record your first memories today. Upgrade only if you choose to.
             </p>
           </div>
 
           <motion.div
-            className="archive-panel rounded-lg p-5 sm:p-8"
+            className="surface p-6 shadow-sm sm:p-8"
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -145,7 +139,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -170,7 +164,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1.5 text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors duration-200"
                     aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
                   >
                     {showConfirmPassword ? (
@@ -196,14 +190,14 @@ export default function SignupPage() {
                     I agree to the{' '}
                     <Link
                       href="/terms"
-                      className="font-medium text-primary hover:text-primary/90 transition-colors"
+                      className="font-medium text-primary hover:text-primary transition-colors"
                     >
                       Terms
                     </Link>{' '}
                     and{' '}
                     <Link
                       href="/privacy"
-                      className="font-medium text-primary hover:text-primary/90 transition-colors"
+                      className="font-medium text-primary hover:text-primary transition-colors"
                     >
                       Privacy
                     </Link>
@@ -230,7 +224,7 @@ export default function SignupPage() {
                 ) : (
                   <>
                     <Check className="h-4 w-4" />
-                    Create Free Account
+                    Create free account
                   </>
                 )}
               </Button>
@@ -240,25 +234,15 @@ export default function SignupPage() {
               Already have an account?{' '}
               <Link
                 href="/login"
-                className="font-medium text-primary hover:text-primary/90 transition-colors"
+                className="font-medium text-primary hover:text-primary transition-colors"
               >
                 Sign in
               </Link>
             </p>
           </motion.div>
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            <Link href="/pricing" className="hover:text-primary transition-colors">
-              Pricing
-            </Link>
-            {' · '}
-            <Link href="/" className="hover:text-primary transition-colors">
-              Home
-            </Link>
-          </p>
+
         </motion.div>
-      </main>
-      <SiteFooter />
-    </div>
+      </AuthShell>
   );
 }

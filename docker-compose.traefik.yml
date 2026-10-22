@@ -1,26 +1,26 @@
 # Optional Traefik integration for Hostinger or any external Traefik container.
 #
 # HTTP/IP usage, for example Hostinger's temporary URL:
-#   TRAEFIK_RULE='Host(`72.61.76.103`) || Host(`web.srv1183929.hstgr.cloud`) || Host(`voicevault-web.srv1183929.hstgr.cloud`)' \
-#   TRAEFIK_NETWORK=traefik-yuy7_default \
+#   TRAEFIK_RULE='Host(`72.61.76.103`) || Host(`web.srv1183929.hstgr.cloud`) || Host(`voicevault.example.com`)' \
+#   TRAEFIK_NETWORK=traefik \
 #   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
 #
 # HTTPS/domain usage:
 #   TRAEFIK_RULE='Host(`voicevault.example.com`)' \
-#   TRAEFIK_NETWORK=traefik-yuy7_default \
+#   TRAEFIK_NETWORK=traefik \
 #   docker compose -f docker-compose.yml -f docker-compose.traefik.yml -f docker-compose.traefik-https.yml up -d --build
 #
 # Find the Traefik network with:
 #   docker network ls | grep traefik
 
 services:
-  web:
+  frontend:
     networks:
       - default
       - traefik
     labels:
       traefik.enable: "true"
-      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik-yuy7_default}
+      traefik.docker.network: ${TRAEFIK_NETWORK:-traefik}
       traefik.http.routers.voicevault.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
       traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
       traefik.http.routers.voicevault.tls: "${TRAEFIK_TLS:-false}"
@@ -29,4 +29,4 @@ services:
 networks:
   traefik:
     external: true
-    name: ${TRAEFIK_NETWORK:-traefik-yuy7_default}
+    name: ${TRAEFIK_NETWORK:-traefik}

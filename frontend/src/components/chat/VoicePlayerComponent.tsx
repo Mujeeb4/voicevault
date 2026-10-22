@@ -10,6 +10,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
+import { Waveform } from '@/components/ui/waveform';
 import { Play, Pause, Volume2, VolumeX, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useChatStore } from '@/store/chat';
@@ -168,23 +169,22 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-col space-y-2 p-3 bg-muted/30 rounded-lg', className)}>
-      {/* Progress Bar */}
-      <div className="flex items-center space-x-2">
-        <span className="text-xs text-muted-foreground w-10 text-right">
+    <div className={cn('flex flex-col space-y-2 rounded-xl border border-border bg-card p-3', className)}>
+      {/* Waveform progress */}
+      <div className="flex items-center space-x-3">
+        <span className="num w-10 text-right text-xs text-muted-foreground">
           {formatTime(displayTime)}
         </span>
-        <Slider
-          value={[displayTime]}
-          min={0}
-          max={displayDuration || 100}
-          step={0.1}
-          onValueChange={handleSeek}
-          disabled={!isCurrent || !displayDuration}
+        <Waveform
           className="flex-1"
-          aria-label="Audio progress"
+          bars={44}
+          seed={conversationId.length + 3}
+          progress={displayDuration ? displayTime / displayDuration : 0}
+          active={isPlaying}
+          onSeek={isCurrent && displayDuration ? (f) => handleSeek([f * displayDuration]) : undefined}
+          label="Audio progress"
         />
-        <span className="text-xs text-muted-foreground w-10">
+        <span className="num w-10 text-xs text-muted-foreground">
           {displayDuration ? formatTime(displayDuration) : '--:--'}
         </span>
       </div>

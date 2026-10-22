@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Invite Family Member Dialog
+ * Invite a family member Dialog
  * AI Owner can invite family members with relationship
  * Following .cursorrules patterns
  */
@@ -104,13 +104,13 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
         {trigger || (
           <Button>
             <UserPlus className="mr-2 h-4 w-4" />
-            Invite Family Member
+            Invite a family member
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Invite Family Member</DialogTitle>
+          <DialogTitle>Invite a family member</DialogTitle>
           <DialogDescription>
             Share your AI personality with a loved one. They&apos;ll be able to chat with your AI.
           </DialogDescription>
@@ -121,7 +121,7 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address *</Label>
+              <Label htmlFor="email">Email address *</Label>
               <Input
                 id="email"
                 type="email"
@@ -133,9 +133,9 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
               />
             </div>
 
-            {/* Full Name */}
+            {/* Full name */}
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name *</Label>
+              <Label htmlFor="fullName">Full name *</Label>
               <Input
                 id="fullName"
                 type="text"
@@ -164,9 +164,9 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
               </Select>
             </div>
 
-            {/* Personal Message (Optional) */}
+            {/* Personal message (optional) */}
             <div className="space-y-2">
-              <Label htmlFor="message">Personal Message (Optional)</Label>
+              <Label htmlFor="message">Personal message (optional)</Label>
               <Textarea
                 id="message"
                 placeholder="I'd love for you to chat with my AI..."
@@ -193,23 +193,23 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Sending...' : 'Send Invitation'}
+                {isLoading ? 'Sending…' : 'Send invitation'}
               </Button>
             </DialogFooter>
           </form>
         ) : (
           // Step 2: Invitation Link
           <div className="space-y-4">
-            <Alert className="bg-green-50 border-green-200">
-              <Check className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
+            <Alert className="bg-accent border-primary/20">
+              <Check className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-foreground">
                 <strong>Invitation sent!</strong> Share the link below with {fullName}.
               </AlertDescription>
             </Alert>
 
             {/* Invitation Link */}
             <div className="space-y-2">
-              <Label>Invitation Link</Label>
+              <Label>Invitation link</Label>
               <div className="flex gap-2">
                 <Input
                   value={lastInvitation.invitation_link}
@@ -230,13 +230,13 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
-                className="flex-1"
+                className="sm:flex-1"
                 onClick={() => window.open(`mailto:${email}?subject=VoiceVault Invitation&body=Click here to accept: ${lastInvitation.invitation_link}`)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
                 Email Link
               </Button>
-              <Button variant="default" className="flex-1" onClick={handleClose}>
+              <Button variant="default" className="sm:flex-1" onClick={handleClose}>
                 Done
               </Button>
             </div>

@@ -61,7 +61,7 @@ export const recordingsApi = {
       recording_id: data.id ?? data.recording_id,
       storage_path: data.storage_path ?? '',
       public_url: data.public_url ?? '',
-      status: data.upload_status === 'complete' ? 'complete' : ('pending' as const),
+      status: (data.upload_status ?? data.status) === 'complete' ? 'complete' : (data.upload_status ?? data.status) === 'failed' ? 'failed' : 'pending',
       created_at: data.created_at ?? new Date().toISOString(),
     };
   },

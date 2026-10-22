@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { PersonAvatar } from '@/components/ui/person-avatar';
 import { Button } from '@/components/ui/button';
 import { Copy, Star, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -96,18 +96,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     <div
       className={cn(
         'flex gap-3 p-4 rounded-lg transition-colors',
-        isUser ? 'flex-row-reverse bg-primary/5' : 'bg-muted/30'
+        isUser ? 'flex-row-reverse bg-accent' : 'bg-muted/30'
       )}
     >
       {/* Avatar */}
       {showAvatar && (
-        <Avatar className="h-10 w-10 flex-shrink-0">
-          <AvatarFallback className={cn(isUser ? 'bg-primary text-primary-foreground' : 'bg-secondary')}>
-            {isUser
-              ? conversation.family_member?.full_name?.charAt(0) || 'U'
-              : conversation.ai_owner?.full_name?.charAt(0) || 'AI'}
-          </AvatarFallback>
-        </Avatar>
+        <PersonAvatar
+          name={isUser ? conversation.family_member?.full_name : conversation.ai_owner?.full_name}
+          tone={isUser ? 'solid' : 'soft'}
+          className="flex-shrink-0"
+        />
       )}
 
       {/* Message Content */}
@@ -181,7 +179,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Rate This Response</DialogTitle>
+                  <DialogTitle>Rate this response</DialogTitle>
                   <DialogDescription>
                     Help us improve by sharing your thoughts on this AI response.
                   </DialogDescription>

@@ -36,7 +36,7 @@ export function AudioRecorder({ isRecording, isPaused }: AudioRecorderProps) {
       if (canvasRef.current) {
         const ctx = canvasRef.current.getContext('2d');
         if (ctx) {
-          ctx.fillStyle = '#1f2937';
+          ctx.fillStyle = '#eef4f1';
           ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         }
       }
@@ -54,8 +54,8 @@ export function AudioRecorder({ isRecording, isPaused }: AudioRecorderProps) {
         height: canvasRef.current.height,
         barWidth: 3,
         barGap: 2,
-        color: isRecording && !isPaused ? '#3b82f6' : '#6b7280',
-        backgroundColor: '#1f2937',
+        color: isRecording && !isPaused ? '#0b8458' : '#9aa8a2',
+        backgroundColor: '#eef4f1',
       });
 
       animationRef.current = requestAnimationFrame(animate);

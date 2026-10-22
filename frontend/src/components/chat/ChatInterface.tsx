@@ -15,6 +15,7 @@ import { useChatStore } from '@/store/chat';
 import { chatApi } from '@/lib/api/chat';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { PersonAvatar } from '@/components/ui/person-avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 
@@ -52,6 +53,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Initialize chat
   useEffect(() => {
+    useChatStore.getState().reset();
+    setIsLoading(true);
     setAIOwner(aiOwnerId);
     setFamilyMember(familyMemberId);
 
@@ -63,6 +66,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       .finally(() => {
         setIsLoading(false);
       });
+    return () => { useChatStore.getState().reset(); };
   }, [aiOwnerId, familyMemberId, setAIOwner, setFamilyMember, loadConversations]);
 
   // Auto-scroll to bottom on new messages
@@ -82,7 +86,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     try {
       // Transcribe voice input
       const { transcript } = await chatApi.transcribeVoice(audioBlob);
-      
+
       // Send transcribed text as message
       await sendMessage(transcript);
     } catch (err) {
@@ -100,7 +104,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className={cn('flex items-center justify-center h-full', className)}>
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading conversation...</p>
+          <p className="text-sm text-muted-foreground">Loading conversation…</p>
         </div>
       </div>
     );
@@ -110,11 +114,15 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-background">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Chat with {aiOwnerName}</h2>
-          <p className="text-sm text-muted-foreground">
-            {voiceEnabled ? 'Voice responses enabled' : 'Text chat only on Memory Starter'}
-          </p>
+        <div className="flex items-center gap-3">
+          <PersonAvatar name={aiOwnerName} size="md" />
+          <div>
+            <h1 className="text-lg font-semibold leading-tight text-foreground">{aiOwnerName}</h1>
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              {voiceEnabled ? 'Replies in their voice' : 'Text replies · voice with Premium'}
+            </p>
+          </div>
         </div>
 
         {/* Status Indicators */}
@@ -122,7 +130,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           {isStreaming && (
             <div className="flex items-center gap-2 text-sm text-primary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>AI is responding...</span>
+              <span>Thinking…</span>
             </div>
           )}
         </div>
@@ -142,10 +150,10 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
 
       {!voiceEnabled && (
-        <Alert className="m-4 border-primary/30 bg-primary/5">
+        <Alert className="mx-4 mt-3 border-primary/30 bg-accent py-2.5">
           <Lock className="h-4 w-4" />
           <AlertDescription>
-            Voice input and voice responses unlock with VoiceVault Premium. This vault can still use text chat until the free message limit is reached.
+            Voice replies unlock with Premium. Text chat works until the free message limit.
           </AlertDescription>
         </Alert>
       )}
@@ -154,12 +162,31 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
         <div className="space-y-4">
           {conversations.length === 0 && !isStreaming ? (
-            <div className="flex flex-col items-center justify-center h-full py-12 text-center">
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold text-foreground">Start a Conversation</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
-                  Ask {aiOwnerName} anything! They&apos;ll respond with their unique voice and personality.
-                </p>
+            <div className="flex flex-col items-center justify-center py-4 text-center">
+              <PersonAvatar name={aiOwnerName} size="lg" ring />
+              <h2 className="mt-3 text-xl font-semibold text-foreground">
+                Ask {aiOwnerName} anything
+              </h2>
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                Answers come from their own recorded stories and the way they speak. Start with a question below, or write your own.
+              </p>
+              <div className="mt-4 flex max-w-xl flex-wrap justify-center gap-2">
+                {[
+                  'What was your childhood like?',
+                  'What advice would you give me?',
+                  'How did you meet the love of your life?',
+                  'What are you most proud of?',
+                ].map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => handleSend(q)}
+                    disabled={isStreaming || !!error}
+                    className="min-h-11 rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground shadow-card transition hover:border-primary/40 hover:bg-accent disabled:opacity-50"
+                  >
+                    {q}
+                  </button>
+                ))}
               </div>
             </div>
           ) : (
@@ -209,7 +236,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           onSendVoice={voiceEnabled ? handleSendVoice : undefined}
           isStreaming={isStreaming}
           maxLength={500}
-          placeholder={`Ask ${aiOwnerName} a question...`}
+          placeholder={`Ask ${aiOwnerName} a question…`}
           disabled={!!error}
         />
       </div>

@@ -2,7 +2,7 @@
  * Family API - invitations and accessible AIs
  */
 import apiClient from './client';
-import type { FamilyMember, InviteRequest, InviteResponse, RelationshipType, UsageQuotaStatus } from '@/types';
+import type { FamilyMember, InviteRequest, InviteResponse, UsageQuotaStatus } from '@/types';
 
 const baseUrl = '/family';
 
@@ -61,29 +61,17 @@ export const familyApi = {
     };
   },
 
-  updateFamilyMember: async (
-    memberId: string,
-    updates: { relationship?: RelationshipType; has_access?: boolean }
-  ): Promise<FamilyMember> => {
-    const { data } = await apiClient.patch(`${baseUrl}/members/${memberId}/`, updates);
-    return data;
-  },
-
-  acceptInvitation: async (
-    tokenOrPayload: string | { token: string; full_name?: string; password?: string }
-  ): Promise<{ message: string; redirect_url: string }> => {
-    const token = typeof tokenOrPayload === 'string' ? tokenOrPayload : tokenOrPayload.token;
-    const body = typeof tokenOrPayload === 'object' ? { full_name: tokenOrPayload.full_name, password: tokenOrPayload.password } : {};
-    const { data } = await apiClient.post(`${baseUrl}/accept-invite/${token}/`, body);
+  acceptInvitation: async (token: string): Promise<{ message: string; redirect_url: string }> => {
+    const { data } = await apiClient.post(`${baseUrl}/accept-invite/${encodeURIComponent(token)}/`, {});
     return {
       message: data.message ?? 'Invitation accepted',
-      redirect_url: data.redirect_url ?? '/chat',
+      redirect_url: `/chat/${data.ai_owner.id}`,
     };
   },
 
   getInvitationDetails: async (
     token: string
-  ): Promise<{ ai_owner: { full_name: string }; email: string; relationship?: string; is_expired?: boolean }> => {
+  ): Promise<{ ai_owner: { id: string; full_name: string }; invitee_email: string; invitee_name: string; relationship?: string; is_expired?: boolean; already_accepted?: boolean }> => {
     const { data } = await apiClient.get(`${baseUrl}/invitation/${token}/`);
     return data;
   },

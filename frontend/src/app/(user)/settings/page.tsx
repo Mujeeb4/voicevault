@@ -14,6 +14,7 @@ import { authApi } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/ui/page-header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
@@ -117,31 +118,27 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="journey-hero p-5 sm:p-7">
-        <p className="journey-kicker mb-3">Account controls</p>
-        <h1 className="font-heading text-3xl sm:text-4xl font-bold tracking-normal text-foreground">
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl">
-          Manage your profile, password, plan, and AI vault readiness from one secure place.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Account"
+        title="Account settings"
+        description="Manage your profile, password and plan in one place."
+      />
 
       {/* Profile Section */}
-      <Card className="journey-card">
+      <Card className="surface">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-accent text-primary">
               <User className="h-5 w-5" />
             </span>
-            Profile Information
+            Profile
           </CardTitle>
           <CardDescription>Update your personal information</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveProfile} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">Full name</Label>
               <Input
                 id="fullName"
                 value={fullName}
@@ -162,7 +159,7 @@ export default function SettingsPage() {
             <Button
               type="submit"
               disabled={isSaving}
-              className="shimmer-btn text-primary-foreground"
+              className=""
             >
               {isSaving ? (
                 <>
@@ -172,7 +169,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  Save changes
                 </>
               )}
             </Button>
@@ -181,20 +178,20 @@ export default function SettingsPage() {
       </Card>
 
       {/* Password Section */}
-      <Card className="journey-card">
+      <Card className="surface">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-accent text-primary">
               <Lock className="h-5 w-5" />
             </span>
-            Change Password
+            Change password
           </CardTitle>
           <CardDescription>Update your password to keep your account secure</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
+              <Label htmlFor="currentPassword">Current password</Label>
               <Input
                 id="currentPassword"
                 type="password"
@@ -208,7 +205,7 @@ export default function SettingsPage() {
             <Separator />
 
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
+              <Label htmlFor="newPassword">New password</Label>
               <Input
                 id="newPassword"
                 type="password"
@@ -221,7 +218,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Label htmlFor="confirmPassword">Confirm new password</Label>
               <Input
                 id="confirmPassword"
                 type="password"
@@ -247,7 +244,7 @@ export default function SettingsPage() {
               ) : (
                 <>
                   <Lock className="mr-2 h-4 w-4" />
-                  Change Password
+                  Change password
                 </>
               )}
             </Button>
@@ -256,10 +253,10 @@ export default function SettingsPage() {
       </Card>
 
       {/* Billing & Payment */}
-      <Card id="billing" className="journey-card scroll-mt-6">
+      <Card id="billing" className="surface scroll-mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/20 bg-accent text-primary">
               <CreditCard className="h-5 w-5" />
             </span>
             Plan & Payment
@@ -277,12 +274,12 @@ export default function SettingsPage() {
           ) : billing?.is_paid ? (
             <>
               {/* Paid: Plan & status */}
-              <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+              <div className="rounded-lg border border-primary/25 bg-accent p-4">
                 <div className="flex items-center gap-2 text-primary font-medium">
                   <CheckCircle className="h-5 w-5" />
                   {billing.plan_name ?? 'VoiceVault Lifetime Subscription'}
                 </div>
-                <p className="text-sm text-primary/85 mt-1">
+                <p className="text-sm text-primary mt-1">
                   Lifetime access · One-time payment. No subscription to cancel.
                 </p>
               </div>
@@ -364,15 +361,15 @@ export default function SettingsPage() {
           ) : (
             /* Free plan */
             <>
-              <div className="rounded-lg border border-primary/25 bg-primary/10 p-4">
+              <div className="rounded-lg border border-primary/25 bg-accent p-4">
                 <p className="font-medium text-primary">Memory Starter · Current plan</p>
-                <p className="text-sm text-primary/85 mt-1">
+                <p className="text-sm text-primary mt-1">
                   Your free plan includes 5 guided questions, 15 recording minutes, text AI, 5
                   family chat messages, and 1 family invitation. Premium is optional.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button asChild className="shimmer-btn text-primary-foreground">
+                <Button asChild className="">
                   <Link href="/pricing" className="inline-flex items-center gap-2">
                     <Sparkles className="h-4 w-4" />
                     Compare with Premium
@@ -385,7 +382,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Account / AI Status */}
-      <Card className="journey-card">
+      <Card className="surface">
         <CardHeader>
           <CardTitle>Account & AI Status</CardTitle>
           <CardDescription>Your recording and AI readiness</CardDescription>

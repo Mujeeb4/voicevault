@@ -27,9 +27,9 @@ export default function NotFound() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="archive-panel max-w-md rounded-lg p-8 text-center">
-        <h1 className="font-heading text-6xl font-semibold text-foreground">404</h1>
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">
+      <div className="surface max-w-md p-8 text-center">
+        <h1 className="font-heading tracking-tight text-6xl font-semibold text-foreground">404</h1>
         <p className="mt-2 text-lg text-muted-foreground">
           This page doesn&apos;t exist or has been moved.
         </p>
@@ -42,12 +42,12 @@ export default function NotFound() {
             className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-base font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-md"
           >
             <Home className="h-5 w-5" />
-            Go Home
+            Go to home
           </Link>
           <button
             type="button"
             onClick={handleGoBack}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card/70 px-6 py-3 text-base font-semibold text-foreground transition-all hover:bg-muted"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-base font-semibold text-foreground transition-all hover:bg-muted"
           >
             <ArrowLeft className="h-5 w-5" />
             Go Back

@@ -59,7 +59,8 @@ graphify-out/graphify.json.gz.part.2
 graphify-out/graphify.json.gz.part.3
 # Environment Variables
 .env
-.env.local
+.env.*
+!.env.example
 
 # IDE
 .vscode/
@@ -98,3 +99,8 @@ temp_recordings/
 node_modules/
 artifacts/
 graphify-out/
+
+# Browser tests and local recovery archives
+**/playwright-report/
+**/test-results/
+*.tsbuildinfo

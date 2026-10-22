@@ -1,16 +1,36 @@
-# Docker Compose for local development, end-to-end testing, and the Hostinger
-# host-network Traefik deployment. Traefik ignores these labels when it is not
-# running, so this remains usable for local development.
-#
-# Postgres and Redis are published on non-default host ports to avoid conflicts
-# with local services. Containers still talk to them on the internal ports.
+# Local stack. Each image is built from its own service directory.
+name: voicevault
+
+x-backend: &backend
+  image: voicevault-backend:local
+  build:
+    context: ./backend
+  env_file:
+    - path: ${BACKEND_ENV_FILE:-./backend/.env}
+      required: false
+  environment: &backend-environment
+    DEBUG: "True"
+    SECRET_KEY: local-development-secret-change-before-hosting
+    ALLOWED_HOSTS: localhost,127.0.0.1,backend
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/voicevault
+    DB_SSL_REQUIRE: "False"
+    REDIS_URL: redis://redis:6379/0
+    STORAGE_BACKEND: local
+    LOCAL_STORAGE_PUBLIC_URL: ${SITE_URL:-http://localhost:3000}
+    FRONTEND_URL: ${SITE_URL:-http://localhost:3000}
+    CORS_ALLOWED_ORIGINS: ${SITE_URL:-http://localhost:3000}
+    CSRF_TRUSTED_ORIGINS: ${SITE_URL:-http://localhost:3000}
+    SECURE_SSL_REDIRECT: "False"
+    SESSION_COOKIE_SECURE: "False"
+    CSRF_COOKIE_SECURE: "False"
+    PORT: "8000"
+  restart: unless-stopped
+  volumes:
+    - media_data:/app/media
 
 services:
-  # PostgreSQL Database (for local testing, production uses Supabase)
   postgres:
     image: postgres:15-alpine
-    restart: unless-stopped
-    container_name: voicevault-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -20,164 +40,81 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d voicevault"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+    restart: unless-stopped
 
-  # Redis for Celery
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
-    container_name: voicevault-redis
+    command: redis-server --appendonly yes
     ports:
       - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-
-  # Django + Next.js Web Service
-  web:
+      retries: 10
     restart: unless-stopped
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-    container_name: voicevault-web
-    env_file:
-      - path: .env
-        required: false
+
+  backend:
+    <<: *backend
     ports:
-      - "${HOST_BIND_IP:-127.0.0.1}:${BACKEND_HOST_PORT:-18000}:8000"
-      - "${HOST_BIND_IP:-127.0.0.1}:${FRONTEND_HOST_PORT:-13000}:3000"
-    labels:
-      traefik.enable: "${TRAEFIK_ENABLE:-true}"
-      traefik.http.routers.voicevault-http.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
-      traefik.http.routers.voicevault-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}
-      traefik.http.routers.voicevault-http.middlewares: voicevault-redirect-https
-      traefik.http.routers.voicevault.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
-      traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_HTTPS_ENTRYPOINT:-websecure}
-      traefik.http.routers.voicevault.tls: "true"
-      traefik.http.routers.voicevault.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}
-      traefik.http.services.voicevault.loadbalancer.server.port: "3000"
-      traefik.http.middlewares.voicevault-redirect-https.redirectscheme.scheme: https
-    environment:
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - CSRF_TRUSTED_ORIGINS=${CSRF_TRUSTED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
-      - REDIS_URL=redis://redis:6379/0
-      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
-      - FRONTEND_URL=${FRONTEND_URL:-http://127.0.0.1:${FRONTEND_HOST_PORT:-13000}}
-      - STRIPE_MODE=${STRIPE_MODE:-test}
-      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
-      - STRIPE_PUBLISHABLE_KEY=${STRIPE_PUBLISHABLE_KEY:-}
-      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
-      - STRIPE_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_PREMIUM_ONE_TIME_PRICE_ID:-}
-      - STRIPE_TEST_SECRET_KEY=${STRIPE_TEST_SECRET_KEY:-}
-      - STRIPE_TEST_PUBLISHABLE_KEY=${STRIPE_TEST_PUBLISHABLE_KEY:-}
-      - STRIPE_TEST_WEBHOOK_SECRET=${STRIPE_TEST_WEBHOOK_SECRET:-}
-      - STRIPE_TEST_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_TEST_PREMIUM_ONE_TIME_PRICE_ID:-}
-      - STRIPE_LIVE_SECRET_KEY=${STRIPE_LIVE_SECRET_KEY:-}
-      - STRIPE_LIVE_PUBLISHABLE_KEY=${STRIPE_LIVE_PUBLISHABLE_KEY:-}
-      - STRIPE_LIVE_WEBHOOK_SECRET=${STRIPE_LIVE_WEBHOOK_SECRET:-}
-      - STRIPE_LIVE_PREMIUM_ONE_TIME_PRICE_ID=${STRIPE_LIVE_PREMIUM_ONE_TIME_PRICE_ID:-}
-      - STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS=${STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS:-14999}
-      - STRIPE_PREMIUM_CURRENCY=${STRIPE_PREMIUM_CURRENCY:-usd}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_KEY=${SUPABASE_KEY:-}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      - NEXTJS_PORT=3000
-      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-true}
+      - "127.0.0.1:${BACKEND_HOST_PORT:-8000}:8000"
+    command: ["web"]
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./media:/app/media
-      - ./staticfiles:/app/staticfiles
-    command: /app/start.sh
 
-  # Celery Worker
-  celery-worker:
-    restart: unless-stopped
+  frontend:
+    image: voicevault-frontend:local
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./frontend
       args:
-        BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-    container_name: voicevault-celery-worker
-    env_file:
-      - path: .env
-        required: false
+        BACKEND_API_URL: http://backend:8000/api
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_MEDIA_ORIGINS: ${MEDIA_ORIGINS:-}
+        NEXT_PUBLIC_GA_TRACKING_ID: ${GA_TRACKING_ID:-}
     environment:
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
-      - REDIS_URL=redis://redis:6379/0
-      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_KEY=${SUPABASE_KEY:-}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY:-}
-      - RUN_MIGRATIONS=false
+      BACKEND_API_URL: http://backend:8000/api
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      NEXT_PUBLIC_MEDIA_ORIGINS: ${MEDIA_ORIGINS:-}
+      PORT: "3000"
+    ports:
+      - "127.0.0.1:${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
-      web:
+      backend:
         condition: service_healthy
-    volumes:
-      - ./media:/app/media
+    restart: unless-stopped
+
+  worker:
+    <<: *backend
+    command: ["worker"]
     healthcheck:
       disable: true
-    command: /app/start.sh celery-worker
-
-  # Celery Beat (Scheduler)
-  celery-beat:
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BACKEND_API_URL: ${BACKEND_API_URL:-http://localhost:8000/api}
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
-    container_name: voicevault-celery-beat
-    env_file:
-      - path: .env
-        required: false
-    environment:
-      - DEBUG=${DEBUG:-True}
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1}
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/voicevault
-      - REDIS_URL=redis://redis:6379/0
-      - STORAGE_BACKEND=${STORAGE_BACKEND:-local}
-      - LOCAL_STORAGE_PUBLIC_URL=${LOCAL_STORAGE_PUBLIC_URL:-http://127.0.0.1:${BACKEND_HOST_PORT:-18000}}
-      - SUPABASE_URL=${SUPABASE_URL:-}
-      - SUPABASE_KEY=${SUPABASE_KEY:-}
-      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
-      - RUN_MIGRATIONS=false
     depends_on:
-      web:
+      backend:
         condition: service_healthy
+
+  beat:
+    <<: *backend
+    command: ["beat"]
+    volumes:
+      - media_data:/app/media
+      - beat_data:/app/run
     healthcheck:
       disable: true
-    command: /app/start.sh celery-beat
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
   redis_data:
+  media_data:
+  beat_data:

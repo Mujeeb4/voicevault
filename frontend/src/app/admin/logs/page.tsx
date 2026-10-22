@@ -49,7 +49,7 @@ function AdminLogsContent() {
             {type === 'failures' ? <AlertTriangle className="h-5 w-5" /> : <ClipboardList className="h-5 w-5" />}
             <span className="text-xs font-semibold uppercase tracking-[0.18em]">Admin Logs</span>
           </div>
-          <h1 className="font-heading text-3xl font-semibold">Logs</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl font-semibold">Logs</h1>
           <p className="mt-2 text-sm text-muted-foreground">Inspect failed processing, recording, API events, and admin audit actions.</p>
         </div>
         <Select value={type} onValueChange={(value) => setType(value as typeof type)}>
@@ -63,7 +63,7 @@ function AdminLogsContent() {
         </Select>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-card/60">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>

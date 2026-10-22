@@ -30,11 +30,11 @@ export function UploadProgress({
 }: UploadProgressProps) {
   const statusConfig = {
     idle: {
-      icon: <Upload className="w-12 h-12 text-gray-400" />,
+      icon: <Upload className="w-12 h-12 text-muted-foreground" />,
       title: 'Ready to Upload',
       description: '',
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-100',
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted',
     },
     combining: {
       icon: <Loader2 className="w-12 h-12 text-primary-600 animate-spin" />,
@@ -81,7 +81,7 @@ export function UploadProgress({
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="journey-card p-6 sm:p-8"
+      className="surface p-6 sm:p-8"
     >
       {/* Icon and Status */}
       <div className="text-center mb-6">
@@ -93,7 +93,7 @@ export function UploadProgress({
           {config.icon}
         </motion.div>
 
-        <h3 className={`mb-2 font-heading text-2xl font-semibold ${config.color}`}>{config.title}</h3>
+        <h3 className={`mb-2 font-heading tracking-tight text-2xl font-semibold ${config.color}`}>{config.title}</h3>
 
         {config.description && (
           <p className="text-muted-foreground">{config.description}</p>
@@ -106,10 +106,10 @@ export function UploadProgress({
           <Progress value={progress} className="h-3" />
 
           <div className="flex items-center justify-between text-sm">
-            <span className="font-semibold text-gray-900">{progress}%</span>
+            <span className="font-semibold text-foreground">{progress}%</span>
 
             {timeRemaining && (
-              <span className="text-gray-600">
+              <span className="text-muted-foreground">
                 {timeRemaining < 60
                   ? `${timeRemaining}s remaining`
                   : `${Math.ceil(timeRemaining / 60)}m remaining`}
@@ -200,7 +200,7 @@ function StepIndicator({
             ? 'bg-success-500 border-success-500'
             : isActive
             ? 'bg-primary-500 border-primary-500 animate-pulse'
-            : 'bg-white border-gray-300'
+            : 'bg-card border-border'
         }`}
       >
         {isComplete && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -211,7 +211,7 @@ function StepIndicator({
 
       <span
         className={`text-sm font-medium ${
-          isActive || isComplete ? 'text-gray-900' : 'text-gray-400'
+          isActive || isComplete ? 'text-foreground' : 'text-muted-foreground'
         }`}
       >
         {label}

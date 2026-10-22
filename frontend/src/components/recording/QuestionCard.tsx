@@ -18,12 +18,12 @@ interface QuestionCardProps {
 }
 
 const domainColors = {
-  childhood: 'bg-secondary/12 text-secondary-foreground border-secondary/25',
-  family: 'bg-accent/25 text-accent-foreground border-accent/35',
-  career: 'bg-primary/12 text-primary border-primary/25',
-  wisdom: 'bg-emerald-500/12 text-emerald-200 border-emerald-500/25',
-  challenges: 'bg-rose-500/12 text-rose-200 border-rose-500/25',
-  personality: 'bg-sky-500/12 text-sky-200 border-sky-500/25',
+  childhood: 'bg-secondary text-secondary-foreground border-border',
+  family: 'bg-accent text-accent-foreground border-primary/20',
+  career: 'bg-accent text-primary border-primary/25',
+  wisdom: 'bg-primary/10 text-primary border-primary/25',
+  challenges: 'bg-rose-500/10 text-rose-700 border-rose-500/25',
+  personality: 'bg-sky-500/10 text-sky-700 border-sky-500/25',
 };
 
 export function QuestionCard({ question, questionNumber, totalQuestions }: QuestionCardProps) {
@@ -33,13 +33,13 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="journey-card p-5 sm:p-7"
+      className="surface p-5 sm:p-7"
     >
       {/* Header */}
       <div className="mb-5 flex items-start justify-between gap-4">
         {/* Question Number */}
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/25 bg-accent">
             <span className="text-xl font-bold text-primary">{questionNumber}</span>
           </div>
           <div>
@@ -56,7 +56,7 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
 
       {/* Question Text */}
       <div className="mb-5">
-        <h2 className="font-heading text-2xl font-semibold leading-relaxed text-foreground sm:text-3xl">
+        <h2 className="font-heading tracking-tight text-2xl font-semibold leading-relaxed text-foreground sm:text-3xl">
           {question.question_text}
         </h2>
       </div>
@@ -67,7 +67,7 @@ export function QuestionCard({ question, questionNumber, totalQuestions }: Quest
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           transition={{ delay: 0.2 }}
-          className="mb-4 rounded-lg border border-primary/25 bg-primary/10 p-4"
+          className="mb-4 rounded-lg border border-primary/25 bg-accent p-4"
         >
           <div className="flex items-start gap-3">
             <Lightbulb className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />

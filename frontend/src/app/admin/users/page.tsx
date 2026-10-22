@@ -68,7 +68,7 @@ function AdminUsersContent() {
           value={statusFilter}
           onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>

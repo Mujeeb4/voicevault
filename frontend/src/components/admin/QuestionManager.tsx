@@ -105,7 +105,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
       childhood: 'bg-primary-500',
       family: 'bg-green-500',
       career: 'bg-purple-500',
-      wisdom: 'bg-amber-500',
+      wisdom: 'bg-primary',
       challenges: 'bg-red-500',
       personality: 'bg-pink-500',
     };
@@ -118,7 +118,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing hover:bg-muted p-1 rounded"
+          className="flex h-11 w-11 cursor-grab items-center justify-center rounded hover:bg-muted active:cursor-grabbing lg:h-8 lg:w-8"
           aria-label={`Reorder question ${question.order}: ${question.question_text}`}
         >
           <GripVertical className="h-5 w-5 text-muted-foreground" />
@@ -142,7 +142,7 @@ const SortableQuestionRow: React.FC<SortableQuestionRowProps> = ({
           onClick={() => onToggleActive(question)}
           aria-label={`${question.is_active ? 'Deactivate' : 'Activate'} question ${question.order}`}
           className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors',
+            'flex min-h-11 items-center gap-1 rounded px-3 text-xs font-medium transition-colors lg:min-h-0 lg:px-2 lg:py-1',
             question.is_active
               ? 'bg-green-100 text-green-700 hover:bg-green-200'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -342,7 +342,7 @@ export const QuestionManager: React.FC = () => {
           </SelectContent>
         </Select>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button onClick={() => setIsDialogOpen(true)} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Add Question

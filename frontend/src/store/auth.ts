@@ -9,6 +9,9 @@ import { persist } from 'zustand/middleware';
 import apiClient from '@/lib/api/client';
 import * as session from '@/lib/auth/session';
 import type { User, AuthTokens, LoginRequest, SignupRequest } from '@/types';
+import { getApiErrorMessage } from '@/lib/utils';
+
+let authCheck: Promise<void> | null = null;
 
 interface AuthState {
   // State
@@ -35,7 +38,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       tokens: null,
       isAuthenticated: false,
-      isLoading: false,
+      isLoading: true,
       error: null,
 
       // Login action
@@ -64,9 +67,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error: unknown) {
-          const err = error as { response?: { data?: { error?: string; detail?: string } } };
-          const errorMessage =
-            err.response?.data?.error || err.response?.data?.detail || 'Login failed';
+          const errorMessage = getApiErrorMessage(error, 'Login failed');
 
           set({
             isLoading: false,
@@ -106,9 +107,7 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
         } catch (error: unknown) {
-          const err = error as { response?: { data?: { error?: string; detail?: string } } };
-          const errorMessage =
-            err.response?.data?.error || err.response?.data?.detail || 'Signup failed';
+          const errorMessage = getApiErrorMessage(error, 'Signup failed');
 
           set({
             isLoading: false,
@@ -131,6 +130,7 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           tokens: null,
           isAuthenticated: false,
+          isLoading: false,
           error: null,
         });
       },
@@ -142,101 +142,33 @@ export const useAuthStore = create<AuthState>()(
 
       // Check authentication status (on app load)
       checkAuth: async () => {
-        // Check if session is idle
-        if (session.isSessionIdle()) {
-          get().logout();
-          set({ isLoading: false, isAuthenticated: false });
-          return;
-        }
-
-        // Get tokens from session (source of truth)
-        const accessToken = session.getAccessToken();
-        const refreshToken = session.getRefreshToken();
-
-        if (!accessToken || !refreshToken) {
-          // Sync Zustand store with session
-          set({
-            tokens: null,
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
-          return;
-        }
-
-        // Sync tokens to Zustand store
-        const tokens: AuthTokens = {
-          access: accessToken,
-          refresh: refreshToken,
-        };
-
-        // Check if token needs refresh
-        if (session.isTokenExpired()) {
-          try {
-            // Try to refresh token
-            const { data: refreshData } = await apiClient.post<{ access: string }>('/users/refresh/', {
-              refresh: refreshToken,
-            });
-
-            const expiresAt = session.decodeTokenExpiry(refreshData.access);
-            session.setTokens({
-              access: refreshData.access,
-              refresh: refreshToken,
-              expiresAt: expiresAt || undefined,
-            });
-
-            tokens.access = refreshData.access;
-          } catch (_error) {
-            // Refresh failed - logout
+        if (authCheck) return authCheck;
+        authCheck = (async () => {
+          if (session.isSessionIdle() || !session.getAccessToken() || !session.getRefreshToken()) {
             get().logout();
-            set({ isLoading: false, isAuthenticated: false });
+            set({ isLoading: false });
             return;
           }
-        }
-
-        try {
-          set({ isLoading: true, tokens });
-
-          // Verify token by fetching user profile
-          const { data: profileUser } = await apiClient.get<User>('/users/profile/');
-
-          set({
-            user: profileUser,
-            tokens,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-
-          // Update last activity
-          session.updateLastActivity();
-        } catch (_error) {
-          // Token is invalid, try refresh one more time
+          set({ isLoading: true });
           try {
-            const { data: refreshData } = await apiClient.post<{ access: string }>('/users/refresh/', {
-              refresh: refreshToken,
-            });
-
-            const expiresAt = session.decodeTokenExpiry(refreshData.access);
-            session.setTokens({
-              access: refreshData.access,
-              refresh: refreshToken,
-              expiresAt: expiresAt || undefined,
-            });
-
-            // Retry profile fetch
-            const { data: retryUser } = await apiClient.get<User>('/users/profile/');
-            set({
-              user: retryUser,
-              tokens: { access: refreshData.access, refresh: refreshToken },
-              isAuthenticated: true,
-              isLoading: false,
-            });
-          } catch (_refreshError) {
-            // Refresh failed - logout
-            get().logout();
-            set({ isLoading: false, isAuthenticated: false });
+            const { data: user } = await apiClient.get<User>('/users/profile/');
+            const access = session.getAccessToken();
+            const refresh = session.getRefreshToken();
+            if (!access || !refresh) {
+              get().logout();
+              return;
+            }
+            if (get().isAuthenticated && get().user?.id !== user.id) return;
+            set({ user, tokens: { access, refresh }, isAuthenticated: true, error: null });
+            session.updateLastActivity();
+          } catch (error) {
+            if (!session.getAccessToken()) get().logout();
+            else set({ error: getApiErrorMessage(error, 'Could not verify your session. Please try again.') });
+          } finally {
+            set({ isLoading: false });
           }
-        }
+        })().finally(() => { authCheck = null; });
+        return authCheck;
       },
 
       // Update user data (e.g., after profile update)
@@ -251,24 +183,23 @@ export const useAuthStore = create<AuthState>()(
 
       // Refresh user data from API (e.g., after processing completes)
       refreshUser: async () => {
-        const { tokens } = get();
-        if (!tokens?.access) return;
+        if (!session.getAccessToken()) return;
 
         try {
           const { data: user } = await apiClient.get<User>('/users/profile/');
-          set({ user });
+          if (session.getAccessToken() && get().user?.id === user.id) set({ user });
         } catch {
           console.error('Failed to refresh user');
         }
       },
     }),
     {
+      version: 2,
+      migrate: () => ({ user: null, tokens: null, isAuthenticated: false }),
       name: 'auth-storage', // localStorage key
       partialize: (state) => ({
         // Only persist these fields
         user: state.user,
-        tokens: state.tokens,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )

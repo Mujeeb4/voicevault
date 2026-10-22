@@ -1,29 +1,9 @@
 /**
  * Chat API - streaming messages and conversation history
  */
-import apiClient from './client';
+import apiClient, { API_BASE_URL, getValidAccessToken, refreshAccessToken } from './client';
 import * as session from '@/lib/auth/session';
 import type { Conversation } from '@/types';
-
-const envApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-
-/** EventSource requires an absolute URL; ensure we never pass a relative or empty base. */
-function getStreamBaseUrl(): string {
-  const raw = envApiUrl.trim();
-  if (raw && (raw.startsWith('http://') || raw.startsWith('https://'))) return raw;
-
-  if (typeof window !== 'undefined') {
-    const origin = window.location.origin;
-    if (raw) {
-      const path = raw.startsWith('/') ? raw : `/${raw}`;
-      return `${origin}${path}`;
-    }
-
-    return `${origin}/api`;
-  }
-
-  return '/api';
-}
 
 const chatBase = '/chat';
 
@@ -70,12 +50,15 @@ export const chatApi = {
     onComplete: (conversationId?: string) => void,
     onError: (message: string) => void
   ): StreamingConnection => {
-    const token = session.getAccessToken();
-    const base = getStreamBaseUrl().replace(/\/$/, '');
-    const path = `${chatBase}/stream/`.replace(/^\//, '');
-    const url = new URL(path, `${base}/`);
+    const url = `${API_BASE_URL}${chatBase}/stream/`;
 
     const controller = new AbortController();
+    let terminal = false;
+    const fail = (message: string) => {
+      if (terminal || controller.signal.aborted) return;
+      terminal = true;
+      onError(message);
+    };
 
     const handlePayload = (payload: Record<string, unknown>) => {
       switch (payload.type) {
@@ -91,32 +74,34 @@ export const chatApi = {
           onAudioUrl((payload.audio_url as string) ?? '', (payload.conversation_id as string) ?? '');
           break;
         case 'complete':
+          terminal = true;
           onComplete(payload.conversation_id as string | undefined);
           break;
         case 'error':
-          onError((payload.message as string) ?? 'Unknown error');
+          fail((payload.message as string) ?? 'Unable to generate a reply.');
           break;
       }
     };
 
     void (async () => {
       try {
-        const response = await fetch(url.toString(), {
+        const request = (token: string | null) => fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({
-            ai_owner_id: params.ai_owner_id,
-            family_member_id: params.family_member_id,
-            question: params.message,
-          }),
+          body: JSON.stringify({ ai_owner_id: params.ai_owner_id, question: params.message }),
           signal: controller.signal,
         });
-
+        let response = await request(await getValidAccessToken());
+        if (response.status === 401 && session.getRefreshToken()) {
+          response = await request(await refreshAccessToken());
+        }
         if (!response.ok || !response.body) {
-          onError('Connection failed');
+          if (response.status === 401) session.clearTokens();
+          const error = await response.json().catch(() => ({}));
+          fail(error.message ?? error.error ?? error.detail ?? 'Connection failed. Please try again.');
           return;
         }
 
@@ -124,28 +109,39 @@ export const chatApi = {
         const decoder = new TextDecoder();
         let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const messages = buffer.split('\n\n');
-          buffer = messages.pop() ?? '';
-
-          for (const message of messages) {
-            const dataLine = message.split('\n').find((line) => line.startsWith('data: '));
-            if (!dataLine) continue;
-
-            try {
-              handlePayload(JSON.parse(dataLine.slice(6)));
-            } catch {
-              onError('Invalid stream response');
+        const processEvent = (message: string) => {
+          const data = message.split('\n')
+            .filter((line) => line.startsWith('data:'))
+            .map((line) => line.slice(5).trimStart()).join('\n');
+          if (!data || terminal) return;
+          try {
+            handlePayload(JSON.parse(data));
+          } catch {
+            fail('Invalid stream response. Please try again.');
+          }
+        };
+        try {
+          while (!terminal) {
+            const { done, value } = await reader.read();
+            buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+            buffer = buffer.replace(/\r\n/g, '\n');
+            const messages = buffer.split('\n\n');
+            buffer = messages.pop() ?? '';
+            for (const message of messages) processEvent(message);
+            if (done) {
+              if (buffer.trim()) processEvent(buffer);
+              if (!terminal) fail('The connection closed before the reply finished. Please try again.');
+              break;
             }
           }
+        } finally {
+          await reader.cancel().catch(() => undefined);
+          reader.releaseLock();
         }
       } catch {
-        if (!controller.signal.aborted) onError('Connection failed');
+        fail('Connection failed. Please try again.');
       }
+
     })();
 
     return {
@@ -166,7 +162,9 @@ export const chatApi = {
 
   transcribeVoice: async (audioBlob: Blob): Promise<{ transcript: string }> => {
     const formData = new FormData();
-    formData.append('audio', audioBlob);
+    const mime = audioBlob.type.split(';')[0];
+    const extension = ({ 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'audio/wav': 'wav' } as Record<string, string>)[mime] ?? 'webm';
+    formData.append('audio', audioBlob, `voice-input.${extension}`);
     const { data } = await apiClient.post<{ transcript: string }>(`${chatBase}/transcribe-voice/`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

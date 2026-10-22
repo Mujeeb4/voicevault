@@ -1,4 +1,4 @@
-const backendApiUrl = (process.env.BACKEND_API_URL || 'https://voicevault-backend-production.up.railway.app/api').replace(/\/$/, '');
+const backendApiUrl = (process.env.BACKEND_API_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
 const backendBaseUrl = backendApiUrl.replace(/\/api$/, '');
 
 /** @type {import('next').NextConfig} */
@@ -39,6 +39,10 @@ const nextConfig = {
   experimental: {
     // Required for Next.js 15 and React 19
     reactCompiler: true,
+    // Long uploads, transcription, and SSE responses can exceed the default 30 seconds.
+    proxyTimeout: 180000,
+    // Keep the proxy above Django's 100 MB recording limit, including multipart overhead.
+    middlewareClientMaxBodySize: '110mb',
   },
 
   // Headers for security and performance
@@ -67,10 +71,6 @@ const nextConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(self), geolocation=()',
           },
-          {
-            key: 'X-Robots-Tag',
-            value: 'noindex, nofollow',
-          },
         ],
       },
     ];
@@ -82,10 +82,6 @@ const nextConfig = {
       {
         source: '/api/:path*',
         destination: `${backendApiUrl}/:path*/`,
-      },
-      {
-        source: '/admin/:path*',
-        destination: `${backendBaseUrl}/admin/:path*`,
       },
       {
         source: '/static/:path*',

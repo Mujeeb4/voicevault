@@ -1,227 +1,54 @@
-# VoiceVault Frontend
+# VoiceVault frontend
 
-Modern Next.js 14 frontend for VoiceVault - Voice-powered AI memory preservation system.
+The replacement VoiceVault UI is the only frontend in this repository. It uses Next.js App Router, React, TypeScript, Tailwind, React Query and Zustand.
 
-## 🚀 Tech Stack
-
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript (Strict Mode)
-- **Runtime**: React 19
-- **Styling**: Tailwind CSS + shadcn/ui
-- **State Management**: Zustand + React Query
-- **Audio**: Web Audio API + FFmpeg.wasm
-- **Streaming**: Server-Sent Events (SSE)
-- **Forms**: React Hook Form + Zod
-- **Icons**: Lucide React
-- **Linting**: ESLint 9 (Flat Config)
-
-## 📦 Installation
-
-```bash
-# Install dependencies
-npm install
-
-# Copy environment variables
-cp .env.local.example .env.local
-
-# Update .env.local with your backend URL
-```
-
-## 🏃 Running Development Server
-
-```bash
+```sh
+npm ci
+cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open <http://localhost:3000>. Run Django separately on port 8000, or start the complete stack from the repository root with `docker compose up --build`.
 
-## 📁 Project Structure
+## Structure
 
-```
-frontend/
-├── src/
-│   ├── app/                    # Next.js App Router pages
-│   │   ├── (auth)/            # Authentication pages
-│   │   ├── (user)/            # User dashboard & features
-│   │   ├── (admin)/           # Admin pages
-│   │   ├── layout.tsx         # Root layout
-│   │   ├── page.tsx           # Homepage
-│   │   ├── providers.tsx      # React Query provider
-│   │   └── globals.css        # Global styles
-│   ├── components/            # React components
-│   │   ├── ui/               # shadcn/ui base components
-│   │   ├── auth/             # Auth components
-│   │   ├── recording/        # Recording components
-│   │   ├── chat/             # Chat components
-│   │   ├── admin/            # Admin components
-│   │   └── shared/           # Shared components
-│   ├── lib/                   # Utilities
-│   │   ├── api/              # API client
-│   │   ├── audio/            # Audio utilities
-│   │   ├── hooks/            # Custom hooks
-│   │   ├── utils/            # Helper functions
-│   │   └── validations/      # Zod schemas
-│   ├── store/                 # Zustand stores
-│   │   ├── auth.ts
-│   │   ├── recording.ts
-│   │   ├── chat.ts
-│   │   └── admin.ts
-│   └── types/                 # TypeScript types
-│       └── index.ts
-├── public/
-│   ├── audio/
-│   └── icons/
-├── package.json
-├── tsconfig.json              # TypeScript config (strict mode)
-├── tailwind.config.ts         # Tailwind + Design System
-├── next.config.js             # Next.js config
-└── components.json            # shadcn/ui config
+- `src/app/`: pages and layouts, including user and admin screens.
+- `src/components/`: UI, recording, chat, family and administration components.
+- `src/lib/api/`: backend contracts and authenticated HTTP/streaming requests.
+- `src/lib/auth/`: session storage and token lifecycle.
+- `src/store/`: application state.
+- `src/types/`: shared frontend types.
+
+## Backend connection
+
+Browser requests go to `/api` on the frontend origin. Next.js forwards them to `BACKEND_API_URL`; use `http://127.0.0.1:8000/api` for local development or your hosted Django URL ending in `/api` for independent hosting. Docker Compose uses the internal backend service name instead.
+
+Authentication and permissions are provided by Django. Do not put Django, database, Stripe, AI or storage service secrets in this application. Browser Supabase credentials are not required.
+
+Set `NEXT_PUBLIC_SITE_URL` to the public frontend URL. If storage returns audio/image links on another origin, add that origin to `NEXT_PUBLIC_MEDIA_ORIGINS` (comma-separated) so the browser's content security policy permits it. Analytics is optional via `NEXT_PUBLIC_GA_TRACKING_ID`.
+
+`BACKEND_API_URL` rewrites and `NEXT_PUBLIC_*` values are baked into the build. Set them before building and rebuild when they change. The frontend needs a Node server; static-only hosting cannot run the API proxy.
+
+## Checks and production
+
+```sh
+npm run type-check
+npm run lint
+npm test
+npm run build
+npm start
 ```
 
-## 🎨 Design System
+With a disposable local stack running, `npm run test:e2e` checks real signup, reload persistence, login/logout and the admin guard. Install the browser once with `npx playwright install chromium`; set `PLAYWRIGHT_BASE_URL` if using a different local port.
 
-### Colors
-- **Primary**: Blue (#3b82f6)
-- **Success**: Green (#22c55e)
-- **Warning**: Amber (#f59e0b)
-- **Error**: Red (#ef4444)
+For a container, build from this directory:
 
-### Spacing
-Base unit: 4px (4, 8, 12, 16, 24, 32, 48, 64)
-
-### Border Radius
-- Small: 4px
-- Medium: 8px
-- Large: 12px
-
-## 🧩 Adding shadcn/ui Components
-
-```bash
-npx shadcn-ui@latest add button
-npx shadcn-ui@latest add input
-npx shadcn-ui@latest add card
-# etc.
+```sh
+docker build --build-arg BACKEND_API_URL=https://api.example.com/api \
+  --build-arg NEXT_PUBLIC_SITE_URL=https://voicevault.example.com \
+  --build-arg NEXT_PUBLIC_MEDIA_ORIGINS=https://your-project.supabase.co \
+  -t voicevault-frontend .
+docker run --rm -p 3000:3000 voicevault-frontend
 ```
 
-## 📝 Available Scripts
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
-
-## 🔧 Configuration Files
-
-- **tsconfig.json**: TypeScript strict mode enabled
-- **tailwind.config.ts**: Custom design system
-- **next.config.js**: Next.js optimizations
-- **components.json**: shadcn/ui configuration
-- **.eslintrc.json**: ESLint rules
-- **.prettierrc**: Code formatting
-
-## 🌐 Environment Variables
-
-Required in `.env.local`:
-
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
-NEXT_PUBLIC_MAX_RECORDING_DURATION=120
-```
-
-See `.env.local.example` for all options.
-
-## 📚 Documentation
-
-- [Frontend Plan](../FRONTEND_PLAN.md) - Complete feature specifications
-- [Cursor Rules](../.cursorrules) - Coding standards & patterns
-- [How to Use Cursor Rules](../HOW_TO_USE_CURSOR_RULES.md) - Prompt engineering guide
-
-## 🎯 Key Features
-
-### Phase 1: Foundation ✅
-- ✅ Next.js 15 setup (latest)
-- ✅ React 19 (latest)
-- ✅ TypeScript strict mode
-- ✅ ESLint 9 (flat config)
-- ✅ Tailwind CSS + Design System
-- ✅ Project structure
-- ✅ API client with interceptors
-- ✅ Zero deprecated packages
-- ⏳ Authentication pages
-- ⏳ Protected routes
-
-### Phase 2: Recording System
-- ⏳ AudioRecorder component
-- ⏳ QuestionStepper component
-- ⏳ Waveform visualization
-- ⏳ IndexedDB persistence
-- ⏳ Audio combining & compression
-- ⏳ Upload with progress
-
-### Phase 3: Processing Monitor
-- ⏳ Real-time status polling
-- ⏳ Timeline UI
-- ⏳ Error handling
-
-### Phase 4: Chat Interface
-- ⏳ SSE streaming
-- ⏳ Voice auto-play
-- ⏳ Conversation history
-
-### Phase 5: Family Management
-- ⏳ Invitation system
-- ⏳ Member management
-
-### Phase 6: Admin Dashboard
-- ⏳ Question CRUD
-- ⏳ User management
-- ⏳ Processing monitor
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel
-```
-
-### Environment Variables in Production
-
-Set these in your hosting platform:
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_WS_URL`
-- All other env vars from `.env.local.example`
-
-## 📖 Learning Resources
-
-- [Next.js Docs](https://nextjs.org/docs)
-- [React Query Docs](https://tanstack.com/query/latest)
-- [Tailwind CSS Docs](https://tailwindcss.com/docs)
-- [shadcn/ui Docs](https://ui.shadcn.com/)
-- [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
-
-## 🤝 Contributing
-
-1. Follow the coding standards in `.cursorrules`
-2. Use TypeScript strict mode
-3. Follow the component structure pattern
-4. Test on mobile devices
-5. Ensure accessibility (ARIA labels, keyboard nav)
-6. Run `npm run lint` before committing
-
-## 📝 License
-
-Private - VoiceVault Project
-
----
-
-**Version**: 1.0.0  
-**Last Updated**: January 15, 2026  
-**Status**: Phase 1 Complete ✅
-
+The image runs Next.js standalone output as an unprivileged user. See [deployment instructions](../docs/DEPLOYMENT.md) for HTTPS, workers, storage and provider setup.

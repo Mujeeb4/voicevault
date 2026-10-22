@@ -2,6 +2,7 @@
  * Session management for authentication tokens and idle timeout
  */
 
+export const SESSION_CHANGED_EVENT = 'voicevault:session-changed';
 const STORAGE_KEY = 'voicevault_session';
 const LAST_ACTIVITY_KEY = 'voicevault_last_activity';
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
@@ -19,7 +20,8 @@ export function decodeTokenExpiry(accessToken: string): number | null {
   try {
     const payload = accessToken.split('.')[1];
     if (!payload) return null;
-    const decoded = JSON.parse(atob(payload));
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
     return decoded.exp ? decoded.exp * 1000 : null;
   } catch {
     return null;
@@ -34,6 +36,7 @@ export function setTokens(tokens: StoredTokens): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
     updateLastActivity();
+    window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
   } catch {
     console.error('Failed to store tokens');
   }
@@ -47,6 +50,7 @@ export function clearTokens(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
+    window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
   } catch {
     console.error('Failed to clear tokens');
   }

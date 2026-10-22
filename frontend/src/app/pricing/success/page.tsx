@@ -17,11 +17,6 @@ import confetti from 'canvas-confetti';
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { getApiErrorMessage } from '@/lib/utils';
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-};
-
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,7 +120,7 @@ export default function PaymentSuccessPage() {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-dvh bg-background">
         <OnboardingHeader />
         <main className="mx-auto flex max-w-md flex-col items-center justify-center px-4 py-16">
           <motion.div
@@ -142,22 +137,14 @@ export default function PaymentSuccessPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-dvh overflow-hidden bg-background">
       <OnboardingHeader />
 
       <main className="relative mx-auto max-w-lg px-4 py-12 sm:py-16 md:py-20">
-        <motion.div
-          initial="initial"
-          animate="animate"
-          variants={{
-            animate: {
-              transition: { staggerChildren: 0.1, delayChildren: 0.1 },
-            },
-          }}
-          className="space-y-8"
-        >
+        <div className="space-y-8">
           <motion.div
-            variants={fadeInUp}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8"
           >
@@ -169,7 +156,7 @@ export default function PaymentSuccessPage() {
             >
               <div
                 className={`flex h-16 w-16 items-center justify-center rounded-full ${
-                  verificationError ? 'bg-destructive/10' : 'bg-primary/10'
+                  verificationError ? 'bg-destructive/10' : 'bg-accent'
                 }`}
               >
                 {verificationError ? (
@@ -251,7 +238,7 @@ export default function PaymentSuccessPage() {
                 size="lg"
                 className="h-11 w-full rounded-xl"
               >
-                Go to Dashboard
+                Go to home
               </Button>
             </div>
 
@@ -262,7 +249,7 @@ export default function PaymentSuccessPage() {
             )}
           </motion.div>
 
-          <motion.p variants={fadeInUp} className="text-center text-sm text-muted-foreground">
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.15 }} className="text-center text-sm text-muted-foreground">
             <Link href="/" className="transition-colors hover:text-primary">
               Home
             </Link>
@@ -271,7 +258,7 @@ export default function PaymentSuccessPage() {
               How it works
             </Link>
           </motion.p>
-        </motion.div>
+        </div>
       </main>
 
       <SiteFooter />

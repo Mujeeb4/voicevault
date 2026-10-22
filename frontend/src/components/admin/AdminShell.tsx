@@ -27,20 +27,20 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
         <div className="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 sm:px-6">
           <Link
             href="/admin"
-            className="flex shrink-0 items-center gap-2 rounded-lg pr-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg pr-3 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="VoiceVault admin overview"
           >
-            <span className="grid h-9 w-9 place-items-center rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-500">
+            <span className="grid h-9 w-9 place-items-center rounded-lg border border-primary/20 bg-accent text-primary">
               <ShieldCheck className="h-5 w-5" aria-hidden="true" />
             </span>
             <span className="hidden sm:block">
               <span className="block text-sm font-semibold leading-tight">VoiceVault Admin</span>
-              <span className="block text-[11px] leading-tight text-muted-foreground">
+              <span className="block text-xs leading-tight text-muted-foreground">
                 Operations console
               </span>
             </span>

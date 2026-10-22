@@ -162,7 +162,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
       />
 
       {/* Audio Recorder */}
-      <div className="journey-card p-5 sm:p-7">
+      <div className="surface p-5 sm:p-7">
         <AudioRecorder isRecording={isRecording} isPaused={isPaused} />
 
         {/* Recording Controls */}
@@ -177,7 +177,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
         {/* Stop Button (when recording) */}
         {isRecording && (
           <div className="mt-6 text-center">
-            <Button onClick={handleStopRecording} size="lg" variant="outline" className="w-full max-w-md border-primary/30 bg-primary/10 text-foreground hover:bg-primary/16">
+            <Button onClick={handleStopRecording} size="lg" variant="outline" className="w-full max-w-md border-primary/30 bg-accent text-foreground hover:bg-accent">
               Save this answer
             </Button>
           </div>
@@ -204,7 +204,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-success-500 to-success-600 rounded-xl p-8 text-white text-center shadow-lg"
+          className="bg-primary rounded-xl p-8 text-white text-center"
         >
           <CheckCircle2 className="w-16 h-16 mx-auto mb-4" />
           <h3 className="text-2xl font-bold mb-2">Ready to Review</h3>
@@ -216,7 +216,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
           <Button
             onClick={handleReviewRecordings}
             size="lg"
-            className="bg-white text-success-600 hover:bg-gray-100"
+            className="bg-white text-success-600 hover:bg-muted"
           >
             Review all recordings
           </Button>

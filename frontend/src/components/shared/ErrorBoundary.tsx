@@ -74,7 +74,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
       // Default error UI
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50 p-4">
+        <div className="min-h-dvh flex items-center justify-center bg-background p-4">
           <Card className="w-full max-w-md border-destructive">
             <CardHeader>
               <div className="flex items-center gap-2 text-destructive mb-2">
@@ -104,17 +104,17 @@ export class ErrorBoundary extends Component<Props, State> {
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-2">
-                <Button onClick={this.handleReset} className="flex-1">
+                <Button onClick={this.handleReset} className="sm:flex-1">
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Try Again
+                  Try again
                 </Button>
                 <Button
                   onClick={() => (window.location.href = '/')}
                   variant="outline"
-                  className="flex-1"
+                  className="sm:flex-1"
                 >
                   <Home className="mr-2 h-4 w-4" />
-                  Go Home
+                  Go to home
                 </Button>
               </div>
             </CardContent>
@@ -139,7 +139,7 @@ export const useErrorHandler = () => {
   return (error: Error, _errorInfo?: ErrorInfo) => {
     // In production, log to Sentry
     // Sentry.captureException(error, { contexts: { react: errorInfo } });
-    
+
     // Re-throw to be caught by ErrorBoundary
     throw error;
   };

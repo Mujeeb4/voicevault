@@ -108,19 +108,19 @@ export function IntroStep({ onStart }: IntroStepProps) {
       className="max-w-3xl mx-auto"
     >
       {/* Hero Section */}
-      <div className="journey-card p-6 text-center sm:p-8">
+      <div className="surface p-6 text-center sm:p-8">
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.2, type: 'spring' }}
-          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-lg border border-primary/30 bg-primary/12 glow-amber-sm"
+          className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-lg border border-primary/30 bg-accent"
         >
           <Mic className="h-10 w-10 text-primary" />
         </motion.div>
 
-        <p className="journey-kicker">Private recording session</p>
-        <h2 className="mt-2 font-heading text-4xl font-semibold text-foreground">
-          Let Your Voice Live On
+        <p className="eyebrow">Private recording session</p>
+        <h2 className="mt-2 font-heading tracking-tight text-4xl font-semibold text-foreground">
+          Your story, in your own voice
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-lg text-muted-foreground">
           Record your answers, leave and return safely, then upload everything when you are ready.
@@ -128,8 +128,8 @@ export function IntroStep({ onStart }: IntroStepProps) {
       </div>
 
       {/* What to Expect */}
-      <div className="journey-card mt-6 p-6 sm:p-8">
-        <h2 className="font-heading text-2xl font-semibold text-foreground">What to Expect</h2>
+      <div className="surface mt-6 p-6 sm:p-8">
+        <h2 className="font-heading tracking-tight text-2xl font-semibold text-foreground">What to expect</h2>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-3">
           <FeatureItem
@@ -151,8 +151,8 @@ export function IntroStep({ onStart }: IntroStepProps) {
       </div>
 
       {/* Microphone Setup */}
-      <div className="journey-card mt-6 p-6 sm:p-8">
-        <h2 className="font-heading text-2xl font-semibold text-foreground">Microphone Setup</h2>
+      <div className="surface mt-6 p-6 sm:p-8">
+        <h2 className="font-heading tracking-tight text-2xl font-semibold text-foreground">Microphone Setup</h2>
 
         <MicrophoneStatus
           status={micStatus}
@@ -228,7 +228,7 @@ export function IntroStep({ onStart }: IntroStepProps) {
       </div>
 
       {/* Tips */}
-      <div className="mt-6 rounded-lg border border-primary/25 bg-primary/10 p-5">
+      <div className="mt-6 rounded-lg border border-primary/25 bg-accent p-5">
         <h3 className="font-semibold text-foreground">Tips for Great Recordings</h3>
         <ul className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           <li>Find a quiet place with minimal background noise</li>
@@ -244,7 +244,7 @@ export function IntroStep({ onStart }: IntroStepProps) {
           onClick={onStart}
           disabled={!canStart}
           size="lg"
-          className="w-full shimmer-btn text-primary-foreground sm:mx-auto sm:flex sm:max-w-md"
+          className="w-full sm:mx-auto sm:flex sm:max-w-md"
         >
           {canStart ? (
             <>
@@ -273,8 +273,8 @@ function FeatureItem({
   description: string;
 }) {
   return (
-    <div className="journey-card-muted flex h-full items-start gap-4 p-4">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/12">
+    <div className="rounded-xl bg-muted flex h-full items-start gap-4 p-4">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-accent">
         <span className="text-lg font-bold text-primary">{icon}</span>
       </div>
       <div>
@@ -301,11 +301,11 @@ function MicrophoneStatus({
 }) {
   const statusConfig = {
     checking: {
-      icon: <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />,
+      icon: <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />,
       title: 'Checking microphone...',
       description: '',
-      color: 'text-gray-600',
-      bgColor: 'bg-gray-50',
+      color: 'text-muted-foreground',
+      bgColor: 'bg-background',
     },
     granted: {
       icon: <Check className="w-8 h-8 text-success-500" />,
@@ -319,7 +319,7 @@ function MicrophoneStatus({
       title: 'Microphone permission needed',
       description: 'Allow access to test your microphone and start recording.',
       color: 'text-foreground',
-      bgColor: 'bg-primary/10',
+      bgColor: 'bg-accent',
     },
     denied: {
       icon: <X className="w-8 h-8 text-error-500" />,
@@ -345,7 +345,7 @@ function MicrophoneStatus({
         {config.icon}
         <div className="flex-1">
           <p className={`font-semibold ${config.color}`}>{config.title}</p>
-          {config.description && <p className="text-sm text-gray-600 mt-1">{config.description}</p>}
+          {config.description && <p className="text-sm text-muted-foreground mt-1">{config.description}</p>}
         </div>
       </div>
 

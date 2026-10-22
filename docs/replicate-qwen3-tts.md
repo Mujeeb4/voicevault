@@ -1,3 +1,4 @@
+<!-- Backend commands in this document run from backend/. -->
 # Replicate Qwen3-TTS voice cloning
 
 Voice Vault uses the verified `qwen/qwen3-tts` model version `d490a561cf1171a8dc3d96d1e57efffea7dd34607148bb641f3d9de4e38c472e` (the 1.7B Base voice cloning model). Each generation sends `mode=voice_clone`, the user's 20-second recording clip, the transcript of that exact clip, and `language=auto`. No stock speaker or style instruction is sent.
