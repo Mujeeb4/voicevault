@@ -1,0 +1,20 @@
+# Upgrade an existing VPS installation while retaining its database/cache/media.
+x-existing-backend: &existing-backend
+  networks: [default, existing]
+  environment:
+    REDIS_URL: redis://voicevault-redis:6379/0
+  volumes:
+    - ${EXISTING_MEDIA_PATH:?Set EXISTING_MEDIA_PATH}:/app/media
+services:
+  backend:
+    <<: *existing-backend
+  migrate:
+    <<: *existing-backend
+  worker:
+    <<: *existing-backend
+  beat:
+    <<: *existing-backend
+networks:
+  existing:
+    external: true
+    name: ${EXISTING_NETWORK:-voicevault_default}
