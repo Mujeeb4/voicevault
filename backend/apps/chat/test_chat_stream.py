@@ -73,6 +73,8 @@ class ChatStreamTests(TestCase):
         self.assertEqual(Conversation.objects.get().response_text, 'Hello.')
         self.assertEqual(APIUsageTracking.objects.get().tokens_used, 42)
         self.assertEqual(UsageQuota.objects.get(user=owner).text_messages_used_this_month, 1)
+        from services.speech import voice_cache_identity
+        self.assertEqual(_cache.call_args.args[2], voice_cache_identity(owner.ai_config))
 
         # Replicate returns WAV; its protected playback endpoint must serve WAV correctly.
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):

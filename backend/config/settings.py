@@ -361,7 +361,7 @@ REPLICATE_WEBHOOK_KEY = config('REPLICATE_WEBHOOK_KEY', default='')
 REPLICATE_WEBHOOK_URL = config('REPLICATE_WEBHOOK_URL', default='')
 REPLICATE_MODEL = 'qwen/qwen3-tts'
 REPLICATE_MODEL_VERSION = config('REPLICATE_MODEL_VERSION', default='d490a561cf1171a8dc3d96d1e57efffea7dd34607148bb641f3d9de4e38c472e')
-REPLICATE_LANGUAGE = 'auto'
+REPLICATE_LANGUAGE = config('REPLICATE_LANGUAGE', default='auto')
 VOICE_PROVIDER = config('VOICE_PROVIDER', default='replicate' if REPLICATE_API_TOKEN else 'elevenlabs').lower()
 
 # Stripe Settings

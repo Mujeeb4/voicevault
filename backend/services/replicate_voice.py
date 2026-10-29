@@ -5,7 +5,6 @@ import hashlib
 import hmac
 import io
 import logging
-import subprocess
 import tempfile
 import time
 from pathlib import Path
@@ -17,13 +16,15 @@ from django.db import transaction
 from django.utils import timezone
 
 from utils.supabase_client import download_file_from_supabase, download_file_stream_to_temp, upload_file_to_supabase
+from services.speech import prepare_speech_text, synthesis_profile
+from services.voice_reference import build_reference, REFERENCE_VERSION
 
 logger = logging.getLogger(__name__)
 API = 'https://api.replicate.com/v1'
 
 
 def prepare_reference(user):
-    """Clip one of the user's recordings and transcribe that exact clip."""
+    """Select complete phrases from one recording and transcribe the exact crop."""
     from apps.recordings.models import AudioRecording
     from apps.ai_processing.models import AIConfiguration
     recordings = AudioRecording.objects.filter(user=user, upload_status='complete', duration_seconds__gte=3)
@@ -35,25 +36,13 @@ def prepare_reference(user):
         raise ValueError('OpenAI transcription key is required to prepare the matching reference text.')
     with tempfile.TemporaryDirectory(prefix='voicevault-reference-') as directory:
         source = str(Path(directory) / f'source.{recording.format}')
-        reference = str(Path(directory) / 'reference.wav')
         if not download_file_stream_to_temp('recordings', recording.storage_path, source):
             raise ValueError('Could not read the voice recording from storage.')
-        process = subprocess.run(
-            ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', source, '-t', '20',
-             '-ac', '1', '-ar', '24000', '-c:a', 'pcm_s16le', reference],
-            capture_output=True, timeout=90, check=False,
-        )
-        if process.returncode or not Path(reference).exists() or Path(reference).stat().st_size < 10000:
-            raise ValueError('The voice recording could not be converted to a usable reference clip.')
         from openai import OpenAI
-        with open(reference, 'rb') as audio:
-            transcript = OpenAI(api_key=settings.OPENAI_API_KEY).audio.transcriptions.create(
-                model='whisper-1', file=audio
-            ).text.strip()
-        if len(transcript.split()) < 3:
-            raise ValueError('The reference clip contains too little recognizable speech.')
-        audio_bytes = Path(reference).read_bytes()
-    digest = hashlib.sha256(audio_bytes + transcript.encode()).hexdigest()[:24]
+        audio_bytes, transcript = build_reference(
+            source, directory, OpenAI(api_key=settings.OPENAI_API_KEY).audio.transcriptions,
+        )
+    digest = hashlib.sha256(REFERENCE_VERSION + audio_bytes + transcript.encode()).hexdigest()[:24]
     path = f'{user.id}/voice-reference-{digest}.wav'
     if not upload_file_to_supabase('recordings', path, io.BytesIO(audio_bytes)):
         raise ValueError('Could not store the voice reference clip.')
@@ -85,11 +74,26 @@ def _prediction(prediction_id):
 
 
 def _create_prediction(payload):
-    payload['version'] = settings.REPLICATE_MODEL_VERSION
+    payload.setdefault('version', settings.REPLICATE_MODEL_VERSION)
     with httpx.Client(timeout=45) as client:
         response = client.post(f'{API}/predictions', headers=_headers(), json=payload)
         response.raise_for_status()
         return response.json()
+
+
+def _speech_payload(text, reference, reference_text, profile):
+    speech_text = prepare_speech_text(text)
+    if not speech_text:
+        raise ValueError('Enter text containing words to generate speech.')
+    payload = {'version': profile['version'], 'input': {
+        'mode': 'voice_clone', 'text': speech_text,
+        'reference_audio': 'data:audio/wav;base64,' + base64.b64encode(reference).decode(),
+        'reference_text': reference_text, 'language': profile['language'],
+    }}
+    if settings.REPLICATE_WEBHOOK_URL:
+        payload['webhook'] = settings.REPLICATE_WEBHOOK_URL
+        payload['webhook_events_filter'] = ['completed']
+    return payload
 
 
 def _output_bytes(output):
@@ -154,7 +158,8 @@ def refresh_prediction(conversation_id):
             record_voice_response(conversation.ai_owner, conversation_id)
             APIUsageTracking.objects.create(
                 user=conversation.ai_owner, api_provider='replicate', operation='voice_generation',
-                characters_used=len(conversation.response_text), request_id=conversation.replicate_prediction_id,
+                characters_used=len(prepare_speech_text(conversation.response_text)),
+                request_id=conversation.replicate_prediction_id,
                 cost_usd=None, success=True,
             )
         else:
@@ -194,14 +199,7 @@ def generate_audio(response_text, voice_id, conversation_id, ai_owner_id):
             reference = download_file_from_supabase('recordings', reference_path)
             if not reference or len(reference) > 1_000_000:
                 raise ValueError('The saved voice reference is missing or too large.')
-            payload = {'input': {
-                'mode': 'voice_clone', 'text': response_text,
-                'reference_audio': 'data:audio/wav;base64,' + base64.b64encode(reference).decode(),
-                'reference_text': reference_text, 'language': settings.REPLICATE_LANGUAGE,
-            }}
-            if settings.REPLICATE_WEBHOOK_URL:
-                payload['webhook'] = settings.REPLICATE_WEBHOOK_URL
-                payload['webhook_events_filter'] = ['completed']
+            payload = _speech_payload(response_text, reference, reference_text, synthesis_profile())
             prediction = _create_prediction(payload)
             existing_id = prediction['id']
             Conversation.objects.filter(id=conversation_id, replicate_prediction_id='').update(
@@ -300,7 +298,15 @@ def run_preview(queue_id):
         if not config.has_cloned_voice or config.voice_clone_id != queue.task_data.get('voice_id'):
             queue.status = 'failed'
             queue.error_message = 'The saved voice reference has changed. Start a new preview.'
-            queue.save(update_fields=['status', 'error_message'])
+            queue.completed_at = timezone.now()
+            queue.save(update_fields=['status', 'error_message', 'completed_at'])
+            return {'status': 'failed', 'error': queue.error_message}
+        profile = synthesis_profile()
+        if queue.task_data.get('synthesis_profile') != profile:
+            queue.status = 'failed'
+            queue.error_message = 'Speech settings have changed. Start a new preview.'
+            queue.completed_at = timezone.now()
+            queue.save(update_fields=['status', 'error_message', 'completed_at'])
             return {'status': 'failed', 'error': queue.error_message}
         queue.status = 'processing'
         queue.started_at = timezone.now()
@@ -312,14 +318,7 @@ def run_preview(queue_id):
         reference = download_file_from_supabase('recordings', reference_path)
         if not reference or len(reference) > 1_000_000:
             raise ValueError('The saved voice reference is missing or too large.')
-        payload = {'input': {
-            'mode': 'voice_clone', 'text': text,
-            'reference_audio': 'data:audio/wav;base64,' + base64.b64encode(reference).decode(),
-            'reference_text': reference_text, 'language': settings.REPLICATE_LANGUAGE,
-        }}
-        if settings.REPLICATE_WEBHOOK_URL:
-            payload['webhook'] = settings.REPLICATE_WEBHOOK_URL
-            payload['webhook_events_filter'] = ['completed']
+        payload = _speech_payload(text, reference, reference_text, profile)
         prediction = _create_prediction(payload)
         ProcessingQueue.objects.filter(id=queue_id).update(result_data={'prediction_id': prediction['id']})
     except (httpx.HTTPError, KeyError, ValueError) as exc:

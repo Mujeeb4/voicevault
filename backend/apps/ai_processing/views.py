@@ -644,19 +644,26 @@ class VoicePreviewView(APIView):
         text = request.data.get('text', '') if isinstance(request.data, dict) else ''
         if not isinstance(text, str) or not 1 <= len(text.strip()) <= 300:
             return Response({'error': 'Enter 1 to 300 characters.'}, status=400)
-        text = text.strip()
+        from services.speech import prepare_speech_text, synthesis_profile, synthesis_profile_id
+        text = prepare_speech_text(text.strip())
+        if not text:
+            return Response({'error': 'Enter text containing words to generate speech.'}, status=400)
+        profile = synthesis_profile()
+        profile_id = synthesis_profile_id(profile)
         existing = ProcessingQueue.objects.filter(
             user=user, task_type='voice_preview', task_data__text=text,
-            task_data__voice_id=config.voice_clone_id, status__in=['pending', 'processing', 'complete', 'failed']
+            task_data__voice_id=config.voice_clone_id, task_data__synthesis_profile=profile,
+            status__in=['pending', 'processing', 'complete', 'failed']
         ).order_by('-created_at').first()
         if existing:
             return Response({'preview_id': str(existing.id), 'status': existing.status}, status=200)
         import uuid
-        preview_id = uuid.uuid5(uuid.NAMESPACE_URL, f'voicevault-preview:{user.id}:{config.voice_clone_id}:{text}')
+        preview_id = uuid.uuid5(uuid.NAMESPACE_URL, f'voicevault-preview:{user.id}:{config.voice_clone_id}:{profile_id}:{text}')
         queue, created = ProcessingQueue.objects.get_or_create(
             id=preview_id,
             defaults={'user': user, 'task_type': 'voice_preview', 'status': 'pending',
-                      'priority': 6, 'task_data': {'text': text, 'voice_id': config.voice_clone_id}},
+                      'priority': 6, 'task_data': {'text': text, 'voice_id': config.voice_clone_id,
+                                                 'synthesis_profile': profile}},
         )
         if not created:
             return Response({'preview_id': str(queue.id), 'status': queue.status}, status=200)

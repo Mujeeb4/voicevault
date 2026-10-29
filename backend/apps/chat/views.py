@@ -33,6 +33,7 @@ from apps.chat.utils import (
 )
 from apps.chat.tasks import generate_audio_async, generate_audio_sync, is_celery_available
 from services.chat_llm import get_chat_backend, streamed_total_tokens
+from services.speech import voice_cache_identity
 from services.plan_limits import (
     can_generate_voice_response,
     can_send_chat_message,
@@ -201,9 +202,7 @@ def chat_streaming(request):
         return JsonResponse(chat_limit.as_error(), status=402)
     
     # STEP 1: Check cache first (< 50ms) ⚡
-    voice_cache_id = ai_owner.ai_config.voice_clone_id if hasattr(ai_owner, 'ai_config') and ai_owner.ai_config.has_cloned_voice else ''
-    if voice_cache_id and ai_owner.ai_config.voice_provider == 'replicate':
-        voice_cache_id += ':qwen3-tts:auto'
+    voice_cache_id = voice_cache_identity(getattr(ai_owner, 'ai_config', None))
     cached = get_cached_response(question, str(ai_owner_id), voice_cache_id)
     if getattr(settings, 'VOICE_PROVIDER', '') == 'replicate' and cached and not cached.get('audio'):
         cached = None

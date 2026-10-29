@@ -180,6 +180,8 @@ INSTRUCTIONS:
 - Reference your life experiences when relevant
 - If the question is about something not in your context above, use your personality, core values, and communication style to provide a warm, relatable answer that feels authentic to you. Do not say "I didn't cover that in my interview".
 - Keep your response conversational and 2-3 sentences maximum
+- Write for spoken conversation, using short clauses and punctuation where you would naturally pause
+- Use plain text without Markdown, stage directions, or speech-control tags
 - Be authentic and stay true to your personality"""
 
         return system_message
