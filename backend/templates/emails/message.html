@@ -13,4 +13,5 @@
 {% endfor %}</td></tr></table>{% endif %}
 {% if cta_url %}<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:24px auto 8px auto;"><tr><td align="center" bgcolor="#0A7552" style="background-color:#0A7552;border-radius:10px;"><a href="{{ cta_url }}" style="display:inline-block;padding:14px 32px;font-family:'DM Sans','Segoe UI',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;border-radius:10px;">{{ cta_label }}</a></td></tr></table>{% endif %}
 {% if note %}<p style="margin:20px 0 0 0;font-size:14px;color:#596963;">{{ note }}</p>{% endif %}
+{% if link_note %}<p style="margin:20px 0 0 0;font-size:14px;color:#596963;">{{ link_note.0 }} <a href="{{ link_note.2 }}" style="color:#0A7552;font-weight:600;text-decoration:underline;">{{ link_note.1 }}</a>.</p>{% endif %}
 {% endblock %}

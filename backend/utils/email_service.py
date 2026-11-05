@@ -35,6 +35,7 @@ def _send_branded_email(
     cta_label: Optional[str] = None,
     cta_url: Optional[str] = None,
     note: Optional[str] = None,
+    link_note: Optional[tuple] = None,
     footer_note: Optional[str] = None,
 ) -> None:
     """Render the shared layout (HTML + text) and send. Raises on failure."""
@@ -48,6 +49,8 @@ def _send_branded_email(
         "cta_label": cta_label,
         "cta_url": cta_url,
         "note": note,
+        # (lead-in text, link text, url): a short hyperlink in HTML, full URL in plain text.
+        "link_note": link_note,
         "footer_note": footer_note,
         "frontend_url": FRONTEND_URL,
         "logo_url": f"{FRONTEND_URL}/logo.png",
@@ -209,7 +212,7 @@ def send_verification_email(to_email: str, to_name: str, verify_url: str) -> boo
             ],
             cta_label="Verify email",
             cta_url=verify_url,
-            note=f"If the button does not work, copy this link into your browser: {verify_url}",
+            link_note=("If the button does not work,", "click here", verify_url),
             footer_note="You received this email because an account was created with this address. "
                         "If that was not you, you can ignore it.",
         )
@@ -264,8 +267,6 @@ def send_premium_activated_email(
             f"Hi {to_name or 'there'},",
             "Thank you for your purchase. VoiceVault Premium is now active on your account.",
         ]
-        if receipt_url:
-            paragraphs.append(f"Your Stripe receipt: {receipt_url}")
         _send_branded_email(
             to_email,
             "Your VoiceVault Premium is active",
@@ -280,6 +281,7 @@ def send_premium_activated_email(
             ],
             cta_label="Go to your vault",
             cta_url=f"{FRONTEND_URL}/dashboard",
+            link_note=("Need your receipt?", "View your Stripe receipt", receipt_url) if receipt_url else None,
         )
         logger.info(f"Premium activated email sent to {to_email}")
         return True

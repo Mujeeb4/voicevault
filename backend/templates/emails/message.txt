@@ -13,6 +13,9 @@
 
 {% endif %}{% if note %}{{ note }}
 
+{% endif %}{% if link_note %}{{ link_note.0 }} {{ link_note.1 }}:
+{{ link_note.2 }}
+
 {% endif %}--
 {% if footer_note %}{{ footer_note }}
 {% endif %}VoiceVault - {{ frontend_url }}
