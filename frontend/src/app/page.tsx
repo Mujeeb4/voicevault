@@ -2,6 +2,7 @@
 
 import { StickyCta } from '@/components/home/StickyCta';
 import { VoiceSample } from '@/components/home/VoiceSample';
+import { HeroVoicePlayer } from '@/components/home/HeroVoicePlayer';
 import { FamilyStories } from '@/components/home/FamilyStories';
 import Link from 'next/link';
 import {
@@ -13,7 +14,6 @@ import {
   Lock,
   Infinity as InfinityIcon,
   BadgeCheck,
-  Play,
   Check,
   X,
   ChevronDown,
@@ -172,17 +172,7 @@ export default function HomePage() {
                   <div className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary px-3.5 py-2 text-sm text-primary-foreground">
                     Dad, how did you know Mum was the one?
                   </div>
-                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-card px-3 py-2.5 shadow-card">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                      <Play className="h-3.5 w-3.5 translate-x-px" fill="currentColor" />
-                    </span>
-                    <div className="flex h-8 min-w-0 flex-1 items-center gap-[3px] overflow-hidden" aria-hidden>
-                      {bars.map((h, i) => (
-                        <span key={i} className="w-1 shrink-0 rounded-full bg-primary/55" style={{ height: `${h}%` }} />
-                      ))}
-                    </div>
-                    <span className="num text-xs text-muted-foreground">0:14</span>
-                  </div>
+                  <HeroVoicePlayer />
                 </div>
               </div>
 
