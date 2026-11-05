@@ -723,6 +723,7 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
         import tempfile
         from pathlib import Path
         from elevenlabs import ElevenLabs
+        from services.audio_denoise import denoise_for_cloning
 
         start_time = time.time()
         if not settings.ELEVENLABS_API_KEY:
@@ -745,7 +746,8 @@ def clone_voice_task(self, previous_result=None, user_id: str = None) -> Dict:
                     raise ValueError("Could not download a voice recording. Restore the recording and retry cloning.")
                 if not Path(temp_path).stat().st_size:
                     raise ValueError("A voice recording is empty. Upload a valid recording and retry cloning.")
-                file_handles.append(stack.enter_context(open(temp_path, 'rb')))
+                sample_path = denoise_for_cloning(temp_path, Path(temp_dir) / f'{index}-clean.mp3')
+                file_handles.append(stack.enter_context(open(sample_path, 'rb')))
 
             audio_files_count = len(file_handles)
             el_client = ElevenLabs(api_key=settings.ELEVENLABS_API_KEY)

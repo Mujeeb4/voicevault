@@ -5,8 +5,10 @@ import subprocess
 import wave
 from pathlib import Path
 
+from services.audio_denoise import DENOISE_FILTER
 
-REFERENCE_VERSION = b'complete-phrases-v1\0'
+
+REFERENCE_VERSION = b'complete-phrases-denoised-v2\0'
 ANALYSIS_SECONDS = 60
 MAX_REFERENCE_SECONDS = 20
 _SENTENCE_END = re.compile(r'[.!?。！？۔؟][\"\'”’»\)\]]*$')
@@ -109,11 +111,12 @@ def select_reference_window(words, duration):
     return start, end
 
 
-def _convert(source, target, *, start=0, duration):
+def _convert(source, target, *, start=0, duration, denoise=False):
     try:
         process = subprocess.run(
             ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', str(source),
-             '-ss', str(start), '-t', str(duration), '-ac', '1', '-ar', '24000',
+             '-ss', str(start), '-t', str(duration),
+             *(['-af', DENOISE_FILTER] if denoise else []), '-ac', '1', '-ar', '24000',
              '-c:a', 'pcm_s16le', str(target)],
             capture_output=True, timeout=90, check=False,
         )
@@ -127,7 +130,8 @@ def build_reference(source, directory, transcriber):
     """Transcribe a bounded search window, then transcribe the exact final crop."""
     analysis = Path(directory) / 'analysis.wav'
     reference = Path(directory) / 'reference.wav'
-    _convert(source, analysis, duration=ANALYSIS_SECONDS)
+    # Denoise once here; the final reference is cropped from this cleaned audio.
+    _convert(source, analysis, duration=ANALYSIS_SECONDS, denoise=True)
     with wave.open(str(analysis), 'rb') as audio:
         duration = audio.getnframes() / audio.getframerate()
     with analysis.open('rb') as audio:
