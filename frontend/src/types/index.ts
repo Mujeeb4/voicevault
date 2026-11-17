@@ -32,8 +32,10 @@ export interface UsageQuotaStatus {
   limits: {
     recording_questions: number;
     recording_minutes: number;
-    text_messages_monthly: number;
-    voice_responses_monthly: number;
+    // Monthly caps apply to free vaults; Premium uses a per-member question allowance
+    text_messages_monthly?: number;
+    voice_responses_monthly?: number;
+    questions_per_family_member?: number;
     family_members: number;
     storage_mb: number;
     ai_generations: number;

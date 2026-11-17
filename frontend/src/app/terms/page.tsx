@@ -214,6 +214,15 @@ export default function TermsPage() {
                   in our refund policy.
                 </p>
                 <p>
+                  Each family member of a Premium vault, including the vault owner, can ask the AI
+                  the number of included questions shown on our pricing page. Further questions
+                  need question credits, which each family member buys for themselves. One credit
+                  covers one question and its answer in text and voice. Credits apply only to the
+                  vault they were bought for, do not expire while that vault remains active, have
+                  no cash value, and are non-refundable except as required by law. Spoken questions
+                  are limited in length.
+                </p>
+                <p>
                   We may change prices or plan limits prospectively. A later price change will not
                   create a recurring charge for a completed one-time Premium purchase.
                 </p>

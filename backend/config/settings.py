@@ -400,6 +400,33 @@ else:
 
 STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS = config('STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS', default=14999, cast=int)
 STRIPE_PREMIUM_CURRENCY = config('STRIPE_PREMIUM_CURRENCY', default='usd')
+# Stripe's card fee, used only to check that prices stay above AI costs
+STRIPE_FEE_PERCENT = config('STRIPE_FEE_PERCENT', default=2.9, cast=float)
+STRIPE_FEE_FIXED_CENTS = config('STRIPE_FEE_FIXED_CENTS', default=30, cast=int)
+
+# Plan limits. Family member counts exclude the vault owner, who also gets an allowance.
+FREE_MAX_FAMILY_MEMBERS = config('FREE_MAX_FAMILY_MEMBERS', default=1, cast=int)
+PREMIUM_MAX_FAMILY_MEMBERS = config('PREMIUM_MAX_FAMILY_MEMBERS', default=3, cast=int)
+# Lifetime questions each family member of a Premium vault can ask before buying credits
+PREMIUM_QUESTIONS_PER_FAMILY_MEMBER = config('PREMIUM_QUESTIONS_PER_FAMILY_MEMBER', default=100, cast=int)
+
+# Question credits (1 credit = 1 question, text and voice answer together)
+CREDIT_UNIT_PRICE_CENTS = config('CREDIT_UNIT_PRICE_CENTS', default=20, cast=int)
+CREDIT_MIN_PURCHASE = config('CREDIT_MIN_PURCHASE', default=25, cast=int)
+CREDIT_MAX_PURCHASE = config('CREDIT_MAX_PURCHASE', default=1000, cast=int)
+
+# Worst-case AI cost of one question, from provider prices and the caps below.
+# Startup checks warn when the credit or Premium price leaves less than the target margin.
+CHAT_MAX_INPUT_TOKENS = config('CHAT_MAX_INPUT_TOKENS', default=2500, cast=int)
+CHAT_MAX_OUTPUT_TOKENS = config('CHAT_MAX_OUTPUT_TOKENS', default=300, cast=int)
+CHAT_INPUT_PRICE_PER_MILLION_USD = config('CHAT_INPUT_PRICE_PER_MILLION_USD', default=2.50, cast=float)
+CHAT_OUTPUT_PRICE_PER_MILLION_USD = config('CHAT_OUTPUT_PRICE_PER_MILLION_USD', default=10.00, cast=float)
+VOICE_REPLY_MAX_COST_USD = config('VOICE_REPLY_MAX_COST_USD', default=0.05, cast=float)
+VOICE_QUESTION_MAX_SECONDS = config('VOICE_QUESTION_MAX_SECONDS', default=120, cast=int)
+TRANSCRIPTION_PRICE_PER_MINUTE_USD = config('TRANSCRIPTION_PRICE_PER_MINUTE_USD', default=0.006, cast=float)
+# One-time AI cost of setting up a Premium vault (recording transcription, personality analysis, voice cloning)
+PREMIUM_SETUP_AI_COST_USD = config('PREMIUM_SETUP_AI_COST_USD', default=5.00, cast=float)
+TARGET_GROSS_MARGIN_PERCENT = config('TARGET_GROSS_MARGIN_PERCENT', default=50, cast=float)
 
 # Email Settings
 # Use SMTP backend by default in production; console backend is only for local dev with DEBUG=True

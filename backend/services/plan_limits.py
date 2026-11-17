@@ -6,32 +6,37 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 
-from django.db.models import Sum
+from django.conf import settings
+from django.db.models import F, Sum
 from django.utils import timezone
 
 from apps.users.models import AuditLog, ConsentRecord, FamilyMember, UsageQuota, User
 from utils.security import validate_audio_magic
 
 
+# family_members comes from settings (FREE_/PREMIUM_MAX_FAMILY_MEMBERS) in get_limits()
 FREE_LIMITS = {
     "recording_questions": 5,
     "recording_minutes": 15,
     "text_messages_monthly": 5,
     "voice_responses_monthly": 0,
-    "family_members": 1,
     "storage_mb": 500,
     "ai_generations": 1,
 }
 
+# Premium chat has no monthly caps: each family member gets a lifetime question
+# allowance (PREMIUM_QUESTIONS_PER_FAMILY_MEMBER) and then uses purchased credits.
 PREMIUM_LIMITS = {
     "recording_questions": 30,
     "recording_minutes": 300,
-    "text_messages_monthly": 1000,
-    "voice_responses_monthly": 200,
-    "family_members": 10,
     "storage_mb": 5000,
     "ai_generations": 3,
 }
+
+# Where a reserved question was taken from, so a failed answer can be refunded
+QUESTION_SOURCE_FREE_PLAN = "free_plan"
+QUESTION_SOURCE_INCLUDED = "included"
+QUESTION_SOURCE_CREDIT = "credit"
 
 SUPPORTED_AUDIO_EXTENSIONS = {"webm", "mp3", "wav", "m4a", "mp4", "aac", "ogg"}
 SUPPORTED_AUDIO_TYPES = {
@@ -59,11 +64,14 @@ class LimitResult:
     limit_key: str | None = None
     limit: int | float | None = None
     used: int | float | None = None
+    credits_required: bool = False
 
     def as_error(self) -> dict:
         return {
             "error": self.message,
+            "message": self.message,
             "upgrade_required": self.upgrade_required,
+            "credits_required": self.credits_required,
             "limit_key": self.limit_key,
             "limit": self.limit,
             "used": self.used,
@@ -76,7 +84,19 @@ def is_premium(user: User) -> bool:
 
 
 def get_limits(user: User) -> dict:
-    return PREMIUM_LIMITS if is_premium(user) else FREE_LIMITS
+    if is_premium(user):
+        limits = dict(PREMIUM_LIMITS)
+        limits["family_members"] = settings.PREMIUM_MAX_FAMILY_MEMBERS
+        limits["questions_per_family_member"] = settings.PREMIUM_QUESTIONS_PER_FAMILY_MEMBER
+    else:
+        limits = dict(FREE_LIMITS)
+        limits["family_members"] = settings.FREE_MAX_FAMILY_MEMBERS
+    return limits
+
+
+def invited_family_members(ai_owner: User):
+    """Family members counted against the invite limit; the owner's own chat record is not one."""
+    return FamilyMember.objects.filter(ai_owner=ai_owner).exclude(relationship="self")
 
 
 def next_month_start(from_date: date | None = None) -> date:
@@ -137,7 +157,7 @@ def quota_status(user: User) -> dict:
             "recording_storage_used_mb": quota.recording_storage_used_mb,
             "text_messages_used_this_month": quota.text_messages_used_this_month,
             "voice_responses_used_this_month": quota.voice_responses_used_this_month,
-            "family_invites_used": FamilyMember.objects.filter(ai_owner=user).count(),
+            "family_invites_used": invited_family_members(user).count(),
             "ai_generations_used": quota.ai_generations_used,
             "quota_reset_date": quota.quota_reset_date.isoformat() if quota.quota_reset_date else None,
         },
@@ -259,7 +279,78 @@ def record_chat_message(ai_owner: User, conversation_id: str | None = None) -> N
     )
 
 
+def question_allowance(family_member: FamilyMember) -> dict:
+    """Included questions and purchased credits left for one family member of a Premium vault."""
+    included = settings.PREMIUM_QUESTIONS_PER_FAMILY_MEMBER
+    used = min(family_member.included_questions_used, included)
+    included_remaining = included - used
+    return {
+        "included_questions": included,
+        "included_questions_used": used,
+        "included_questions_remaining": included_remaining,
+        "credit_balance": family_member.credit_balance,
+        "questions_remaining": included_remaining + family_member.credit_balance,
+        "credit_unit_price_cents": settings.CREDIT_UNIT_PRICE_CENTS,
+        "credit_min_purchase": settings.CREDIT_MIN_PURCHASE,
+        "credit_max_purchase": settings.CREDIT_MAX_PURCHASE,
+        "currency": settings.STRIPE_PREMIUM_CURRENCY,
+    }
+
+
+def reserve_question(ai_owner: User, family_member: FamilyMember) -> tuple[LimitResult, str | None]:
+    """
+    Take one question before the AI answers.
+
+    Premium vaults use the member's included questions first, then purchased credits.
+    Each step is a single conditional UPDATE, so concurrent questions can't overdraw.
+    Free vaults keep the vault-wide monthly message limit, recorded after the answer.
+    Returns the source to pass to refund_question() if the answer fails.
+    """
+    if not is_premium(ai_owner):
+        result = can_send_chat_message(ai_owner)
+        return result, QUESTION_SOURCE_FREE_PLAN if result.allowed else None
+    if family_member is None:
+        return LimitResult(False, "Unable to check your question allowance. Please try again.",
+                           False, "question_credits"), None
+
+    included = settings.PREMIUM_QUESTIONS_PER_FAMILY_MEMBER
+    members = FamilyMember.objects.filter(pk=family_member.pk)
+    if members.filter(included_questions_used__lt=included).update(
+        included_questions_used=F("included_questions_used") + 1
+    ):
+        return LimitResult(True), QUESTION_SOURCE_INCLUDED
+    if members.filter(credit_balance__gt=0).update(credit_balance=F("credit_balance") - 1):
+        return LimitResult(True), QUESTION_SOURCE_CREDIT
+    return LimitResult(
+        False,
+        f"You've used your {included} included questions. Buy credits to keep talking.",
+        False,
+        "question_credits",
+        included,
+        included,
+        credits_required=True,
+    ), None
+
+
+def refund_question(family_member: FamilyMember, source: str | None) -> None:
+    """Give back a question reserved for an answer that was never delivered."""
+    if family_member is None:
+        return
+    members = FamilyMember.objects.filter(pk=family_member.pk)
+    if source == QUESTION_SOURCE_INCLUDED:
+        members.filter(included_questions_used__gt=0).update(
+            included_questions_used=F("included_questions_used") - 1
+        )
+    elif source == QUESTION_SOURCE_CREDIT:
+        members.update(credit_balance=F("credit_balance") + 1)
+
+
+def add_question_credits(family_member: FamilyMember, credits: int) -> None:
+    FamilyMember.objects.filter(pk=family_member.pk).update(credit_balance=F("credit_balance") + credits)
+
+
 def can_generate_voice_response(ai_owner: User) -> LimitResult:
+    # On Premium the voice answer is part of the question already paid for
     if not is_premium(ai_owner):
         return LimitResult(
             False,
@@ -268,19 +359,6 @@ def can_generate_voice_response(ai_owner: User) -> LimitResult:
             "voice_responses_monthly",
             0,
             0,
-        )
-
-    quota = get_or_create_quota(ai_owner)
-    limits = get_limits(ai_owner)
-    used = quota.voice_responses_used_this_month
-    if used >= limits["voice_responses_monthly"]:
-        return LimitResult(
-            False,
-            "Voice response limit reached",
-            False,
-            "voice_responses_monthly",
-            limits["voice_responses_monthly"],
-            used,
         )
     return LimitResult(True)
 
@@ -299,7 +377,7 @@ def record_voice_response(ai_owner: User, conversation_id: str | None = None) ->
 
 def can_invite_family_member(ai_owner: User) -> LimitResult:
     limits = get_limits(ai_owner)
-    used = FamilyMember.objects.filter(ai_owner=ai_owner).count()
+    used = invited_family_members(ai_owner).count()
     if used >= limits["family_members"]:
         return LimitResult(
             False,
@@ -314,7 +392,7 @@ def can_invite_family_member(ai_owner: User) -> LimitResult:
 
 def record_family_invite(ai_owner: User, family_member_id: str) -> None:
     quota = get_or_create_quota(ai_owner)
-    quota.family_invites_used = FamilyMember.objects.filter(ai_owner=ai_owner).count()
+    quota.family_invites_used = invited_family_members(ai_owner).count()
     quota.save(update_fields=["family_invites_used", "updated_at"])
     AuditLog.objects.create(
         user=ai_owner,

@@ -36,8 +36,9 @@ from services.chat_llm import get_chat_backend, streamed_total_tokens
 from services.speech import voice_cache_identity
 from services.plan_limits import (
     can_generate_voice_response,
-    can_send_chat_message,
     record_chat_message,
+    refund_question,
+    reserve_question,
 )
 
 logger = logging.getLogger(__name__)
@@ -192,11 +193,12 @@ def chat_streaming(request):
             status=403
         )
 
-    chat_limit = can_send_chat_message(ai_owner)
+    # Reserved before answering (cached answers count too); refunded if no answer is saved
+    chat_limit, question_source = reserve_question(ai_owner, family_member)
     if not chat_limit.allowed:
         if request.method == 'GET':
             return StreamingHttpResponse(
-                iter([f"data: {json.dumps({'type': 'error', 'message': chat_limit.message, 'upgrade_required': chat_limit.upgrade_required})}\n\n"]),
+                iter([f"data: {json.dumps({'type': 'error', 'message': chat_limit.message, 'upgrade_required': chat_limit.upgrade_required, 'credits_required': chat_limit.credits_required})}\n\n"]),
                 content_type='text/event-stream',
             )
         return JsonResponse(chat_limit.as_error(), status=402)
@@ -212,6 +214,7 @@ def chat_streaming(request):
         logger.info(f"Cache HIT! Response in {cache_time_ms}ms")
 
         def generate_cached_response():
+            conversation_id = None
             try:
                 conversation = Conversation.objects.create(
                     ai_owner=ai_owner,
@@ -239,6 +242,8 @@ def chat_streaming(request):
 
                 yield f"data: {json.dumps({'type': 'complete', 'conversation_id': conversation_id, 'total_time_ms': cache_time_ms, 'cached': True})}\n\n"
             finally:
+                if conversation_id is None:
+                    refund_question(family_member, question_source)
                 from django.db import connections
                 for conn_name in connections:
                     try:
@@ -302,7 +307,8 @@ def chat_streaming(request):
                     {"role": "user", "content": question}
                 ],
                 temperature=0.7,
-                max_tokens=300,
+                # Caps the answer and its voice reading, which bounds the cost per question
+                max_tokens=settings.CHAT_MAX_OUTPUT_TOKENS,
                 stream=True,
             )
             if backend.extra_body:
@@ -452,6 +458,9 @@ def chat_streaming(request):
                 message = 'Chat is temporarily unavailable. Please try again later.'
             yield f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"
         finally:
+            # No saved answer (error, misconfiguration or client disconnect): give the question back
+            if conversation_id is None:
+                refund_question(family_member, question_source)
             if client is not None:
                 client.close()
             # CRITICAL: Close database connections after streaming

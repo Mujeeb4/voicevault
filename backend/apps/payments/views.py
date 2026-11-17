@@ -12,9 +12,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from apps.users.models import User
-from apps.payments.models import Payment
-from services.plan_limits import quota_status
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
+
+from apps.chat.utils import validate_chat_access
+from apps.users.models import FamilyMember, User
+from apps.payments.models import CreditPurchase, Payment
+from services.plan_limits import add_question_credits, is_premium, question_allowance, quota_status
 from utils.email_service import send_payment_failed_email, send_premium_activated_email
 from django.core.cache import cache
 
@@ -217,6 +221,15 @@ def confirm_checkout_session(request):
         )
 
     payment_status = session.get('payment_status')
+    if payment_status == 'paid' and _is_credit_purchase(session):
+        family_member = handle_credit_checkout_completed(session)
+        return Response({
+            'payment_completed': True,
+            'purchase_type': 'credits',
+            'payment_status': payment_status,
+            'session_status': session.get('status'),
+            'questions': question_allowance(family_member) if family_member else None,
+        }, status=status.HTTP_200_OK)
     if payment_status == 'paid':
         handle_checkout_completed(session)
         try:
@@ -273,6 +286,7 @@ def stripe_webhook(request):
     elif event['type'] == 'payment_intent.succeeded':
         payment_intent = event['data']['object']
         logger.info(f"Payment intent succeeded: {payment_intent['id']}")
+        handle_saved_card_payment_succeeded(payment_intent)
     elif event['type'] == 'payment_intent.payment_failed':
         payment_intent = event['data']['object']
         logger.warning(f"Payment failed: {payment_intent['id']}")
@@ -289,6 +303,10 @@ def handle_checkout_completed(session):
     - Update user payment status
     - Set package tier
     """
+    if _is_credit_purchase(session):
+        handle_credit_checkout_completed(session)
+        return
+
     user_id = session['metadata'].get('user_id')
     package_tier = session['metadata'].get('package_tier', 'premium')
     payment_intent_id = session.get('payment_intent') or session['id']
@@ -348,6 +366,9 @@ def handle_payment_failed(payment_intent):
     customer_id = payment_intent.get('customer')
     if not intent_id or not customer_id:
         return
+    # Failed credit refills are reported in the app; this email is about Premium
+    if (payment_intent.get('metadata') or {}).get('purchase_type') == 'credits':
+        return
     user = User.objects.filter(stripe_customer_id=customer_id).first()
     if not user or user.has_premium_access:
         return
@@ -356,6 +377,363 @@ def handle_payment_failed(payment_intent):
         return
     send_payment_failed_email(user.email, user.full_name)
 
+
+# ============================================================================
+# QUESTION CREDITS
+# ============================================================================
+
+# Marks payment intents from one-click refills, which have no checkout session
+CREDIT_SOURCE_SAVED_CARD = 'saved_card'
+
+
+def _is_credit_purchase(session) -> bool:
+    return (session.get('metadata') or {}).get('purchase_type') == 'credits'
+
+
+def apply_credit_purchase(*, family_member_id, credits, buyer_id=None, checkout_session_id=None,
+                          payment_intent_id=None, amount_cents=None, currency=None, receipt_url=None):
+    """
+    Add purchased credits to a family member exactly once per Stripe payment.
+
+    Webhooks, the checkout redirect and the refill response can all report the
+    same payment; the unique Stripe id on CreditPurchase makes repeats no-ops.
+    Returns (family_member, created), or (None, False) for unusable metadata.
+    """
+    try:
+        family_member = FamilyMember.objects.get(id=family_member_id)
+        credits = int(credits)
+    except (FamilyMember.DoesNotExist, TypeError, ValueError, ValidationError):
+        logger.error("Credit purchase %s has invalid metadata", checkout_session_id or payment_intent_id)
+        return None, False
+
+    if checkout_session_id:
+        lookup = {'stripe_checkout_session_id': checkout_session_id}
+        extra = {'stripe_payment_intent_id': payment_intent_id or None}
+    else:
+        lookup = {'stripe_payment_intent_id': payment_intent_id}
+        extra = {}
+    try:
+        with transaction.atomic():
+            _, created = CreditPurchase.objects.get_or_create(
+                **lookup,
+                defaults={
+                    **extra,
+                    'family_member': family_member,
+                    'buyer_id': buyer_id or None,
+                    'credits': credits,
+                    'amount_cents': amount_cents or credits * settings.CREDIT_UNIT_PRICE_CENTS,
+                    'currency': currency or settings.STRIPE_PREMIUM_CURRENCY,
+                    'receipt_url': receipt_url or None,
+                },
+            )
+            if created:
+                add_question_credits(family_member, credits)
+    except IntegrityError:
+        # A concurrent report of the same payment won the insert and added the credits
+        created = False
+
+    if created:
+        logger.info("Added %s question credits to family member %s", credits, family_member.id)
+    family_member.refresh_from_db(fields=['credit_balance', 'included_questions_used'])
+    return family_member, created
+
+
+def _remember_card(buyer_id, payment_intent_id):
+    """Store the card Stripe saved during checkout, so the next refill is one click."""
+    try:
+        intent = stripe.PaymentIntent.retrieve(payment_intent_id, expand=['payment_method'])
+        payment_method = intent.payment_method
+        card = payment_method.card
+        User.objects.filter(id=buyer_id).update(
+            saved_payment_method_id=payment_method.id,
+            saved_card_brand=card.brand or '',
+            saved_card_last4=card.last4 or '',
+        )
+    except (stripe.error.StripeError, AttributeError) as e:
+        logger.warning("Could not save card from credit purchase: %s", e.__class__.__name__)
+
+
+def handle_credit_checkout_completed(session):
+    """Credit a completed credit checkout and keep its card for later refills."""
+    metadata = session.get('metadata') or {}
+    family_member, created = apply_credit_purchase(
+        family_member_id=metadata.get('family_member_id'),
+        credits=metadata.get('credits'),
+        buyer_id=metadata.get('user_id'),
+        checkout_session_id=session['id'],
+        payment_intent_id=session.get('payment_intent'),
+        amount_cents=session.get('amount_total'),
+        currency=session.get('currency'),
+        receipt_url=session.get('receipt_url'),
+    )
+    if created and metadata.get('save_card') == 'true' and session.get('payment_intent'):
+        _remember_card(metadata.get('user_id'), session['payment_intent'])
+    return family_member
+
+
+def handle_saved_card_payment_succeeded(payment_intent):
+    """Webhook backup for one-click refills, in case the request ended before crediting."""
+    metadata = payment_intent.get('metadata') or {}
+    if metadata.get('purchase_type') != 'credits' or metadata.get('credit_source') != CREDIT_SOURCE_SAVED_CARD:
+        return
+    apply_credit_purchase(
+        family_member_id=metadata.get('family_member_id'),
+        credits=metadata.get('credits'),
+        buyer_id=metadata.get('user_id'),
+        payment_intent_id=payment_intent['id'],
+        amount_cents=payment_intent.get('amount'),
+        currency=payment_intent.get('currency'),
+    )
+
+
+def _ensure_stripe_customer(user):
+    """Saved cards belong to a Stripe customer; create one for the buyer if needed."""
+    if user.stripe_customer_id:
+        return user.stripe_customer_id
+    customer = stripe.Customer.create(email=user.email, name=user.full_name, metadata={'user_id': str(user.id)})
+    user.stripe_customer_id = customer.id
+    user.save(update_fields=['stripe_customer_id'])
+    return customer.id
+
+
+def _saved_card(user):
+    if not (user.saved_payment_method_id and user.stripe_customer_id):
+        return None
+    return {'brand': user.saved_card_brand, 'last4': user.saved_card_last4}
+
+
+def _chat_member_for_request(request, ai_owner_id):
+    """Return (family_member, ai_owner, user, error_response) for the signed-in user and this vault."""
+    if not getattr(request, 'supabase_user', None):
+        return None, None, None, Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    if not ai_owner_id:
+        return None, None, None, Response({'error': 'ai_owner_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        user = User.objects.get(id=str(request.supabase_user.id))
+        ai_owner = User.objects.get(id=ai_owner_id)
+    except (User.DoesNotExist, ValidationError, ValueError):
+        return None, None, None, Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    has_access, family_member, error_msg = validate_chat_access(ai_owner, user)
+    if not has_access or family_member is None:
+        return None, None, None, Response(
+            {'error': error_msg or 'You are not authorized to chat with this AI.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    return family_member, ai_owner, user, None
+
+
+def _credit_purchase_request(request):
+    """Validate a credit purchase: (family_member, ai_owner, buyer, credits, error_response)."""
+    family_member, ai_owner, buyer, error = _chat_member_for_request(request, request.data.get('ai_owner_id'))
+    if error:
+        return None, None, None, 0, error
+    if not is_premium(ai_owner):
+        return None, None, None, 0, Response(
+            {'error': 'Credits are available once this vault has VoiceVault Premium.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        credits = int(request.data.get('credits'))
+    except (TypeError, ValueError):
+        credits = 0
+    if not settings.CREDIT_MIN_PURCHASE <= credits <= settings.CREDIT_MAX_PURCHASE:
+        return None, None, None, 0, Response(
+            {'error': f'Choose between {settings.CREDIT_MIN_PURCHASE} and {settings.CREDIT_MAX_PURCHASE} credits.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return family_member, ai_owner, buyer, credits, None
+
+
+def _credit_metadata(buyer, family_member, ai_owner, credits):
+    return {
+        'purchase_type': 'credits',
+        'user_id': str(buyer.id),
+        'family_member_id': str(family_member.id),
+        'ai_owner_id': str(ai_owner.id),
+        'credits': str(credits),
+        'stripe_mode': getattr(settings, 'STRIPE_MODE', 'test'),
+    }
+
+
+def _credit_description(ai_owner):
+    return f"Questions for {ai_owner.full_name or 'your loved one'}'s AI (1 credit = 1 question)"
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_question_credits(request):
+    """
+    Questions left for the signed-in family member in one vault, and their saved card.
+
+    GET /api/payments/credits/?ai_owner_id=<uuid>
+    """
+    family_member, ai_owner, user, error = _chat_member_for_request(request, request.query_params.get('ai_owner_id'))
+    if error:
+        return error
+    return Response({
+        'is_premium_vault': is_premium(ai_owner),
+        'can_buy_credits': is_premium(ai_owner),
+        'saved_card': _saved_card(user),
+        **question_allowance(family_member),
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def create_credit_checkout_session(request):
+    """
+    Start a Stripe Checkout for question credits, bought by the family member for one vault.
+    Stripe saves the card to the buyer's customer for one-click refills.
+
+    POST /api/payments/credits/checkout/
+    Body: {"ai_owner_id": "<uuid>", "credits": 100}
+    """
+    family_member, ai_owner, buyer, credits, error = _credit_purchase_request(request)
+    if error:
+        return error
+
+    return_url = f'{_checkout_frontend_url(request)}/chat/{ai_owner.id}'
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            mode='payment',
+            payment_method_types=['card'],
+            customer=_ensure_stripe_customer(buyer),
+            line_items=[{
+                'quantity': credits,
+                'price_data': {
+                    'currency': settings.STRIPE_PREMIUM_CURRENCY,
+                    'unit_amount': settings.CREDIT_UNIT_PRICE_CENTS,
+                    'product_data': {
+                        'name': 'VoiceVault question credits',
+                        'description': _credit_description(ai_owner),
+                    },
+                },
+            }],
+            # Saves the card for later refills; Checkout shows the customer that it will be saved
+            # Metadata on the intent too, so a declined card isn't mistaken for a failed Premium payment
+            payment_intent_data={
+                'setup_future_usage': 'off_session',
+                'metadata': _credit_metadata(buyer, family_member, ai_owner, credits),
+            },
+            metadata={**_credit_metadata(buyer, family_member, ai_owner, credits), 'save_card': 'true'},
+            success_url=f'{return_url}?credits_session_id={{CHECKOUT_SESSION_ID}}',
+            cancel_url=f'{return_url}?credits=canceled',
+        )
+    except stripe.error.StripeError as e:
+        logger.error("Stripe error creating credit checkout: %s", e.__class__.__name__)
+        return Response({'error': 'Payment service error. Please try again.'}, status=status.HTTP_502_BAD_GATEWAY)
+
+    return Response({
+        'checkout_url': checkout_session.url,
+        'session_id': checkout_session.id,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def buy_credits_with_saved_card(request):
+    """
+    One-click refill: charge the buyer's saved card and add the credits.
+
+    POST /api/payments/credits/refill/
+    Body: {"ai_owner_id": "<uuid>", "credits": 100, "request_id": "<unique per click>"}
+
+    When the card can't be charged without the buyer (declined, or the bank asks
+    for verification), responds 402 with requires_checkout so the app opens Checkout.
+    """
+    family_member, ai_owner, buyer, credits, error = _credit_purchase_request(request)
+    if error:
+        return error
+    if not _saved_card(buyer):
+        return Response(
+            {'error': 'No saved card yet. Please pay with a card first.', 'requires_checkout': True},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # The same request id never charges twice, even if the click is sent again
+    request_id = str(request.data.get('request_id') or '')[:100]
+    idempotency = {'idempotency_key': f'credit-refill-{buyer.id}-{request_id}'} if request_id else {}
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=credits * settings.CREDIT_UNIT_PRICE_CENTS,
+            currency=settings.STRIPE_PREMIUM_CURRENCY,
+            customer=buyer.stripe_customer_id,
+            payment_method=buyer.saved_payment_method_id,
+            payment_method_types=['card'],
+            confirm=True,
+            description=_credit_description(ai_owner),
+            metadata={
+                **_credit_metadata(buyer, family_member, ai_owner, credits),
+                'credit_source': CREDIT_SOURCE_SAVED_CARD,
+            },
+            **idempotency,
+        )
+    except stripe.error.CardError:
+        return Response(
+            {'error': 'Your saved card was declined. Please use another card.', 'requires_checkout': True},
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
+    except stripe.error.StripeError as e:
+        logger.error("Stripe error charging saved card: %s", e.__class__.__name__)
+        return Response({'error': 'Payment service error. Please try again.'}, status=status.HTTP_502_BAD_GATEWAY)
+
+    if intent.status != 'succeeded':
+        # Usually the bank wants 3D Secure verification, which Checkout handles
+        try:
+            stripe.PaymentIntent.cancel(intent.id)
+        except stripe.error.StripeError:
+            pass
+        return Response(
+            {'error': 'Your bank needs to confirm this payment. Continuing to secure checkout.',
+             'requires_checkout': True},
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
+
+    family_member, _ = apply_credit_purchase(
+        family_member_id=family_member.id,
+        credits=credits,
+        buyer_id=buyer.id,
+        payment_intent_id=intent.id,
+        amount_cents=intent.amount,
+        currency=intent.currency,
+    )
+    return Response({
+        'payment_completed': True,
+        'purchase_type': 'credits',
+        'questions': question_allowance(family_member) if family_member else None,
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([AllowAny])
+def remove_saved_card(request):
+    """
+    Remove the saved card: detach it at Stripe and forget it here.
+
+    DELETE /api/payments/credits/saved-card/
+    """
+    if not getattr(request, 'supabase_user', None):
+        return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        user = User.objects.get(id=str(request.supabase_user.id))
+    except User.DoesNotExist:
+        return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if user.saved_payment_method_id:
+        try:
+            stripe.PaymentMethod.detach(user.saved_payment_method_id)
+        except stripe.error.InvalidRequestError:
+            pass  # Already detached or deleted at Stripe
+        except stripe.error.StripeError as e:
+            logger.error("Stripe error removing saved card: %s", e.__class__.__name__)
+            return Response({'error': 'Could not remove the card. Please try again.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+    user.saved_payment_method_id = ''
+    user.saved_card_brand = ''
+    user.saved_card_last4 = ''
+    user.save(update_fields=['saved_payment_method_id', 'saved_card_brand', 'saved_card_last4'])
+    return Response({'saved_card': None}, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -487,6 +865,10 @@ def get_packages(request):
     currency_symbols = {'USD': '$', 'CAD': 'C$', 'GBP': '£', 'EUR': '€'}
     symbol = currency_symbols.get(currency, f'{currency} ')
     premium_price_display = f'{symbol}{premium_price:,.2f}'
+    credit_price_display = f'{symbol}{settings.CREDIT_UNIT_PRICE_CENTS / 100:,.2f}'
+    max_family = settings.PREMIUM_MAX_FAMILY_MEMBERS
+    included_questions = settings.PREMIUM_QUESTIONS_PER_FAMILY_MEMBER
+    free_family = settings.FREE_MAX_FAMILY_MEMBERS
 
     packages = [
         {
@@ -499,7 +881,7 @@ def get_packages(request):
                 '15 minutes of recordings',
                 'Basic AI personality',
                 '5 family chat messages',
-                '1 family invitation',
+                f"{free_family} family invitation{'s' if free_family != 1 else ''}",
                 'Text-only chat',
                 'No voice cloning',
             ],
@@ -516,12 +898,15 @@ def get_packages(request):
                 'Up to 5 hours of memories',
                 'Advanced AI personality',
                 'Voice cloning included',
-                '200 voice responses/month',
-                '1,000 text messages/month',
-                'Up to 10 family members',
+                f'Up to {max_family} family members',
+                f'{included_questions} conversations per family member, answered in text and voice',
+                f'More conversations anytime with credits ({credit_price_display} each)',
                 'Biography PDF export',
             ],
             'highlighted': True,
+            'family_members': max_family,
+            'questions_per_family_member': included_questions,
+            'credit_unit_price_cents': settings.CREDIT_UNIT_PRICE_CENTS,
         },
     ]
     

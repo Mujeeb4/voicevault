@@ -50,20 +50,24 @@ const defaultPlans: Package[] = [
       'Up to 5 hours of memories',
       'Advanced AI personality',
       'Voice cloning included',
-      '200 voice responses/month',
-      '1,000 text messages/month',
-      'Up to 10 family members',
+      'Up to 3 family members',
+      '100 conversations per family member, answered in text and voice',
+      'More conversations anytime with credits ($0.20 each)',
       'Biography PDF export',
     ],
+    family_members: 3,
+    questions_per_family_member: 100,
   },
 ];
 
-const premiumHighlights = [
-  { icon: Mic, label: 'Voice cloning', desc: 'Family hears you in your own voice' },
-  { icon: Zap, label: 'AI personality', desc: 'Learns your unique way of speaking' },
-  { icon: Users, label: '10 family members', desc: 'Whole family stays connected' },
-  { icon: Shield, label: 'Lifetime access', desc: 'One-time payment, forever yours' },
-];
+function premiumHighlights(familyMembers: number) {
+  return [
+    { icon: Mic, label: 'Voice cloning', desc: 'Family hears you in your own voice' },
+    { icon: Zap, label: 'AI personality', desc: 'Learns your unique way of speaking' },
+    { icon: Users, label: `${familyMembers} family members`, desc: 'Whole family stays connected' },
+    { icon: Shield, label: 'Lifetime access', desc: 'One-time payment, forever yours' },
+  ];
+}
 
 export default function PricingPage() {
   const router = useRouter();
@@ -99,6 +103,8 @@ export default function PricingPage() {
     for (const plan of packages) byTier.set(plan.tier, plan);
     return [byTier.get('free')!, byTier.get('premium')!];
   }, [packages]);
+  const familyMembers = plans[1].family_members ?? 3;
+  const questionsPerMember = plans[1].questions_per_family_member ?? 100;
 
   const handleStartFree = () => {
     router.push(isAuthenticated ? '/dashboard' : '/signup');
@@ -202,7 +208,7 @@ export default function PricingPage() {
 
                   {premium && (
                     <div className="mb-6 grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
-                      {premiumHighlights.map(({ icon: Icon, label, desc }) => (
+                      {premiumHighlights(familyMembers).map(({ icon: Icon, label, desc }) => (
                         <div key={label} className="flex items-start gap-2.5 rounded-xl bg-muted p-3">
                           <Icon className="mt-0.5 h-4 w-4 shrink-0 text-primary" strokeWidth={1.75} />
                           <div>
@@ -301,8 +307,8 @@ export default function PricingPage() {
               ['Guided questions', '5', 'All 30'],
               ['Recording time', '15 minutes', 'Up to 5 hours'],
               ['Cloned voice', 'Not included', 'Included'],
-              ['Family chat', '5 messages', '1,000 messages / month'],
-              ['Family members', '1 invitation', 'Up to 10'],
+              ['Family chat', '5 messages', `${questionsPerMember} conversations per member, then credits`],
+              ['Family members', '1 invitation', `Up to ${familyMembers}`],
               ['Encrypted, private storage', 'Included', 'Included'],
               ['Price', 'Free', 'One-time payment'],
             ].map(([label, free, premium]) => (

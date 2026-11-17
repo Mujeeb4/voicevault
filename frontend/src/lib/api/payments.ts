@@ -12,6 +12,9 @@ export interface Package {
   price_display?: string;
   features: string[];
   highlighted?: boolean;
+  family_members?: number;
+  questions_per_family_member?: number;
+  credit_unit_price_cents?: number;
 }
 
 interface ApiPackage {
@@ -21,6 +24,34 @@ interface ApiPackage {
   price_display?: string;
   features: string[];
   highlighted?: boolean;
+  family_members?: number;
+  questions_per_family_member?: number;
+  credit_unit_price_cents?: number;
+}
+
+/** Questions left for the signed-in family member in one vault. */
+export interface QuestionCredits {
+  is_premium_vault: boolean;
+  can_buy_credits: boolean;
+  included_questions: number;
+  included_questions_used: number;
+  included_questions_remaining: number;
+  credit_balance: number;
+  questions_remaining: number;
+  credit_unit_price_cents: number;
+  credit_min_purchase: number;
+  credit_max_purchase: number;
+  currency: string;
+  /** Card saved at Stripe from an earlier purchase, used for one-click refills. */
+  saved_card: { brand: string; last4: string } | null;
+}
+
+/** Result of a one-click refill; requires_checkout means the card needs the buyer (declined or bank check). */
+export interface RefillResult {
+  payment_completed?: boolean;
+  questions?: QuestionCredits | null;
+  requires_checkout?: boolean;
+  error?: string;
 }
 
 function normalizePackage(raw: ApiPackage): Package {
@@ -34,6 +65,9 @@ function normalizePackage(raw: ApiPackage): Package {
     price_display: raw.price_display ?? `$${price}`,
     features: raw.features ?? [],
     highlighted: raw.highlighted ?? true,
+    family_members: raw.family_members,
+    questions_per_family_member: raw.questions_per_family_member,
+    credit_unit_price_cents: raw.credit_unit_price_cents,
   };
 }
 
@@ -57,6 +91,55 @@ export const paymentsApi = {
   confirmCheckoutSession: async (
     sessionId: string
   ): Promise<{ payment_completed: boolean; is_premium: boolean; payment_status?: string }> => {
+    const { data } = await apiClient.post('/payments/confirm-checkout/', { session_id: sessionId });
+    return data;
+  },
+
+  getQuestionCredits: async (aiOwnerId: string): Promise<QuestionCredits> => {
+    const { data } = await apiClient.get<QuestionCredits>('/payments/credits/', {
+      params: { ai_owner_id: aiOwnerId },
+    });
+    return data;
+  },
+
+  createCreditCheckoutSession: async (
+    aiOwnerId: string,
+    credits: number
+  ): Promise<{ checkout_url: string }> => {
+    const { data } = await apiClient.post('/payments/credits/checkout/', {
+      ai_owner_id: aiOwnerId,
+      credits,
+    });
+    return { checkout_url: data.checkout_url ?? '' };
+  },
+
+  refillWithSavedCard: async (
+    aiOwnerId: string,
+    credits: number,
+    requestId: string
+  ): Promise<RefillResult> => {
+    try {
+      const { data } = await apiClient.post<RefillResult>('/payments/credits/refill/', {
+        ai_owner_id: aiOwnerId,
+        credits,
+        request_id: requestId,
+      });
+      return data;
+    } catch (err) {
+      const data = (err as { response?: { data?: RefillResult } }).response?.data;
+      if (data?.requires_checkout) return data;
+      throw err;
+    }
+  },
+
+  removeSavedCard: async (): Promise<void> => {
+    await apiClient.delete('/payments/credits/saved-card/');
+  },
+
+  /** Confirms a returning credit checkout; the webhook does the same, crediting only once. */
+  confirmCreditCheckout: async (
+    sessionId: string
+  ): Promise<{ payment_completed: boolean; questions: QuestionCredits | null }> => {
     const { data } = await apiClient.post('/payments/confirm-checkout/', { session_id: sessionId });
     return data;
   },

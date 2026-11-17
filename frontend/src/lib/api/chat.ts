@@ -11,6 +11,12 @@ export interface StreamingConnection {
   close: () => void;
 }
 
+/** Why a message was refused, so the chat can offer credits or an upgrade. */
+export interface ChatErrorDetails {
+  creditsRequired?: boolean;
+  upgradeRequired?: boolean;
+}
+
 interface SendMessageParams {
   ai_owner_id: string;
   family_member_id: string;
@@ -48,17 +54,21 @@ export const chatApi = {
     onAudioUrl: (url: string, conversationId: string) => void,
     onAudioTask: (taskId: string, conversationId: string) => void,
     onComplete: (conversationId?: string) => void,
-    onError: (message: string) => void
+    onError: (message: string, details?: ChatErrorDetails) => void
   ): StreamingConnection => {
     const url = `${API_BASE_URL}${chatBase}/stream/`;
 
     const controller = new AbortController();
     let terminal = false;
-    const fail = (message: string) => {
+    const fail = (message: string, details?: ChatErrorDetails) => {
       if (terminal || controller.signal.aborted) return;
       terminal = true;
-      onError(message);
+      onError(message, details);
     };
+    const errorDetails = (body: Record<string, unknown>): ChatErrorDetails => ({
+      creditsRequired: body.credits_required === true,
+      upgradeRequired: body.upgrade_required === true,
+    });
 
     const handlePayload = (payload: Record<string, unknown>) => {
       switch (payload.type) {
@@ -78,7 +88,7 @@ export const chatApi = {
           onComplete(payload.conversation_id as string | undefined);
           break;
         case 'error':
-          fail((payload.message as string) ?? 'Unable to generate a reply.');
+          fail((payload.message as string) ?? 'Unable to generate a reply.', errorDetails(payload));
           break;
       }
     };
@@ -101,7 +111,7 @@ export const chatApi = {
         if (!response.ok || !response.body) {
           if (response.status === 401) session.clearTokens();
           const error = await response.json().catch(() => ({}));
-          fail(error.message ?? error.error ?? error.detail ?? 'Connection failed. Please try again.');
+          fail(error.message ?? error.error ?? error.detail ?? 'Connection failed. Please try again.', errorDetails(error));
           return;
         }
 

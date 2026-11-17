@@ -31,6 +31,8 @@ interface ChatState {
   audioErrors: Record<string, string>;
   readyAudioUrls: Record<string, string>;
   error: string | null;
+  // The last message was refused because the member's questions and credits ran out
+  creditsRequired: boolean;
   voicePlayer: VoicePlayer | null;
   eventSource: StreamingConnection | null;
 
@@ -72,6 +74,7 @@ const initialState = {
   audioErrors: {} as Record<string, string>,
   readyAudioUrls: {} as Record<string, string>,
   error: null,
+  creditsRequired: false,
   voicePlayer: null,
   eventSource: null,
 };
@@ -226,6 +229,7 @@ export const useChatStore = create<ChatState>()(
           isStreaming: true,
           streamingText: '',
           error: null,
+          creditsRequired: false,
           currentMessage: '',
         });
 
@@ -278,9 +282,15 @@ export const useChatStore = create<ChatState>()(
                 }
               }, 2000);
             },
-            (error) => {
+            (error, details) => {
               // Error occurred
-              set({ eventSource: null, isStreaming: false, streamingText: '', error });
+              set({
+                eventSource: null,
+                isStreaming: false,
+                streamingText: '',
+                error,
+                creditsRequired: details?.creditsRequired ?? false,
+              });
             }
           );
 
@@ -311,7 +321,7 @@ export const useChatStore = create<ChatState>()(
         }
       },
 
-      clearError: () => set({ error: null }),
+      clearError: () => set({ error: null, creditsRequired: false }),
 
       stopStreaming: () => {
         const { eventSource } = get();

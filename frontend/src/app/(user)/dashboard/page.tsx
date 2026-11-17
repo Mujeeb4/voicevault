@@ -231,17 +231,26 @@ function DashboardContent() {
                 hint={<UsageBar used={quota.usage.recording_minutes_used} limit={quota.limits.recording_minutes} />}
                 icon={<Clock className="h-4.5 w-4.5" />}
               />
-              <StatTile
-                label="Messages"
-                value={
-                  <>
-                    {quota.usage.text_messages_used_this_month}
-                    <span className="ml-1 text-base font-medium text-muted-foreground">/ {quota.limits.text_messages_monthly}</span>
-                  </>
-                }
-                hint={<UsageBar used={quota.usage.text_messages_used_this_month} limit={quota.limits.text_messages_monthly} />}
-                icon={<MessageSquare className="h-4.5 w-4.5" />}
-              />
+              {quota.is_premium ? (
+                <StatTile
+                  label="Questions per member"
+                  value={quota.limits.questions_per_family_member ?? 0}
+                  hint="Included for each family member, then credits"
+                  icon={<MessageSquare className="h-4.5 w-4.5" />}
+                />
+              ) : (
+                <StatTile
+                  label="Messages"
+                  value={
+                    <>
+                      {quota.usage.text_messages_used_this_month}
+                      <span className="ml-1 text-base font-medium text-muted-foreground">/ {quota.limits.text_messages_monthly}</span>
+                    </>
+                  }
+                  hint={<UsageBar used={quota.usage.text_messages_used_this_month} limit={quota.limits.text_messages_monthly ?? 0} />}
+                  icon={<MessageSquare className="h-4.5 w-4.5" />}
+                />
+              )}
               <StatTile
                 label="Family members"
                 value={

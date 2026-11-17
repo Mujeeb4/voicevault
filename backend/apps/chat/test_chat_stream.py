@@ -132,3 +132,67 @@ class ChatStreamErrorSanitizationTests(TestCase):
         error = [e for e in events if e['type'] == 'error'][0]
         self.assertEqual(error['message'], 'Unable to complete chat response')
         self.assertNotIn('secret', json.dumps(events))
+
+
+class ChatQuestionAllowanceTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create(
+            email='allowance-owner@example.com', full_name='Owner', ai_ready=True, is_premium=True,
+        )
+        AIConfiguration.objects.create(user=self.owner, system_prompt='Answer naturally')
+        Transcript.objects.create(user=self.owner, full_transcript='I grew up near the sea.')
+        self.account = User.objects.create(email='allowance-child@example.com', full_name='Child')
+        self.member = FamilyMember.objects.create(
+            ai_owner=self.owner, email=self.account.email, relationship='child',
+            has_access=True, user_account=self.account,
+        )
+
+    def ask(self):
+        request = RequestFactory().post(
+            '/api/chat/stream/',
+            data=json.dumps({'ai_owner_id': str(self.owner.id), 'question': 'How are you?'}),
+            content_type='application/json',
+        )
+        request.supabase_user = SimpleNamespace(id=self.account.id)
+        response = chat_streaming(request)
+        if response.status_code == 200:
+            list(response.streaming_content)
+        return response
+
+    @override_settings(PREMIUM_QUESTIONS_PER_FAMILY_MEMBER=1)
+    def test_member_without_questions_or_credits_is_asked_to_buy_credits(self):
+        self.member.included_questions_used = 1
+        self.member.save()
+
+        response = self.ask()
+
+        self.assertEqual(response.status_code, 402)
+        body = json.loads(response.content)
+        self.assertTrue(body['credits_required'])
+        self.assertFalse(body['upgrade_required'])
+
+    @patch('apps.chat.views.get_cached_response', return_value=None)
+    @patch('openai.OpenAI')
+    def test_failed_answer_gives_the_question_back(self, openai_client, _cache):
+        openai_client.return_value.chat.completions.create.side_effect = RuntimeError('provider down')
+
+        response = self.ask()
+
+        self.assertEqual(response.status_code, 200)
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.included_questions_used, 0)
+        self.assertFalse(Conversation.objects.exists())
+
+    @patch('apps.chat.views.can_generate_voice_response', return_value=LimitResult(False, 'off'))
+    @patch('apps.chat.views.get_cached_response', return_value=None)
+    @patch('openai.OpenAI')
+    def test_answered_question_uses_one_included_question(self, openai_client, _cache, _voice):
+        openai_client.return_value.chat.completions.create.return_value = [
+            SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content='Hello.'))], usage=None),
+        ]
+
+        self.ask()
+
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.included_questions_used, 1)
+        self.assertEqual(Conversation.objects.count(), 1)

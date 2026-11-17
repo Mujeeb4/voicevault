@@ -3,7 +3,7 @@ Payment models for Stripe integration.
 """
 import uuid
 from django.db import models
-from apps.users.models import User
+from apps.users.models import FamilyMember, User
 
 
 class Payment(models.Model):
@@ -59,3 +59,39 @@ class Payment(models.Model):
     
     def __str__(self):
         return f"Payment {self.stripe_payment_intent_id} - {self.status}"
+
+
+class CreditPurchase(models.Model):
+    """Question credits a family member bought for one vault's AI."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    family_member = models.ForeignKey(
+        FamilyMember,
+        on_delete=models.CASCADE,
+        related_name='credit_purchases'
+    )
+    buyer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='credit_purchases'
+    )
+    # Unique Stripe ids make crediting idempotent across webhook retries. Checkout
+    # purchases have a session id; one-click refills with a saved card only a payment intent.
+    stripe_checkout_session_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    stripe_payment_intent_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
+    credits = models.PositiveIntegerField()
+    amount_cents = models.IntegerField(help_text="Amount in cents")
+    currency = models.CharField(max_length=3, default='usd')
+    receipt_url = models.URLField(max_length=1000, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'credit_purchases'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['family_member']),
+            models.Index(fields=['buyer']),
+        ]
+
+    def __str__(self):
+        return f"{self.credits} credits for {self.family_member_id}"

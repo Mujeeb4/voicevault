@@ -15,7 +15,7 @@ from rest_framework import status
 import openai
 from django.conf import settings
 
-from services.audio_normalize import AudioConversionError, normalize_audio_file
+from services.audio_normalize import AudioConversionError, normalize_audio_file, trim_audio_file
 from utils.security import validate_audio_magic
 
 logger = logging.getLogger(__name__)
@@ -101,7 +101,10 @@ def transcribe_voice_input(request):
             for chunk in audio_file.chunks():
                 temp_file.write(chunk)
             temp_file_path = temp_file.name
-        
+
+        # Transcription is billed per minute, so only the first VOICE_QUESTION_MAX_SECONDS are sent
+        trimmed_file_path = trim_audio_file(temp_file_path, settings.VOICE_QUESTION_MAX_SECONDS)
+
         try:
             # Initialize OpenAI client (without proxies for Python 3.14 compat)
             import httpx
@@ -114,7 +117,7 @@ def transcribe_voice_input(request):
             
             # Transcribe using Whisper
             logger.info(f"Transcribing voice input for user {request.supabase_user.id}")
-            with open(temp_file_path, 'rb') as audio_data:
+            with open(trimmed_file_path, 'rb') as audio_data:
                 transcript = client.audio.transcriptions.create(
                     model='whisper-1',
                     file=audio_data,
@@ -137,9 +140,10 @@ def transcribe_voice_input(request):
             }, status=status.HTTP_200_OK)
             
         finally:
-            # Clean up temporary file
-            if os.path.exists(temp_file_path):
-                os.unlink(temp_file_path)
+            # Clean up temporary files
+            for path in {temp_file_path, trimmed_file_path}:
+                if os.path.exists(path):
+                    os.unlink(path)
                 
     except Exception as e:
         logger.error("Error transcribing voice input: %s", e.__class__.__name__, exc_info=True)

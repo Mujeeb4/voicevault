@@ -22,4 +22,10 @@ urlpatterns = [
     
     # Get available packages
     path('packages/', views.get_packages, name='packages'),
+
+    # Question credits bought by family members
+    path('credits/', views.get_question_credits, name='credits'),
+    path('credits/checkout/', views.create_credit_checkout_session, name='credits_checkout'),
+    path('credits/refill/', views.buy_credits_with_saved_card, name='credits_refill'),
+    path('credits/saved-card/', views.remove_saved_card, name='credits_saved_card'),
 ]

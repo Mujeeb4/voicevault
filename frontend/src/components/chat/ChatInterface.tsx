@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { PersonAvatar } from '@/components/ui/person-avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { BuyCreditsPanel, QuestionsLeftBadge, useQuestionCredits } from './QuestionCredits';
 
 interface ChatInterfaceProps {
   aiOwnerId: string;
@@ -39,6 +40,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     isStreaming,
     streamingText,
     error,
+    creditsRequired,
     setAIOwner,
     setFamilyMember,
     loadConversations,
@@ -50,6 +52,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  // Refreshed after each answer so the remaining count stays current
+  const { credits, setCredits } = useQuestionCredits(aiOwnerId, conversations.length);
+  const outOfQuestions = creditsRequired || credits?.questions_remaining === 0;
+  // Members can open the panel to top up before running out
+  const [showTopUp, setShowTopUp] = React.useState(false);
 
   // Initialize chat
   useEffect(() => {
@@ -127,6 +134,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* Status Indicators */}
         <div className="flex items-center gap-2">
+          <QuestionsLeftBadge credits={credits} onClick={() => setShowTopUp(!showTopUp)} />
           {isStreaming && (
             <div className="flex items-center gap-2 text-sm text-primary">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -136,8 +144,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
+      {(outOfQuestions || showTopUp) && (
+        <BuyCreditsPanel
+          aiOwnerId={aiOwnerId}
+          aiOwnerName={aiOwnerName}
+          credits={credits}
+          onCreditsChange={(updated) => {
+            setCredits(updated);
+            if (updated.questions_remaining > 0) clearError();
+          }}
+          onClose={outOfQuestions ? undefined : () => setShowTopUp(false)}
+        />
+      )}
+
       {/* Error Display */}
-      {error && (
+      {error && !creditsRequired && (
         <Alert variant="destructive" className="m-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
@@ -237,7 +258,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           isStreaming={isStreaming}
           maxLength={500}
           placeholder={`Ask ${aiOwnerName} a question…`}
-          disabled={!!error}
+          disabled={!!error || outOfQuestions}
         />
       </div>
 

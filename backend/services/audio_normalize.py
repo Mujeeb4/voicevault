@@ -27,6 +27,32 @@ def audio_extension(audio_file) -> str:
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
 
 
+def trim_audio_file(path: str, max_seconds: int) -> str:
+    """
+    Cut an audio file to its first max_seconds, which caps what transcribing it can cost.
+
+    Uses a stream copy (no re-encode, so it is quick) and returns a new path, or the
+    original path if ffmpeg is unavailable or cannot cut this file.
+    """
+    root, extension = os.path.splitext(path)
+    target = f"{root}-trimmed{extension}"
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", path,
+             "-t", str(max_seconds), "-vn", "-c", "copy", target],
+            capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("ffmpeg trim unavailable or timed out: %s", exc.__class__.__name__)
+        return path
+    if result.returncode or not os.path.exists(target) or os.path.getsize(target) == 0:
+        logger.warning("ffmpeg could not trim audio: %s", result.stderr[-300:].decode("utf-8", "replace"))
+        if os.path.exists(target):
+            os.unlink(target)
+        return path
+    return target
+
+
 def normalize_audio_file(audio_file):
     """Return an uploadable file (with .name/.size) in webm/mp3/wav format."""
     extension = audio_extension(audio_file)

@@ -59,7 +59,7 @@ function FamilyManagementContent() {
     user?.payment_completed ||
     user?.plan_type === 'premium'
   );
-  const inviteLimit = user?.usage_quota?.limits.family_members ?? (isPremium ? 10 : 1);
+  const inviteLimit = user?.usage_quota?.limits.family_members ?? (isPremium ? 3 : 1);
 
   if (!user?.ai_ready) {
     return (

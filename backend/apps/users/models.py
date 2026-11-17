@@ -50,7 +50,12 @@ class User(models.Model):
     stripe_payment_intent_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     payment_completed = models.BooleanField(default=False)
     payment_amount = models.IntegerField(default=0, help_text="Amount in cents")
-    
+
+    # Card saved at Stripe from a credit purchase, for one-click refills (only Stripe ids and display details)
+    saved_payment_method_id = models.CharField(max_length=255, blank=True, default='')
+    saved_card_brand = models.CharField(max_length=30, blank=True, default='')
+    saved_card_last4 = models.CharField(max_length=4, blank=True, default='')
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -245,7 +250,11 @@ class FamilyMember(models.Model):
     # Usage statistics
     conversation_count = models.IntegerField(default=0)
     last_conversation_at = models.DateTimeField(null=True, blank=True)
-    
+
+    # Question allowance: included questions are used first, then purchased credits
+    included_questions_used = models.PositiveIntegerField(default=0)
+    credit_balance = models.PositiveIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
