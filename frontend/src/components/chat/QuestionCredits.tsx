@@ -133,7 +133,8 @@ export function BuyCreditsPanel({
         await checkout(size);
         return;
       }
-      if (result.questions) onCreditsChange(result.questions);
+      // The refill response has only the counts, so keep the vault and saved-card fields
+      if (result.questions) onCreditsChange({ ...credits, ...result.questions });
       toast.success(`${size} questions added to your account.`);
       setLoadingSize(null);
       onClose?.();

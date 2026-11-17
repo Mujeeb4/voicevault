@@ -49,7 +49,7 @@ export interface QuestionCredits {
 /** Result of a one-click refill; requires_checkout means the card needs the buyer (declined or bank check). */
 export interface RefillResult {
   payment_completed?: boolean;
-  questions?: QuestionCredits | null;
+  questions?: Partial<QuestionCredits> | null; // counts only (no vault or saved-card fields)
   requires_checkout?: boolean;
   error?: string;
 }
