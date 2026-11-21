@@ -1,0 +1,9 @@
+[Unit]
+Description=VoiceVault production watchdog (emails ADMIN_EMAILS on problems)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/voicevault-watchdog
+TimeoutStartSec=240

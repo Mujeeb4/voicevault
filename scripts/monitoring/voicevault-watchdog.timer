@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the VoiceVault watchdog every 2 hours
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=2h
+AccuracySec=1min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
