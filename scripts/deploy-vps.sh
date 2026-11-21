@@ -6,7 +6,11 @@
 # containers are not healthy.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-COMPOSE="docker compose -f docker-compose.production.yml"
+# This server runs the stack with four compose files (database network, Traefik host and HTTPS
+# overlays). Using only docker-compose.production.yml leaves the containers unable to reach the
+# database or the proxy, so always use the same files the live stack was started with.
+COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.production.yml -f docker-compose.vps.yml -f docker-compose.traefik-host.yml -f docker-compose.traefik-https.yml}"
+COMPOSE="docker compose $COMPOSE_FILES"
 
 if [[ "${1:-}" == "rollback" ]]; then
   docker tag voicevault-backend:rollback voicevault-backend:production
