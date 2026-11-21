@@ -63,8 +63,10 @@ class CheckoutRegressionTests(TestCase):
         self.assertEqual(line_item['price_data']['currency'], 'usd')
 
     @override_settings(DEBUG=True, FRONTEND_URL='https://production.example')
+    @patch('apps.payments.views.stripe.Customer.retrieve')
     @patch('apps.payments.views.stripe.checkout.Session.create')
-    def test_debug_checkout_returns_to_the_local_origin(self, session_create):
+    def test_debug_checkout_returns_to_the_local_origin(self, session_create, customer_retrieve):
+        customer_retrieve.return_value.deleted = False
         self.user.stripe_customer_id = 'cus_existing'
         self.user.save(update_fields=['stripe_customer_id'])
         session_create.return_value.id = 'cs_test'

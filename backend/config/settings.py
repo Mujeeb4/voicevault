@@ -421,7 +421,9 @@ CHAT_MAX_INPUT_TOKENS = config('CHAT_MAX_INPUT_TOKENS', default=2500, cast=int)
 CHAT_MAX_OUTPUT_TOKENS = config('CHAT_MAX_OUTPUT_TOKENS', default=300, cast=int)
 CHAT_INPUT_PRICE_PER_MILLION_USD = config('CHAT_INPUT_PRICE_PER_MILLION_USD', default=2.50, cast=float)
 CHAT_OUTPUT_PRICE_PER_MILLION_USD = config('CHAT_OUTPUT_PRICE_PER_MILLION_USD', default=10.00, cast=float)
-VOICE_REPLY_MAX_COST_USD = config('VOICE_REPLY_MAX_COST_USD', default=0.05, cast=float)
+# Replicate qwen/qwen3-tts bills $0.02 per 1,000 input characters: a 300-token answer
+# (~1,500 characters) plus the voice reference text (~250) is about $0.035
+VOICE_REPLY_MAX_COST_USD = config('VOICE_REPLY_MAX_COST_USD', default=0.04, cast=float)
 VOICE_QUESTION_MAX_SECONDS = config('VOICE_QUESTION_MAX_SECONDS', default=120, cast=int)
 TRANSCRIPTION_PRICE_PER_MINUTE_USD = config('TRANSCRIPTION_PRICE_PER_MINUTE_USD', default=0.006, cast=float)
 # One-time AI cost of setting up a Premium vault (recording transcription, personality analysis, voice cloning)

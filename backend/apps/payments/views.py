@@ -88,7 +88,6 @@ def create_checkout_session(request):
         )
     
     user_id = str(request.supabase_user.id)
-    user_email = request.supabase_user.email
     
     try:
         user = User.objects.get(id=user_id)
@@ -110,18 +109,8 @@ def create_checkout_session(request):
     package_tier = package['tier']
     
     try:
-        # Create or get Stripe customer
-        if user.stripe_customer_id:
-            customer_id = user.stripe_customer_id
-        else:
-            customer = stripe.Customer.create(
-                email=user_email,
-                name=user.full_name,
-                metadata={'user_id': str(user.id)}
-            )
-            customer_id = customer.id
-            user.stripe_customer_id = customer_id
-            user.save(update_fields=['stripe_customer_id'])
+        # Create or get the Stripe customer (replacing one left over from test mode)
+        customer_id = _ensure_stripe_customer(user)
         
         # Get frontend URL for redirects
         frontend_url = _checkout_frontend_url(request)
@@ -486,13 +475,33 @@ def handle_saved_card_payment_succeeded(payment_intent):
     )
 
 
+def _forget_saved_card(user):
+    user.saved_payment_method_id = ''
+    user.saved_card_brand = ''
+    user.saved_card_last4 = ''
+
+
 def _ensure_stripe_customer(user):
-    """Saved cards belong to a Stripe customer; create one for the buyer if needed."""
+    """
+    Return the buyer's Stripe customer id, creating a customer if there is none.
+
+    A stored id can belong to the other Stripe mode (test ids stop existing when
+    the site switches to live keys) or to a deleted customer. Those are replaced,
+    and the card saved on them is forgotten, instead of failing the checkout.
+    """
     if user.stripe_customer_id:
-        return user.stripe_customer_id
+        try:
+            customer = stripe.Customer.retrieve(user.stripe_customer_id)
+            if not getattr(customer, 'deleted', False):
+                return user.stripe_customer_id
+        except stripe.error.InvalidRequestError as e:
+            if getattr(e, 'code', None) != 'resource_missing':
+                raise
+        logger.info("Replacing unusable Stripe customer for user %s", user.id)
+        _forget_saved_card(user)
     customer = stripe.Customer.create(email=user.email, name=user.full_name, metadata={'user_id': str(user.id)})
     user.stripe_customer_id = customer.id
-    user.save(update_fields=['stripe_customer_id'])
+    user.save(update_fields=['stripe_customer_id', 'saved_payment_method_id', 'saved_card_brand', 'saved_card_last4'])
     return customer.id
 
 
@@ -672,6 +681,19 @@ def buy_credits_with_saved_card(request):
     except stripe.error.CardError:
         return Response(
             {'error': 'Your saved card was declined. Please use another card.', 'requires_checkout': True},
+            status=status.HTTP_402_PAYMENT_REQUIRED,
+        )
+    except stripe.error.InvalidRequestError as e:
+        if getattr(e, 'code', None) != 'resource_missing':
+            logger.error("Stripe error charging saved card: %s", e.__class__.__name__)
+            return Response({'error': 'Payment service error. Please try again.'},
+                            status=status.HTTP_502_BAD_GATEWAY)
+        # The saved card or its customer no longer exists at Stripe (for example a
+        # test-mode card after switching to live keys): forget it and use Checkout
+        _forget_saved_card(buyer)
+        buyer.save(update_fields=['saved_payment_method_id', 'saved_card_brand', 'saved_card_last4'])
+        return Response(
+            {'error': 'Please enter your card again.', 'requires_checkout': True},
             status=status.HTTP_402_PAYMENT_REQUIRED,
         )
     except stripe.error.StripeError as e:

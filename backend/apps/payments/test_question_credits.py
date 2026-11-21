@@ -172,6 +172,28 @@ class CreditPurchaseTests(ThrottleIsolationMixin, TestCase):
         self.member.user_account.refresh_from_db()
         self.assertEqual(self.member.user_account.stripe_customer_id, 'cus_member')
 
+    @patch('apps.payments.views.stripe.Customer.create')
+    @patch('apps.payments.views.stripe.Customer.retrieve')
+    @patch('apps.payments.views.stripe.checkout.Session.create')
+    def test_checkout_replaces_a_customer_left_over_from_test_mode(self, session_create, retrieve, create):
+        buyer = self.member.user_account
+        buyer.stripe_customer_id = 'cus_from_test_mode'
+        buyer.saved_payment_method_id = 'pm_from_test_mode'
+        buyer.saved_card_last4 = '4242'
+        buyer.save()
+        retrieve.side_effect = stripe.error.InvalidRequestError('No such customer', 'id', code='resource_missing')
+        create.return_value.id = 'cus_live'
+        session_create.return_value.id = 'cs_credits'
+        session_create.return_value.url = 'https://checkout.stripe.test/cs_credits'
+
+        response = views.create_credit_checkout_session(self.checkout_request(50))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(session_create.call_args.kwargs['customer'], 'cus_live')
+        buyer.refresh_from_db()
+        self.assertEqual(buyer.stripe_customer_id, 'cus_live')
+        self.assertEqual(buyer.saved_payment_method_id, '')
+
     @patch('apps.payments.views.send_payment_failed_email')
     def test_declined_credit_checkout_does_not_send_the_premium_failure_email(self, send_email):
         buyer = self.member.user_account
@@ -314,6 +336,21 @@ class SavedCardRefillTests(ThrottleIsolationMixin, TestCase):
 
         self.assertEqual(response.status_code, 402)
         self.assertTrue(response.data['requires_checkout'])
+        self.member.refresh_from_db()
+        self.assertEqual(self.member.credit_balance, 0)
+
+    @patch('apps.payments.views.stripe.PaymentIntent.create')
+    def test_card_left_over_from_test_mode_is_forgotten_and_checkout_used(self, create):
+        create.side_effect = stripe.error.InvalidRequestError(
+            'No such PaymentMethod', 'payment_method', code='resource_missing'
+        )
+
+        response = self.refill()
+
+        self.assertEqual(response.status_code, 402)
+        self.assertTrue(response.data['requires_checkout'])
+        self.member.user_account.refresh_from_db()
+        self.assertEqual(self.member.user_account.saved_payment_method_id, '')
         self.member.refresh_from_db()
         self.assertEqual(self.member.credit_balance, 0)
 
