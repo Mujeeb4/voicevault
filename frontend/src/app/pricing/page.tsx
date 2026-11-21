@@ -1,5 +1,6 @@
 'use client';
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -77,11 +78,7 @@ export default function PricingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  const isPremium = !!(
-    user?.is_premium ||
-    user?.payment_completed ||
-    user?.plan_type === 'premium'
-  );
+  const isPremium = hasPremiumAccess(user);
   const canceled = searchParams.get('canceled') === 'true';
 
   useEffect(() => {

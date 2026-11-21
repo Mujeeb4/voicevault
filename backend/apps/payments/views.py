@@ -212,6 +212,15 @@ def confirm_checkout_session(request):
     payment_status = session.get('payment_status')
     if payment_status == 'paid' and _is_credit_purchase(session):
         family_member = handle_credit_checkout_completed(session)
+        if family_member is None:
+            # Paid, but the credits could not be attributed (unusable metadata): say so
+            # instead of reporting success, so it gets noticed and fixed by hand
+            logger.critical("Paid credit checkout %s could not be credited", session_id)
+            return Response(
+                {'error': 'credits_not_applied',
+                 'message': 'Your payment was received but the credits could not be added. Please contact support.'},
+                status=status.HTTP_409_CONFLICT,
+            )
         return Response({
             'payment_completed': True,
             'purchase_type': 'credits',
@@ -326,6 +335,13 @@ def handle_checkout_completed(session):
         logger.error(f"User not found for checkout: {user_id}")
         return
     
+    # A refunded payment must never grant Premium again: Stripe keeps reporting the
+    # checkout session as paid after a refund, and webhook retries or a revisit of the
+    # success page would otherwise re-activate it.
+    if Payment.objects.filter(stripe_payment_intent_id=payment_intent_id, status='refunded').exists():
+        logger.info("Checkout %s was refunded; Premium not re-activated for user %s", session['id'], user_id)
+        return
+
     # Create Payment record. `created` marks the first time we see this payment,
     # so webhook retries and the confirm endpoint never send duplicate emails.
     payment_created = False

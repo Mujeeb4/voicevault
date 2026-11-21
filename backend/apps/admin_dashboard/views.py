@@ -258,7 +258,18 @@ def admin_user_detail(request, user_id):
             target_id=str(user.id),
             metadata={'target_email': user.email},
         )
+        # Same cleanup as self-service deletion: the database rows cascade, but the stored
+        # recordings and voice files must be removed from storage too
+        from apps.users.views_auth import _stored_files_for
+        from utils.supabase_client import delete_file_from_supabase
+
+        stored_files = _stored_files_for(user)
         user.delete()
+        for bucket, path in stored_files:
+            try:
+                delete_file_from_supabase(bucket=bucket, file_path=path)
+            except Exception as exc:
+                logger.warning("Failed to delete stored file for deleted user: %s", exc.__class__.__name__)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     allowed_fields = {
@@ -282,6 +293,13 @@ def admin_user_detail(request, user_id):
     boolean_fields = {
         'is_premium', 'lifetime_access', 'recording_completed', 'ai_ready', 'payment_completed'
     }
+    # Premium counts as on if ANY of its flags is set, so turning it off must clear them all
+    # (unless the request sets them explicitly), otherwise the revoke would do nothing.
+    if updates.get('is_premium') is False:
+        updates.setdefault('lifetime_access', False)
+        updates.setdefault('payment_completed', False)
+        updates.setdefault('plan_type', 'free')
+        updates.setdefault('package_tier', 'free')
     for field in boolean_fields.intersection(updates):
         if not isinstance(updates[field], bool):
             return Response(

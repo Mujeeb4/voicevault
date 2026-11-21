@@ -6,6 +6,7 @@
 
 'use client';
 
+import { hasPremiumAccess } from '@/lib/premium';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -58,11 +59,7 @@ function RecordingContent() {
   const [currentStep, setCurrentStep] = useState<Step>('intro');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const isPremium = !!(
-    user?.is_premium ||
-    user?.payment_completed ||
-    user?.plan_type === 'premium'
-  );
+  const isPremium = hasPremiumAccess(user);
   const uploadChunkDurationSeconds = 10 * 60;
   const uploadPartMaxBytes = 22 * 1024 * 1024;
 
@@ -256,7 +253,10 @@ function RecordingContent() {
         router.push('/processing');
       }, 2000);
     } catch (err) {
-      setStatus('idle');
+      // Back to the review step, where the recordings (still saved on this device) can be
+      // uploaded again; staying on the upload step would leave a screen with no way forward.
+      setCurrentStep('review');
+      setStatus('reviewing');
       toast.error(getApiErrorMessage(err, err instanceof Error ? err.message : 'Upload failed'));
       console.error('Upload error');
     }

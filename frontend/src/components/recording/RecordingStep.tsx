@@ -6,6 +6,7 @@
 
 'use client';
 
+import { hasPremiumAccess } from '@/lib/premium';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -51,7 +52,7 @@ export function RecordingStep({ onComplete }: RecordingStepProps) {
   const firstQuestionNeedingRecordingIndex = questions.findIndex(
     (question) => !isOptionalReflectionQuestion(question.id) && !recordings.has(question.id)
   );
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = hasPremiumAccess(user);
   const isOptionalReflection = isOptionalReflectionQuestion(currentQuestion?.id);
 
   // The final reflection is intentionally open-ended; plan-level limits still apply during upload.

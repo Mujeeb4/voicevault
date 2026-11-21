@@ -5,6 +5,7 @@
  * Redirects to Stripe checkout
  */
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -22,6 +23,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasStartedCheckout, setHasStartedCheckout] = useState(false);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const alreadyPremium = hasPremiumAccess(user);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,7 +47,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (user?.is_premium || user?.payment_completed || user?.plan_type === 'premium') {
+    if (alreadyPremium) {
       toast.info('You have already purchased!');
       router.push('/dashboard');
       return;
@@ -74,9 +76,7 @@ export default function CheckoutPage() {
   }, [
     hasCheckedAuth,
     isAuthenticated,
-    user?.is_premium,
-    user?.payment_completed,
-    user?.plan_type,
+    alreadyPremium,
     isLoading,
     router,
     hasStartedCheckout,

@@ -108,22 +108,17 @@ class AudioRecordingUploadView(APIView):
 
                 combined_question_number = 0 if total_chunks == 1 else -chunk_index
 
-                # Starting a chunked upload replaces any previous combined upload set.
-                if total_chunks > 1 and chunk_index == 1:
-                    old_combined_recordings = AudioRecording.objects.filter(
+                # Every combined upload replaces the previous combined set (a single file or the
+                # parts of a chunked upload). Nothing is deleted until the new part is safely
+                # stored, so a failed upload never costs the user their earlier recordings.
+                replaces_set = total_chunks == 1 or chunk_index == 1
+                stale_combined = list(
+                    AudioRecording.objects.filter(
                         user=user,
                         domain='combined',
                         question_number__lte=0,
-                    )
-                    for old_recording in old_combined_recordings:
-                        try:
-                            delete_file_from_supabase(
-                                bucket='recordings',
-                                file_path=old_recording.storage_path
-                            )
-                        except Exception as e:
-                            logger.warning("Failed to delete old combined chunk: %s", e.__class__.__name__)
-                    old_combined_recordings.delete()
+                    ).exclude(question_number=combined_question_number)
+                ) if replaces_set else []
 
                 # Check if this combined part already exists
                 existing_combined = AudioRecording.objects.filter(
@@ -137,6 +132,7 @@ class AudioRecordingUploadView(APIView):
                     duration_seconds=duration_seconds,
                     question_number=None,
                     replacing_recording=existing_combined,
+                    replacing_recordings=stale_combined,
                 )
                 if not limit_check.allowed:
                     return Response(limit_check.as_error(), status=status.HTTP_402_PAYMENT_REQUIRED)
@@ -202,6 +198,19 @@ class AudioRecordingUploadView(APIView):
                         upload_status='complete'
                     )
                     logger.info(f"Created new combined recording: {recording.id}")
+
+                # The new part is stored: now remove the set it replaces
+                for old_recording in stale_combined:
+                    if old_recording.id == recording.id:
+                        continue
+                    try:
+                        delete_file_from_supabase(
+                            bucket='recordings',
+                            file_path=old_recording.storage_path
+                        )
+                    except Exception as e:
+                        logger.warning("Failed to delete old combined recording: %s", e.__class__.__name__)
+                    old_recording.delete()
 
                 record_recording_usage(
                     user,

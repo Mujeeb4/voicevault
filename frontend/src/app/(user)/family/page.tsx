@@ -6,6 +6,7 @@
  * Following .cursorrules and Django schema
  */
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -54,11 +55,7 @@ function FamilyManagementContent() {
 
   const acceptedCount = familyMembers.filter((m) => !!m.invitation_accepted_at).length;
   const pendingCount = familyMembers.filter((m) => !m.invitation_accepted_at).length;
-  const isPremium = !!(
-    user?.is_premium ||
-    user?.payment_completed ||
-    user?.plan_type === 'premium'
-  );
+  const isPremium = hasPremiumAccess(user);
   const inviteLimit = user?.usage_quota?.limits.family_members ?? (isPremium ? 3 : 1);
 
   if (!user?.ai_ready) {

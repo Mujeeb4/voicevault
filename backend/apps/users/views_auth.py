@@ -40,6 +40,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def _text(value) -> str:
+    """Request fields arrive as JSON of any type; treat anything but text as empty."""
+    return value.strip() if isinstance(value, str) else ''
+
+
 def generate_jwt_token(user: User) -> dict:
     """Access and refresh tokens for a user (see utils.jwt_tokens for claims and lifetimes)."""
     return issue_tokens(user)
@@ -97,10 +102,10 @@ class SignupView(APIView):
     
     def post(self, request):
         try:
-            email = request.data.get('email', '').strip().lower()
+            email = _text(request.data.get('email')).lower()
             password = request.data.get('password', '')
-            full_name = request.data.get('full_name', '').strip()
-            phone_number = request.data.get('phone_number', '').strip()
+            full_name = _text(request.data.get('full_name'))
+            phone_number = _text(request.data.get('phone_number'))
             
             # Validation
             if not email:
@@ -226,8 +231,8 @@ class ResendVerificationView(APIView):
     throttle_classes = [AuthEndpointThrottle]
 
     def post(self, request):
-        email = str(request.data.get('email', '')).strip().lower()
-        if email:
+        email = _text(request.data.get('email')).lower()
+        if email and _email_cooldown_ok('resend-verification', email):
             user = User.objects.filter(email=email, email_verified=False).first()
             if user:
                 send_verification_for(user)
@@ -236,6 +241,14 @@ class ResendVerificationView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
+
+EMAIL_COOLDOWN_SECONDS = 60
+
+
+def _email_cooldown_ok(kind: str, email: str) -> bool:
+    """True at most once a minute per address, so a victim's inbox can't be flooded from many IPs."""
+    return cache.add(f'{kind}-cooldown:' + hashlib.sha256(email.encode()).hexdigest(), 1, EMAIL_COOLDOWN_SECONDS)
 
 
 def _login_failure_key(email: str) -> str:
@@ -268,11 +281,11 @@ class LoginView(APIView):
         from django.db import OperationalError, connection
         import time
         
-        email = request.data.get('email', '').strip().lower()
+        email = _text(request.data.get('email')).lower()
         password = request.data.get('password', '')
         
         # Validation
-        if not email or not password:
+        if not email or not password or not isinstance(password, str):
             return Response(
                 {'error': 'invalid_credentials', 'message': 'Email and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -358,10 +371,14 @@ class LoginView(APIView):
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            # Update last login
+            # Update last login. Only this column is written: saving the whole row from the
+            # copy loaded before the (slow) password check could undo a password reset or
+            # a purchase that completed in the meantime.
             user.last_login_at = timezone.now()
-            user.save()
-            
+            user.save(update_fields=['last_login_at', 'updated_at'])
+            # Tokens carry the current token version, not the one read before the check
+            user.refresh_from_db(fields=['token_version'])
+
             # Generate tokens
             tokens = generate_jwt_token(user)
             
@@ -609,8 +626,8 @@ class PasswordResetRequestView(APIView):
     throttle_classes = [AuthEndpointThrottle]
 
     def post(self, request):
-        email = str(request.data.get('email', '')).strip().lower()
-        if email:
+        email = _text(request.data.get('email')).lower()
+        if email and _email_cooldown_ok('password-reset', email):
             user = User.objects.filter(email=email).first()
             if user:
                 url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={make_reset_token(user)}"
@@ -670,6 +687,8 @@ class PasswordResetConfirmView(APIView):
             return Response({'error': 'token_used', 'message': 'This reset link has already been used'},
                             status=status.HTTP_400_BAD_REQUEST)
         logger.info("Password reset for user: %s", user.id)
+        # The lockout message tells people to reset their password, so a reset must end it
+        cache.delete(_login_failure_key(user.email.strip().lower()))
         send_password_changed_email(user.email, user.full_name)
         return Response({'message': 'Password reset. You can now sign in.'}, status=status.HTTP_200_OK)
 

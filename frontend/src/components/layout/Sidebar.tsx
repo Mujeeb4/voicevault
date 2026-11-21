@@ -5,6 +5,7 @@
  * Desktop: fixed left sidebar. Mobile: bottom bar (see MobileNav).
  */
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React, { useEffect, useState } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import Link from 'next/link';
@@ -91,7 +92,7 @@ function useNavItems() {
 
 export function Sidebar() {
   const { items, familyAIs, pathname, user } = useNavItems();
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = hasPremiumAccess(user);
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-border bg-card" aria-label="App navigation">
