@@ -154,7 +154,13 @@ function routeByHost(request: NextRequest): HostRoute {
       || ADMIN_HOST_AUTH_PATHS.some((path) => isUnder(pathname, path))
       // Icons, manifest, images and other public files
       || /\.[a-z0-9]+$/i.test(pathname);
-    return allowed ? null : { redirect: new URL('/admin', adminUrl), status: 307 };
+    if (allowed) return null;
+    // The admin host's home, and the default page after signing in, is the dashboard;
+    // other pages (terms, privacy, sign-up...) belong to the main site
+    if (pathname === '/' || isUnder(pathname, '/dashboard')) {
+      return { redirect: new URL('/admin', adminUrl), status: 307 };
+    }
+    return { redirect: new URL(`${pathname}${search}`, siteUrl), status: 307 };
   }
   if (host === siteHost) {
     return isUnder(pathname, '/admin') ? { notFound: true } : null;
