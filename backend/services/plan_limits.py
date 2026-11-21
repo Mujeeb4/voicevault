@@ -211,7 +211,8 @@ def can_upload_recording(
             round(projected_storage, 2),
         )
 
-    if duration_seconds is not None and projected_minutes > limits["recording_minutes"]:
+    # An unknown duration counts as over the limit rather than skipping the check
+    if duration_seconds is None or projected_minutes > limits["recording_minutes"]:
         return LimitResult(
             False,
             "Recording minutes limit reached",
@@ -267,10 +268,24 @@ def can_send_chat_message(ai_owner: User) -> LimitResult:
     return LimitResult(True)
 
 
+def _reserve_free_message(ai_owner: User) -> LimitResult:
+    """Count one free-plan message with a single conditional UPDATE, so parallel requests can't exceed the cap."""
+    quota = get_or_create_quota(ai_owner)  # also starts a new month when due
+    limit = get_limits(ai_owner)["text_messages_monthly"]
+    if UsageQuota.objects.filter(pk=quota.pk, text_messages_used_this_month__lt=limit).update(
+        text_messages_used_this_month=F("text_messages_used_this_month") + 1, updated_at=timezone.now()
+    ):
+        return LimitResult(True)
+    return LimitResult(False, "Message limit reached", True, "text_messages_monthly", limit, limit)
+
+
 def record_chat_message(ai_owner: User, conversation_id: str | None = None) -> None:
-    quota = get_or_create_quota(ai_owner)
-    quota.text_messages_used_this_month += 1
-    quota.save(update_fields=["text_messages_used_this_month", "updated_at"])
+    # Free-plan messages were already counted when reserved; Premium ones are counted here for stats
+    if is_premium(ai_owner):
+        quota = get_or_create_quota(ai_owner)
+        UsageQuota.objects.filter(pk=quota.pk).update(
+            text_messages_used_this_month=F("text_messages_used_this_month") + 1, updated_at=timezone.now()
+        )
     AuditLog.objects.create(
         user=ai_owner,
         action="chat_message",
@@ -303,11 +318,11 @@ def reserve_question(ai_owner: User, family_member: FamilyMember) -> tuple[Limit
 
     Premium vaults use the member's included questions first, then purchased credits.
     Each step is a single conditional UPDATE, so concurrent questions can't overdraw.
-    Free vaults keep the vault-wide monthly message limit, recorded after the answer.
+    Free vaults keep the vault-wide monthly message limit, counted atomically here.
     Returns the source to pass to refund_question() if the answer fails.
     """
     if not is_premium(ai_owner):
-        result = can_send_chat_message(ai_owner)
+        result = _reserve_free_message(ai_owner)
         return result, QUESTION_SOURCE_FREE_PLAN if result.allowed else None
     if family_member is None:
         return LimitResult(False, "Unable to check your question allowance. Please try again.",
@@ -332,8 +347,13 @@ def reserve_question(ai_owner: User, family_member: FamilyMember) -> tuple[Limit
     ), None
 
 
-def refund_question(family_member: FamilyMember, source: str | None) -> None:
+def refund_question(family_member: FamilyMember, source: str | None, ai_owner: User | None = None) -> None:
     """Give back a question reserved for an answer that was never delivered."""
+    if source == QUESTION_SOURCE_FREE_PLAN and ai_owner is not None:
+        UsageQuota.objects.filter(user=ai_owner, text_messages_used_this_month__gt=0).update(
+            text_messages_used_this_month=F("text_messages_used_this_month") - 1, updated_at=timezone.now()
+        )
+        return
     if family_member is None:
         return
     members = FamilyMember.objects.filter(pk=family_member.pk)

@@ -4,11 +4,11 @@
  */
 
 import apiClient from './client';
-import type { User, AuthTokens, LoginRequest, SignupRequest, SignupResponse } from '@/types';
+import type { User, LoginRequest, SignupRequest, SignupResponse } from '@/types';
 
+/** Sign-in sets httpOnly session cookies; the body carries only the user. */
 interface AuthResponse {
   user: User;
-  tokens: AuthTokens;
 }
 
 export const authApi = {
@@ -45,9 +45,9 @@ export const authApi = {
   /**
    * Logout user
    */
-  logout: async (refresh: string | null, allDevices = false): Promise<void> => {
-    if (!refresh) return;
-    await apiClient.post<void>('/users/logout/', { refresh, all_devices: allDevices });
+  logout: async (allDevices = false): Promise<void> => {
+    // The refresh token travels as an httpOnly cookie
+    await apiClient.post<void>('/users/logout/', { all_devices: allDevices });
   },
 
   /**
@@ -84,13 +84,12 @@ export const authApi = {
     return res;
   },
 
-  /** Returns fresh tokens: the change revokes every older session. */
-  changePassword: async (currentPassword: string, newPassword: string): Promise<AuthTokens> => {
-    const { data } = await apiClient.post<{ tokens: AuthTokens }>('/users/change-password/', {
+  /** Revokes every other session; this browser gets fresh session cookies and stays signed in. */
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await apiClient.post('/users/change-password/', {
       current_password: currentPassword,
       new_password: newPassword,
     });
-    return data.tokens;
   },
 
   recordConsent: async (
@@ -105,16 +104,6 @@ export const authApi = {
     const { data } = await apiClient.post('/users/consent/', {
       consent_type: consentType,
       accepted,
-    });
-    return data;
-  },
-
-  /**
-   * Refresh access token
-   */
-  refreshToken: async (refreshToken: string): Promise<AuthTokens> => {
-    const { data } = await apiClient.post<AuthTokens>('/users/refresh/', {
-      refresh: refreshToken,
     });
     return data;
   },

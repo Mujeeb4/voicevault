@@ -337,6 +337,31 @@ def send_password_changed_email(to_email: str, to_name: str) -> bool:
         return False
 
 
+def send_existing_account_email(to_email: str, to_name: str) -> bool:
+    """Sent instead of an error when someone signs up with an email that already has an account."""
+    try:
+        _send_branded_email(
+            to_email,
+            "You already have a VoiceVault account",
+            "You already have an account",
+            [
+                f"Hi {to_name or 'there'},",
+                "Someone just tried to create a VoiceVault account with this email address, "
+                "but you already have one.",
+                "If that was you, sign in instead, or reset your password if you've forgotten it. "
+                "If it wasn't you, you can ignore this email: your account is unchanged.",
+            ],
+            cta_label="Sign in",
+            cta_url=f"{FRONTEND_URL}/login",
+            link_note=("Forgot your password?", "Reset it", f"{FRONTEND_URL}/forgot-password"),
+        )
+        logger.info("Existing-account notice sent")
+        return True
+    except Exception as e:
+        _log_email_failure("existing account", e)
+        return False
+
+
 def send_password_reset_email(to_email: str, to_name: str, reset_url: str) -> bool:
     """One-time password reset link (valid for one hour)."""
     try:

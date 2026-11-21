@@ -39,7 +39,6 @@ function createRuntime(overrides = {}, globals = {}) {
   return { load };
 }
 
-const jwt = (seconds = 3600) => `header.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + seconds }))}.sig`;
 const response = (config, data, status = 200) => ({ config, data, status, statusText: String(status), headers: {} });
 
 function apiRuntime(adapter) {
@@ -53,70 +52,73 @@ function apiRuntime(adapter) {
   return { session, ...client };
 }
 
-test('concurrent expired-token requests share one refresh and retain rotated refresh token', async () => {
+// Sessions are httpOnly cookies the browser manages; the client keeps only a "signed in" flag
+test('concurrent 401s share one cookie refresh, retry, and never store a token', async () => {
   let refreshes = 0;
-  const freshAccess = jwt();
+  let profileCalls = 0;
   const { session, default: client } = apiRuntime(async (config) => {
+    assert.equal(config.headers['X-Requested-With'], 'XMLHttpRequest');
+    assert.equal(config.headers.Authorization, undefined);
     if (config.url.endsWith('/users/refresh/')) {
       refreshes += 1;
       await new Promise((resolve) => setTimeout(resolve, 10));
-      return response(config, { access: freshAccess, refresh: 'rotated-refresh' });
+      return response(config, { message: 'Session refreshed' });
     }
-    assert.equal(config.headers.Authorization, `Bearer ${freshAccess}`);
+    profileCalls += 1;
+    if (profileCalls <= 2) throw new axios.AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, null, response(config, {}, 401));
     return response(config, { id: 'user' });
   });
-  session.setTokens({ access: jwt(-30), refresh: 'original-refresh' });
+  session.markSignedIn();
   await Promise.all([client.get('/users/profile/'), client.get('/family/members/')]);
   assert.equal(refreshes, 1);
-  assert.equal(session.getRefreshToken(), 'rotated-refresh');
+  assert.equal(profileCalls, 4);
+  assert.equal(session.isSignedIn(), true);
 });
 
-test('401 retries once after refresh; rejected refresh clears the session', async () => {
+test('rejected refresh signs the session out', async () => {
+  const runtime = apiRuntime(async (config) => {
+    throw new axios.AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, null, response(config, {}, 401));
+  });
+  runtime.session.markSignedIn();
+  await assert.rejects(runtime.default.get('/users/profile/'));
+  assert.equal(runtime.session.isSignedIn(), false);
+});
+
+test('refresh superseded by another tab retries with the cookies that tab set', async () => {
   let profileCalls = 0;
-  let refreshCalls = 0;
   const runtime = apiRuntime(async (config) => {
     if (config.url.endsWith('/users/refresh/')) {
-      refreshCalls += 1;
-      return response(config, { access: jwt(), refresh: 'renewed' });
+      throw new axios.AxiosError('Conflict', 'ERR_BAD_REQUEST', config, null, response(config, { error: 'refresh_superseded' }, 409));
     }
     profileCalls += 1;
     if (profileCalls === 1) throw new axios.AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, null, response(config, {}, 401));
     return response(config, { id: 'user' });
   });
-  runtime.session.setTokens({ access: jwt(), refresh: 'refresh' });
+  runtime.session.markSignedIn();
   await runtime.default.get('/users/profile/');
   assert.equal(profileCalls, 2);
-  assert.equal(refreshCalls, 1);
-
-  const rejected = apiRuntime(async (config) => {
-    throw new axios.AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, null, response(config, {}, 401));
-  });
-  rejected.session.setTokens({ access: jwt(-30), refresh: 'invalid' });
-  await assert.rejects(rejected.default.get('/users/profile/'));
-  assert.equal(rejected.session.getAccessToken(), null);
-  assert.equal(rejected.session.getRefreshToken(), null);
+  assert.equal(runtime.session.isSignedIn(), true);
 });
 
 test('invalid login leaves an existing session intact and never attempts refresh', async () => {
   let calls = 0;
   const runtime = apiRuntime(async (config) => {
     calls += 1;
-    assert.equal(config.headers.Authorization, undefined);
     throw new axios.AxiosError('Unauthorized', 'ERR_BAD_REQUEST', config, null, response(config, {}, 401));
   });
-  runtime.session.setTokens({ access: jwt(), refresh: 'refresh' });
+  runtime.session.markSignedIn();
   await assert.rejects(runtime.default.post('/users/login/', { email: 'test@example.com', password: 'wrong' }));
   assert.equal(calls, 1);
-  assert.equal(runtime.session.getRefreshToken(), 'refresh');
+  assert.equal(runtime.session.isSignedIn(), true);
 });
 
 function chatRuntime(fetch) {
   const runtime = createRuntime({
     './client': {
       __esModule: true, default: {}, API_BASE_URL: '/api',
-      getValidAccessToken: async () => 'access', refreshAccessToken: async () => 'renewed',
+      CSRF_HEADERS: { 'X-Requested-With': 'XMLHttpRequest' }, refreshSession: async () => undefined,
     },
-    '@/lib/auth/session': { getRefreshToken: () => 'refresh', clearTokens() {} },
+    '@/lib/auth/session': { isSignedIn: () => true, markSignedOut() {} },
   }, { fetch });
   return runtime.load('lib/api/chat.ts').chatApi;
 }
@@ -132,11 +134,13 @@ async function streamResult(api) {
   });
 }
 
-test('chat sends same-origin bearer-authenticated POST and parses fragmented SSE including final event at EOF', async () => {
+test('chat sends a same-origin cookie-authenticated POST and parses fragmented SSE including final event at EOF', async () => {
   const encoder = new TextEncoder();
   const api = chatRuntime(async (url, options) => {
     assert.equal(url, '/api/chat/stream/');
-    assert.equal(options.headers.Authorization, 'Bearer access');
+    assert.equal(options.credentials, 'same-origin');
+    assert.equal(options.headers.Authorization, undefined);
+    assert.equal(options.headers['X-Requested-With'], 'XMLHttpRequest');
     assert.deepEqual(JSON.parse(options.body), { ai_owner_id: 'owner', question: 'Hello' });
     return new Response(new ReadableStream({ start(controller) {
       for (const chunk of ['data: {"type":"text_ch', 'unk","content":"Hi"}\r\n\r\n', 'data: {"type":"complete","conversation_id":"conversation"}']) {
@@ -176,9 +180,10 @@ test('voice transcription supplies the audio format in the uploaded filename', a
   const runtime = createRuntime({ './client': { __esModule: true, default: { post: async (url, form) => {
     assert.equal(url, '/chat/transcribe-voice/');
     assert.equal(form.get('audio').name, 'voice-input.m4a');
+    assert.equal(form.get('ai_owner_id'), 'owner');
     return { data: { transcript: 'A memory' } };
   } } } });
-  const result = await runtime.load('lib/api/chat.ts').chatApi.transcribeVoice(new Blob(['audio'], { type: 'audio/mp4' }));
+  const result = await runtime.load('lib/api/chat.ts').chatApi.transcribeVoice(new Blob(['audio'], { type: 'audio/mp4' }), 'owner');
   assert.equal(result.transcript, 'A memory');
 });
 

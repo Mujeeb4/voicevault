@@ -63,6 +63,12 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           {
+            // HTTPS pages carry HSTS too (the API already sets it); the whole site and
+            // admin. subdomain are HTTPS, so includeSubDomains + preload are safe.
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          {
             key: 'X-DNS-Prefetch-Control',
             value: 'on',
           },

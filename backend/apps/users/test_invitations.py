@@ -107,7 +107,7 @@ class DatabaseBackedInvitationTests(TestCase):
     def setUp(self):
         cache.clear()
         self.factory = APIRequestFactory()
-        self.owner = User.objects.create(email='owner2@example.com', full_name='Owner')
+        self.owner = User.objects.create(email='owner2@example.com', full_name='Owner', ai_ready=True)
         self.recipient = User.objects.create(email='invitee@example.com', full_name='Invitee')
         self.member = FamilyMember.objects.create(
             ai_owner=self.owner, email='invitee@example.com', full_name='Invitee', relationship='child',
@@ -168,3 +168,49 @@ class DatabaseBackedInvitationTests(TestCase):
     def test_unknown_token_is_rejected(self):
         self.assertIsNone(validate_invitation_token('nope'))
         self.assertEqual(self.accept('nope', self.recipient).status_code, 400)
+
+
+class InvitationAbuseTests(TestCase):
+    """Invitation emails can't carry links, can't be resent in a loop, and are capped per day."""
+
+    def setUp(self):
+        cache.clear()
+        self.factory = APIRequestFactory()
+        self.owner = User.objects.create(email='owner2@example.com', full_name='Owner', ai_ready=True)
+
+    def call(self, view, data, *args):
+        request = self.factory.post('/x/', data, format='json')
+        request.supabase_user = SupabaseUser(str(self.owner.id), self.owner.email, {})
+        return view(request, *args)
+
+    def invite(self, email='kid@example.com', message=''):
+        from apps.users.views_family import invite_family_member
+        return self.call(invite_family_member, {
+            'email': email, 'full_name': 'Kid', 'relationship': 'child', 'personal_message': message,
+        })
+
+    @patch('apps.users.views_family.send_invitation_email', return_value=True)
+    def test_personal_message_with_a_link_is_rejected(self, send):
+        for message in ('Verify at https://evil.example/login', 'go to www.evil.example', 'visit evil.com now'):
+            response = self.invite(message=message)
+            self.assertEqual(response.status_code, 400, message)
+        send.assert_not_called()
+
+    @patch('apps.users.views_family.send_invitation_email', return_value=True)
+    def test_resend_waits_an_hour_and_rejects_links(self, send):
+        from apps.users.views_family import resend_invitation
+        member = FamilyMember.objects.create(ai_owner=self.owner, email='k@example.com', relationship='child')
+        self.assertEqual(self.call(resend_invitation, {}, member.id).status_code, 429)
+
+        FamilyMember.objects.filter(id=member.id).update(invitation_sent_at=timezone.now() - timedelta(hours=2))
+        response = self.call(resend_invitation, {'personal_message': 'click https://evil.example'}, member.id)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.call(resend_invitation, {'personal_message': 'Love, Dad'}, member.id).status_code, 200)
+        self.assertEqual(send.call_count, 1)
+
+    @override_settings(FAMILY_INVITE_EMAILS_PER_DAY=1, FREE_MAX_FAMILY_MEMBERS=5)
+    @patch('apps.users.views_family.send_invitation_email', return_value=True)
+    def test_daily_invitation_email_cap(self, send):
+        self.assertEqual(self.invite('a@example.com').status_code, 201)
+        self.assertEqual(self.invite('b@example.com').status_code, 429)
+        self.assertEqual(send.call_count, 1)

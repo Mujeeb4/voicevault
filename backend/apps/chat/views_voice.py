@@ -8,15 +8,22 @@ import os
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 import openai
 from django.conf import settings
+from django.core.exceptions import ValidationError
 
-from services.audio_normalize import AudioConversionError, normalize_audio_file, trim_audio_file
+from apps.chat.utils import validate_chat_access
+from apps.users.models import User
+from services.audio_normalize import (
+    AudioConversionError, audio_duration_seconds, normalize_audio_file, trim_audio_file,
+)
+from utils.quotas import consume_daily_quota
 from utils.security import validate_audio_magic
+from utils.throttling import UploadThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +32,13 @@ logger = logging.getLogger(__name__)
 @require_http_methods(["POST"])
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Auth handled by middleware
+@throttle_classes([UploadThrottle])  # Paid Whisper call: 10/minute per account
 def transcribe_voice_input(request):
     """
     Transcribe voice input from family members.
     
     POST /api/chat/transcribe-voice/
-    Body: multipart/form-data with 'audio' file
+    Body: multipart/form-data with 'audio' file and 'ai_owner_id' (the AI being asked)
     
     Returns:
         {
@@ -46,6 +54,24 @@ def transcribe_voice_input(request):
                 status=status.HTTP_401_UNAUTHORIZED
             )
         
+        # Transcription is a paid call, so only people who can talk to this AI may use it
+        try:
+            ai_owner = User.objects.get(id=request.data.get('ai_owner_id'))
+            requesting_user = User.objects.get(id=str(request.supabase_user.id))
+        except (User.DoesNotExist, ValueError, ValidationError):
+            return Response(
+                {'error': 'invalid_ai_owner', 'message': 'Choose who you are talking to first.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        has_access, _, error_msg = validate_chat_access(ai_owner, requesting_user)
+        if not has_access:
+            return Response({'error': 'forbidden', 'message': error_msg}, status=status.HTTP_403_FORBIDDEN)
+        if not consume_daily_quota(requesting_user.id, 'voice-transcription', settings.VOICE_TRANSCRIPTIONS_PER_DAY):
+            return Response(
+                {'error': 'daily_limit', 'message': 'You have reached today\'s limit for voice questions. Please type your question.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
         # Get audio file from request
         if 'audio' not in request.FILES:
             return Response(
@@ -102,10 +128,26 @@ def transcribe_voice_input(request):
                 temp_file.write(chunk)
             temp_file_path = temp_file.name
 
-        # Transcription is billed per minute, so only the first VOICE_QUESTION_MAX_SECONDS are sent
-        trimmed_file_path = trim_audio_file(temp_file_path, settings.VOICE_QUESTION_MAX_SECONDS)
-
+        # Transcription is billed per minute, so only the first VOICE_QUESTION_MAX_SECONDS are
+        # sent. The length is measured here; audio that can't be measured or cut is refused
+        # rather than sent whole.
+        trimmed_file_path = temp_file_path
         try:
+            duration = audio_duration_seconds(temp_file_path)
+            if duration is None:
+                return Response(
+                    {'error': 'invalid_file_type', 'message': 'The audio could not be processed.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if duration > settings.VOICE_QUESTION_MAX_SECONDS:
+                trimmed_file_path = trim_audio_file(temp_file_path, settings.VOICE_QUESTION_MAX_SECONDS)
+                if trimmed_file_path == temp_file_path:
+                    return Response(
+                        {'error': 'audio_too_long',
+                         'message': f'Voice questions can be up to {settings.VOICE_QUESTION_MAX_SECONDS // 60} minutes.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
             # Initialize OpenAI client (without proxies for Python 3.14 compat)
             import httpx
             import openai

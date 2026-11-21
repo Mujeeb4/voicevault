@@ -1,7 +1,7 @@
 /**
  * Chat API - streaming messages and conversation history
  */
-import apiClient, { API_BASE_URL, getValidAccessToken, refreshAccessToken } from './client';
+import apiClient, { API_BASE_URL, CSRF_HEADERS, refreshSession } from './client';
 import * as session from '@/lib/auth/session';
 import type { Conversation } from '@/types';
 
@@ -95,21 +95,21 @@ export const chatApi = {
 
     void (async () => {
       try {
-        const request = (token: string | null) => fetch(url, {
+        // Session cookies go with the request; the header is required for cookie-authenticated writes
+        const request = () => fetch(url, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
           body: JSON.stringify({ ai_owner_id: params.ai_owner_id, question: params.message }),
           signal: controller.signal,
         });
-        let response = await request(await getValidAccessToken());
-        if (response.status === 401 && session.getRefreshToken()) {
-          response = await request(await refreshAccessToken());
+        let response = await request();
+        if (response.status === 401 && session.isSignedIn()) {
+          await refreshSession().catch(() => undefined);
+          if (session.isSignedIn()) response = await request();
         }
         if (!response.ok || !response.body) {
-          if (response.status === 401) session.clearTokens();
+          if (response.status === 401) session.markSignedOut();
           const error = await response.json().catch(() => ({}));
           fail(error.message ?? error.error ?? error.detail ?? 'Connection failed. Please try again.', errorDetails(error));
           return;
@@ -170,8 +170,10 @@ export const chatApi = {
     return data;
   },
 
-  transcribeVoice: async (audioBlob: Blob): Promise<{ transcript: string }> => {
+  /** Transcribe a spoken question for one AI; the server checks the caller may talk to it. */
+  transcribeVoice: async (audioBlob: Blob, aiOwnerId: string): Promise<{ transcript: string }> => {
     const formData = new FormData();
+    formData.append('ai_owner_id', aiOwnerId);
     const mime = audioBlob.type.split(';')[0];
     const extension =
       ({

@@ -6,9 +6,9 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import apiClient from '@/lib/api/client';
+import apiClient, { CSRF_HEADERS } from '@/lib/api/client';
 import * as session from '@/lib/auth/session';
-import type { User, AuthTokens, LoginRequest, SignupRequest, SignupResponse } from '@/types';
+import type { User, LoginRequest, SignupRequest, SignupResponse } from '@/types';
 import { getApiErrorMessage } from '@/lib/utils';
 
 let authCheck: Promise<void> | null = null;
@@ -16,7 +16,6 @@ let authCheck: Promise<void> | null = null;
 interface AuthState {
   // State
   user: User | null;
-  tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
@@ -36,7 +35,6 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       // Initial state
       user: null,
-      tokens: null,
       isAuthenticated: false,
       isLoading: true,
       error: null,
@@ -46,22 +44,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
 
-          const { data } = await apiClient.post<{
-            user: User;
-            tokens: AuthTokens;
-          }>('/users/login/', credentials);
-
-          // Store tokens in session (which also updates API client)
-          const expiresAt = session.decodeTokenExpiry(data.tokens.access);
-          session.setTokens({
-            access: data.tokens.access,
-            refresh: data.tokens.refresh,
-            expiresAt: expiresAt || undefined,
-          });
+          // The API sets httpOnly session cookies; only the user comes back in the body
+          const { data } = await apiClient.post<{ user: User }>('/users/login/', credentials);
+          session.markSignedIn();
 
           set({
             user: data.user,
-            tokens: data.tokens,
             isAuthenticated: true,
             isLoading: false,
             error: null,
@@ -74,7 +62,6 @@ export const useAuthStore = create<AuthState>()(
             error: errorMessage,
             isAuthenticated: false,
             user: null,
-            tokens: null,
           });
 
           throw error;
@@ -99,7 +86,6 @@ export const useAuthStore = create<AuthState>()(
             error: errorMessage,
             isAuthenticated: false,
             user: null,
-            tokens: null,
           });
 
           throw error;
@@ -108,23 +94,21 @@ export const useAuthStore = create<AuthState>()(
 
       // Logout action
       logout: () => {
-        // Revoke the refresh token server-side (best effort), then clear locally.
-        const refresh = session.getRefreshToken();
-        if (refresh) {
+        // Revoke the session server-side (best effort) and clear its cookies, then locally.
+        if (session.isSignedIn()) {
           // keepalive lets the request survive the full-page navigation that follows logout.
           fetch('/api/users/logout/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh }),
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', ...CSRF_HEADERS },
+            body: JSON.stringify({}),
             keepalive: true,
           }).catch(() => undefined);
         }
-        // Clear tokens from session (which also clears API client)
-        session.clearTokens();
+        session.markSignedOut();
 
         set({
           user: null,
-          tokens: null,
           isAuthenticated: false,
           isLoading: false,
           error: null,
@@ -140,25 +124,24 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         if (authCheck) return authCheck;
         authCheck = (async () => {
-          if (session.isSessionIdle() || !session.getAccessToken() || !session.getRefreshToken()) {
+          if (session.isSessionIdle() || !session.isSignedIn()) {
             get().logout();
             set({ isLoading: false });
             return;
           }
           set({ isLoading: true });
           try {
+            // Expired cookies are refreshed by the API client before this resolves
             const { data: user } = await apiClient.get<User>('/users/profile/');
-            const access = session.getAccessToken();
-            const refresh = session.getRefreshToken();
-            if (!access || !refresh) {
+            if (!session.isSignedIn()) {
               get().logout();
               return;
             }
             if (get().isAuthenticated && get().user?.id !== user.id) return;
-            set({ user, tokens: { access, refresh }, isAuthenticated: true, error: null });
+            set({ user, isAuthenticated: true, error: null });
             session.updateLastActivity();
           } catch (error) {
-            if (!session.getAccessToken()) get().logout();
+            if (!session.isSignedIn()) get().logout();
             else set({ error: getApiErrorMessage(error, 'Could not verify your session. Please try again.') });
           } finally {
             set({ isLoading: false });
@@ -179,19 +162,19 @@ export const useAuthStore = create<AuthState>()(
 
       // Refresh user data from API (e.g., after processing completes)
       refreshUser: async () => {
-        if (!session.getAccessToken()) return;
+        if (!session.isSignedIn()) return;
 
         try {
           const { data: user } = await apiClient.get<User>('/users/profile/');
-          if (session.getAccessToken() && get().user?.id === user.id) set({ user });
+          if (session.isSignedIn() && get().user?.id === user.id) set({ user });
         } catch {
           console.error('Failed to refresh user');
         }
       },
     }),
     {
-      version: 2,
-      migrate: () => ({ user: null, tokens: null, isAuthenticated: false }),
+      version: 3,
+      migrate: () => ({ user: null, isAuthenticated: false }),
       name: 'auth-storage', // localStorage key
       partialize: (state) => ({
         // Only persist these fields

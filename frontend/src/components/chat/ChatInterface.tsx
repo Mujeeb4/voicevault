@@ -92,7 +92,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSendVoice = async (audioBlob: Blob) => {
     try {
       // Transcribe voice input
-      const { transcript } = await chatApi.transcribeVoice(audioBlob);
+      const { transcript } = await chatApi.transcribeVoice(audioBlob, aiOwnerId);
 
       // Send transcribed text as message
       await sendMessage(transcript);

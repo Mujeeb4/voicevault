@@ -243,6 +243,9 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'utils.exceptions.custom_exception_handler',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Traefik replaces X-Forwarded-For with the real client IP (measured 2026-11-21), so
+    # the last entry is the client. Set explicitly so a client-sent value is never trusted.
+    'NUM_PROXIES': 1,
     
     # Throttling / Rate Limiting
     # Balanced for Supabase free tier while allowing normal frontend usage
@@ -486,3 +489,13 @@ LOGGING = {
         'level': config('LOG_LEVEL', default='INFO'),
     },
 }
+
+# Daily caps per account on actions that cost AI money (on top of the per-minute throttles)
+VOICE_TRANSCRIPTIONS_PER_DAY = config('VOICE_TRANSCRIPTIONS_PER_DAY', default=100, cast=int)
+VOICE_PREVIEWS_PER_DAY = config('VOICE_PREVIEWS_PER_DAY', default=20, cast=int)
+VOICE_PIPELINE_RUNS_PER_DAY = config('VOICE_PIPELINE_RUNS_PER_DAY', default=5, cast=int)
+# Failed sign-ins per email before that account is locked for LOGIN_LOCKOUT_SECONDS
+LOGIN_MAX_FAILURES = config('LOGIN_MAX_FAILURES', default=10, cast=int)
+LOGIN_LOCKOUT_SECONDS = config('LOGIN_LOCKOUT_SECONDS', default=900, cast=int)
+# Invitation emails (new invites + resends) per account per day
+FAMILY_INVITE_EMAILS_PER_DAY = config('FAMILY_INVITE_EMAILS_PER_DAY', default=20, cast=int)

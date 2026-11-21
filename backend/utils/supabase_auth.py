@@ -8,6 +8,8 @@ import jwt
 from django.core.exceptions import ValidationError as DjangoValidationError
 import logging
 
+from utils.jwt_tokens import ACCESS_COOKIE, CSRF_HEADER, CSRF_HEADER_VALUE, decode_token
+
 logger = logging.getLogger(__name__)
 
 
@@ -69,48 +71,36 @@ class SupabaseAuthMiddleware(MiddlewareMixin):
             if request.path.startswith(path):
                 return None
         
-        # Get Authorization header
+        # The token comes from the httpOnly cookie set at sign-in (browsers), or an
+        # Authorization header (scripts and tests)
         auth_header = request.headers.get('Authorization', '')
-        
-        logger.debug("Auth header present for %s: %s", request.path, bool(auth_header))
-        
-        if not auth_header.startswith('Bearer '):
-            # No auth header - set anonymous user
-            logger.debug(f"No Bearer token found for {request.path}")
+        token = auth_header[len('Bearer '):].strip() if auth_header.startswith('Bearer ') else ''
+        from_cookie = False
+        if not token:
+            token = request.COOKIES.get(ACCESS_COOKIE, '')
+            from_cookie = bool(token)
+
+        if not token:
+            logger.debug("No credentials for %s", request.path)
             request.supabase_user = None
             return None
-        
-        # Extract token
-        token = auth_header.replace('Bearer ', '').strip()
-        
-        if not token:
+
+        # Cookies are sent automatically, so a cookie-authenticated write must also carry a
+        # header that a cross-site page can't add (CSRF protection on top of SameSite=Strict)
+        if from_cookie and request.method not in ('GET', 'HEAD', 'OPTIONS') \
+                and request.headers.get(CSRF_HEADER) != CSRF_HEADER_VALUE:
+            logger.warning("Cookie-authenticated %s to %s without the CSRF header", request.method, request.path)
             return JsonResponse(
-                {'error': 'authentication_required', 'message': 'No token provided'},
-                status=401
+                {'error': 'csrf_failed', 'message': 'Request rejected. Please reload the page and try again.'},
+                status=403
             )
-        
+
         try:
-            # Verify JWT token with Django SECRET_KEY (same as used for signing)
-            jwt_secret = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
-            
-            decoded = jwt.decode(
-                token,
-                jwt_secret,
-                algorithms=['HS256']
-            )
-            
-            # Extract user information
+            decoded = decode_token(token, 'access')
+
             user_id = decoded.get('sub')
             email = decoded.get('email')
-            token_type = decoded.get('type')
-            
-            # Only accept access tokens for API requests
-            if token_type != 'access':
-                return JsonResponse(
-                    {'error': 'invalid_token', 'message': 'Invalid token type. Access token required.'},
-                    status=401
-                )
-            
+
             if not user_id or not email:
                 return JsonResponse(
                     {'error': 'invalid_token', 'message': 'Token missing required fields'},
@@ -169,14 +159,8 @@ def verify_supabase_token(token: str):
         return None
     
     try:
-        jwt_secret = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
-        
-        decoded = jwt.decode(
-            token,
-            jwt_secret,
-            algorithms=['HS256']
-        )
-        
+        decoded = decode_token(token, 'access')
+
         user_id = decoded.get('sub')
         email = decoded.get('email')
         token_type = decoded.get('type')

@@ -1,6 +1,8 @@
 """
 DRF Serializers for users app.
 """
+import re
+
 from rest_framework import serializers
 from .models import User, FamilyMember
 from services.plan_limits import quota_status
@@ -97,6 +99,24 @@ class FamilyMemberSerializer(serializers.ModelSerializer):
         ]
 
 
+
+# Invitation emails go out from VoiceVault's domain to any address, so the owner's
+# message must not carry links (it would make the invite a phishing vehicle)
+_LINK_PATTERN = re.compile(
+    r'(https?://|www\.|\b[a-z0-9-]+\.(com|net|org|info|io|co|xyz|ru|cn|link|app|me|ly|site|online|top|click)\b)',
+    re.IGNORECASE,
+)
+PERSONAL_MESSAGE_MAX_LENGTH = 500
+
+
+def clean_personal_message(value):
+    value = (value or '').strip()
+    if len(value) > PERSONAL_MESSAGE_MAX_LENGTH:
+        raise serializers.ValidationError(f'Keep the message under {PERSONAL_MESSAGE_MAX_LENGTH} characters.')
+    if _LINK_PATTERN.search(value):
+        raise serializers.ValidationError("Links aren't allowed in the personal message.")
+    return value
+
 class FamilyInviteSerializer(serializers.Serializer):
     """Serializer for family member invitation."""
     
@@ -111,3 +131,6 @@ class FamilyInviteSerializer(serializers.Serializer):
         allow_blank=True,
         max_length=500
     )
+
+    def validate_personal_message(self, value):
+        return clean_personal_message(value)

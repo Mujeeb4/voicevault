@@ -33,8 +33,9 @@ const questionSchema = z.object({
   domain: z.enum(['childhood', 'family', 'career', 'wisdom', 'challenges', 'personality']),
   order: z.number().int().positive('Order must be a positive number'),
   tip: z.string().max(200, 'Tip too long').optional(),
-  suggested_duration_seconds: z.number().int().positive('Duration must be positive').default(60),
-  is_active: z.boolean().default(true),
+  // Defaults come from the form's defaultValues, so input and output types match
+  suggested_duration_seconds: z.number().int().positive('Duration must be positive'),
+  is_active: z.boolean(),
 });
 
 interface QuestionDialogProps {

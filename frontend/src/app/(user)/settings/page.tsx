@@ -122,14 +122,8 @@ export default function SettingsPage() {
 
     try {
       setIsChangingPassword(true);
-      // Other devices are signed out; keep this tab signed in with the fresh tokens.
-      const tokens = await authApi.changePassword(currentPassword, newPassword);
-      session.setTokens({
-        access: tokens.access,
-        refresh: tokens.refresh,
-        expiresAt: session.decodeTokenExpiry(tokens.access) ?? undefined,
-      });
-      useAuthStore.setState({ tokens });
+      // Other devices are signed out; this browser receives fresh session cookies.
+      await authApi.changePassword(currentPassword, newPassword);
       toast.success('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
@@ -144,7 +138,7 @@ export default function SettingsPage() {
   const handleLogoutAll = async () => {
     try {
       setIsLoggingOutAll(true);
-      await authApi.logout(session.getRefreshToken(), true);
+      await authApi.logout(true);
       logout();
       window.location.assign('/login');
     } catch (error: unknown) {
@@ -159,8 +153,8 @@ export default function SettingsPage() {
       setIsDeleting(true);
       await authApi.deleteAccount(deletePassword);
       // The server already revoked everything; clear local state without a logout call.
-      session.clearTokens();
-      useAuthStore.setState({ user: null, tokens: null, isAuthenticated: false });
+      session.markSignedOut();
+      useAuthStore.setState({ user: null, isAuthenticated: false });
       window.location.assign('/');
     } catch (error: unknown) {
       toast.error(getApiErrorMessage(error, 'Failed to delete account'));

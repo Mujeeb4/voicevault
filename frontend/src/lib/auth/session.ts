@@ -1,100 +1,59 @@
 /**
- * Session management for authentication tokens and idle timeout
+ * Session state for the browser, and the idle timeout.
+ *
+ * The sign-in tokens themselves are httpOnly cookies set by the API: page scripts can't
+ * read them, so an injected script can't steal a session. All that is kept here is a
+ * "signed in" flag, used to decide whether to load the profile on startup.
  */
 
 export const SESSION_CHANGED_EVENT = 'voicevault:session-changed';
-const STORAGE_KEY = 'voicevault_session';
+export const SIGNED_IN_KEY = 'voicevault_signed_in';
 const LAST_ACTIVITY_KEY = 'voicevault_last_activity';
+// Tokens were kept in localStorage under this key before; it is removed if still present
+const LEGACY_TOKENS_KEY = 'voicevault_session';
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-export interface StoredTokens {
-  access: string;
-  refresh: string;
-  expiresAt?: number;
+function notify(): void {
+  window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
 }
 
-/**
- * Decode JWT payload and return expiry timestamp (ms)
- */
-export function decodeTokenExpiry(accessToken: string): number | null {
-  try {
-    const payload = accessToken.split('.')[1];
-    if (!payload) return null;
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
-    return decoded.exp ? decoded.exp * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Store auth tokens (and optionally update API client)
- */
-export function setTokens(tokens: StoredTokens): void {
+/** Remember that this browser has a session (the cookies hold the actual credentials). */
+export function markSignedIn(): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
+    localStorage.setItem(SIGNED_IN_KEY, '1');
+    localStorage.removeItem(LEGACY_TOKENS_KEY);
     updateLastActivity();
-    window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
   } catch {
-    console.error('Failed to store tokens');
+    // Storage unavailable: the session still works through cookies
   }
+  notify();
 }
 
-/**
- * Clear stored tokens
- */
-export function clearTokens(): void {
+export function markSignedOut(): void {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(SIGNED_IN_KEY);
     localStorage.removeItem(LAST_ACTIVITY_KEY);
-    window.dispatchEvent(new Event(SESSION_CHANGED_EVENT));
+    localStorage.removeItem(LEGACY_TOKENS_KEY);
   } catch {
-    console.error('Failed to clear tokens');
+    // Ignore
   }
+  notify();
 }
 
-/**
- * Get access token from storage
- */
-export function getAccessToken(): string | null {
-  if (typeof window === 'undefined') return null;
+export function isSignedIn(): boolean {
+  if (typeof window === 'undefined') return false;
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    const { access } = JSON.parse(stored) as StoredTokens;
-    return access || null;
+    // Sessions stored the old way can't be reused: their tokens are no longer accepted
+    if (localStorage.getItem(LEGACY_TOKENS_KEY)) {
+      localStorage.removeItem(LEGACY_TOKENS_KEY);
+      return false;
+    }
+    return localStorage.getItem(SIGNED_IN_KEY) === '1';
   } catch {
-    return null;
+    return false;
   }
-}
-
-/**
- * Get refresh token from storage
- */
-export function getRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    const { refresh } = JSON.parse(stored) as StoredTokens;
-    return refresh || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Check if access token is expired (with 60s buffer)
- */
-export function isTokenExpired(): boolean {
-  const token = getAccessToken();
-  if (!token) return true;
-  const expiresAt = decodeTokenExpiry(token);
-  if (!expiresAt) return false; // No expiry claim, assume valid
-  return Date.now() >= expiresAt - 60000; // 60s buffer
 }
 
 /**

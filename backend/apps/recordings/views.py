@@ -22,7 +22,9 @@ from services.plan_limits import (
     record_recording_usage,
     validate_audio_file,
 )
-from services.audio_normalize import AudioConversionError, audio_extension, normalize_audio_file
+from services.audio_normalize import (
+    AudioConversionError, audio_extension, normalize_audio_file, uploaded_audio_duration_seconds,
+)
 from utils.supabase_client import upload_file_to_supabase, delete_file_from_supabase
 
 logger = logging.getLogger(__name__)
@@ -95,13 +97,14 @@ class AudioRecordingUploadView(APIView):
                     )
                 file_extension = audio_extension(audio_file)
 
-                # Get duration from request (if provided)
-                duration_seconds = request.data.get('duration_seconds')
-                if duration_seconds:
-                    try:
-                        duration_seconds = float(duration_seconds)
-                    except (ValueError, TypeError):
-                        duration_seconds = None
+                # Measured on the server: the recording-minutes limit can't rely on a
+                # duration the browser reports (it could be left out or faked)
+                duration_seconds = uploaded_audio_duration_seconds(audio_file)
+                if duration_seconds is None:
+                    return Response(
+                        {'error': 'audio_conversion_failed', 'message': 'This audio could not be processed. Please try recording again.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
                 combined_question_number = 0 if total_chunks == 1 else -chunk_index
 
@@ -357,12 +360,13 @@ class AudioRecordingUploadView(APIView):
             question_number = serializer.validated_data['question_number']
             question_text = serializer.validated_data['question_text']
             domain = serializer.validated_data['domain']
-            duration_seconds = request.data.get('duration_seconds')
-            if duration_seconds:
-                try:
-                    duration_seconds = float(duration_seconds)
-                except (ValueError, TypeError):
-                    duration_seconds = None
+            # Measured on the server, not taken from the request (see the combined upload)
+            duration_seconds = uploaded_audio_duration_seconds(audio_file)
+            if duration_seconds is None:
+                return Response(
+                    {'error': 'audio_conversion_failed', 'message': 'This audio could not be processed. Please try recording again.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             
             # Check if question number already exists for this user
             if AudioRecording.objects.filter(user=user, question_number=question_number).exists():

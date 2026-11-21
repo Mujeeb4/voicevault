@@ -51,11 +51,6 @@ export interface UsageQuotaStatus {
   };
 }
 
-export interface AuthTokens {
-  access: string;
-  refresh: string;
-}
-
 export interface LoginRequest {
   email: string;
   password: string;
@@ -74,9 +69,9 @@ export interface SignupResponse {
   message: string;
 }
 
+/** Sign-in response: the session itself is set as httpOnly cookies. */
 export interface AuthResponse {
   user: User;
-  tokens: AuthTokens;
 }
 
 // ============================================================================
@@ -282,7 +277,6 @@ export interface ChatStreamChunk {
 
 export interface AuthState {
   user: User | null;
-  tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

@@ -34,6 +34,7 @@ from apps.chat.utils import (
 from apps.chat.tasks import generate_audio_async, generate_audio_sync, is_celery_available
 from services.chat_llm import get_chat_backend, streamed_total_tokens
 from services.speech import voice_cache_identity
+from utils.throttling import ChatThrottle, allow_request
 from services.plan_limits import (
     can_generate_voice_response,
     record_chat_message,
@@ -185,6 +186,16 @@ def chat_streaming(request):
             status=404
         )
     
+    # Each message costs AI money, so cap the rate per account (30/minute by default)
+    if not allow_request(ChatThrottle, request):
+        message = 'You are sending messages too quickly. Please wait a moment.'
+        if request.method == 'GET':
+            return StreamingHttpResponse(
+                iter([f"data: {json.dumps({'type': 'error', 'message': message})}\n\n"]),
+                content_type='text/event-stream',
+            )
+        return JsonResponse({'error': 'rate_limited', 'message': message}, status=429)
+
     has_access, family_member, error_msg = validate_chat_access(ai_owner, requesting_user)
     
     if not has_access:
@@ -243,7 +254,7 @@ def chat_streaming(request):
                 yield f"data: {json.dumps({'type': 'complete', 'conversation_id': conversation_id, 'total_time_ms': cache_time_ms, 'cached': True})}\n\n"
             finally:
                 if conversation_id is None:
-                    refund_question(family_member, question_source)
+                    refund_question(family_member, question_source, ai_owner)
                 from django.db import connections
                 for conn_name in connections:
                     try:
@@ -460,7 +471,7 @@ def chat_streaming(request):
         finally:
             # No saved answer (error, misconfiguration or client disconnect): give the question back
             if conversation_id is None:
-                refund_question(family_member, question_source)
+                refund_question(family_member, question_source, ai_owner)
             if client is not None:
                 client.close()
             # CRITICAL: Close database connections after streaming
@@ -644,20 +655,22 @@ def rate_conversation(request, conversation_id):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Get conversation
-    try:
-        conversation = Conversation.objects.get(id=conversation_id)
-    except Conversation.DoesNotExist:
-        return Response(
-            {'error': 'Conversation not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-    # Validate ownership using Supabase authenticated user
+    # Authenticate before looking anything up
     if not hasattr(request, 'supabase_user') or not request.supabase_user:
         return Response(
             {'error': 'Authentication required'},
             status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    if not isinstance(feedback, str):
+        return Response({'error': 'Feedback must be text'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        conversation = Conversation.objects.select_related('family_member').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return Response(
+            {'error': 'Conversation not found'},
+            status=status.HTTP_404_NOT_FOUND
         )
     
     # Get User object from database using supabase_user.id
@@ -669,7 +682,13 @@ def rate_conversation(request, conversation_id):
             status=status.HTTP_404_NOT_FOUND
         )
     
-    if conversation.family_member.user_account != requesting_user:
+    # The person who asked can rate it; a conversation without a member record is the owner's own
+    member = conversation.family_member
+    asked_by_requester = (
+        (member is not None and member.user_account_id == requesting_user.id)
+        or (member is None and conversation.ai_owner_id == requesting_user.id)
+    )
+    if not asked_by_requester:
         return Response(
             {'error': 'You can only rate your own conversations'},
             status=status.HTTP_403_FORBIDDEN
@@ -797,6 +816,11 @@ def get_audio_status(request, task_id):
             {'error': 'User not found'},
             status=status.HTTP_404_NOT_FOUND,
         )
+
+    # A task's status is only shown for a conversation the caller can access, so an
+    # arbitrary task id can't be used to read another job's result
+    if not conversation_id:
+        return Response({'error': 'conversation_id is required'}, status=400)
 
     def conversation_audio_response():
         if not conversation_id:

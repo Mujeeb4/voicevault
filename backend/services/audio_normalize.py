@@ -27,6 +27,32 @@ def audio_extension(audio_file) -> str:
     return name.rsplit(".", 1)[-1].lower() if "." in name else ""
 
 
+def audio_duration_seconds(path: str) -> float | None:
+    """
+    Measure an audio file's length with ffprobe, or None if it can't be read as audio.
+
+    Used instead of any duration the client reports, which can't be trusted for limits.
+    Only the local file protocol is allowed, so a crafted file can't make ffprobe fetch URLs.
+    """
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-protocol_whitelist", "file",
+             "-select_streams", "a:0", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            capture_output=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        logger.warning("ffprobe unavailable or timed out: %s", exc.__class__.__name__)
+        return None
+    if result.returncode:
+        return None
+    try:
+        duration = float(result.stdout.decode().strip().splitlines()[0])
+    except (ValueError, IndexError):
+        return None
+    return duration if duration >= 0 else None
+
+
 def trim_audio_file(path: str, max_seconds: int) -> str:
     """
     Cut an audio file to its first max_seconds, which caps what transcribing it can cost.
@@ -38,7 +64,7 @@ def trim_audio_file(path: str, max_seconds: int) -> str:
     target = f"{root}-trimmed{extension}"
     try:
         result = subprocess.run(
-            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", path,
+            ["ffmpeg", "-v", "error", "-nostdin", "-y", "-protocol_whitelist", "file", "-i", path,
              "-t", str(max_seconds), "-vn", "-c", "copy", target],
             capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS, check=False,
         )
@@ -67,7 +93,7 @@ def normalize_audio_file(audio_file):
                 handle.write(chunk)
         try:
             result = subprocess.run(
-                ["ffmpeg", "-v", "error", "-nostdin", "-y", "-i", source,
+                ["ffmpeg", "-v", "error", "-nostdin", "-y", "-protocol_whitelist", "file", "-i", source,
                  "-vn", "-c:a", "libmp3lame", "-b:a", "128k", target],
                 capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS, check=False,
             )
@@ -84,3 +110,29 @@ def normalize_audio_file(audio_file):
     converted = ContentFile(content, name=f"{base}.mp3")
     converted.content_type = "audio/mpeg"
     return converted
+
+
+def uploaded_audio_duration_seconds(audio_file) -> float | None:
+    """
+    Measure an uploaded audio file's length on the server (None if it isn't readable audio).
+
+    Plan limits use this instead of the duration the browser reports, which a client can
+    leave out or fake. The file is copied to a temporary path for ffprobe and rewound.
+    """
+    extension = audio_extension(audio_file) or "audio"
+    with tempfile.NamedTemporaryFile(suffix=f".{extension}", delete=False) as temp:
+        try:
+            audio_file.seek(0)
+        except (AttributeError, OSError):
+            pass
+        for chunk in audio_file.chunks():
+            temp.write(chunk)
+        temp_path = temp.name
+    try:
+        return audio_duration_seconds(temp_path)
+    finally:
+        os.unlink(temp_path)
+        try:
+            audio_file.seek(0)
+        except (AttributeError, OSError):
+            pass

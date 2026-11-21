@@ -10,6 +10,7 @@ from .models import ConsentRecord, User
 from .serializers import UserSerializer
 from django.db import connection
 import logging
+from utils.request_ip import client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +137,7 @@ class ConsentRecordView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        ip_address = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
-        if ip_address and ',' in ip_address:
-            ip_address = ip_address.split(',')[0].strip()
+        ip_address = client_ip(request)
 
         consent = ConsentRecord.objects.create(
             user=user,

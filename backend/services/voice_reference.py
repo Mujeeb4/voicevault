@@ -114,7 +114,7 @@ def select_reference_window(words, duration):
 def _convert(source, target, *, start=0, duration, denoise=False):
     try:
         process = subprocess.run(
-            ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', str(source),
+            ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-protocol_whitelist', 'file', '-i', str(source),
              '-ss', str(start), '-t', str(duration),
              *(['-af', DENOISE_FILTER] if denoise else []), '-ac', '1', '-ar', '24000',
              '-c:a', 'pcm_s16le', str(target)],

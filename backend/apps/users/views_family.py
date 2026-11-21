@@ -10,7 +10,11 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.users.models import User, FamilyMember
-from apps.users.serializers import FamilyInviteSerializer, FamilyMemberSerializer
+from apps.users.serializers import FamilyInviteSerializer, FamilyMemberSerializer, clean_personal_message
+from datetime import timedelta
+from django.conf import settings
+from rest_framework import serializers as drf_serializers
+from utils.quotas import consume_daily_quota
 from services.plan_limits import can_invite_family_member, is_premium, quota_status, record_family_invite
 from utils.invitation_tokens import (
     generate_invitation_token,
@@ -32,6 +36,19 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # ENDPOINT 1: INVITE FAMILY MEMBER
 # ============================================================================
+
+
+INVITE_RESEND_COOLDOWN = timedelta(hours=1)
+
+
+def _invite_email_cap_reached(ai_owner):
+    """Invitation emails go to any address from our domain, so each account gets a daily allowance."""
+    if consume_daily_quota(ai_owner.id, 'family-invite-email', settings.FAMILY_INVITE_EMAILS_PER_DAY):
+        return None
+    return Response(
+        {'error': 'daily_limit', 'message': "You've sent the maximum number of invitations for today. Please try again tomorrow."},
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -96,7 +113,11 @@ def invite_family_member(request):
     full_name = serializer.validated_data.get('full_name', '')
     relationship = serializer.validated_data['relationship']
     personal_message = serializer.validated_data.get('personal_message', '')
-    
+
+    capped = _invite_email_cap_reached(ai_owner)
+    if capped:
+        return capped
+
     # Extract name from email if not provided
     if not full_name:
         full_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
@@ -502,8 +523,23 @@ def resend_invitation(request, member_id):
             status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Get personal message if provided
-    personal_message = request.data.get('personal_message', '')
+    # One resend per hour per member, so resend can't be used to flood someone's inbox
+    if family_member.invitation_sent_at and timezone.now() - family_member.invitation_sent_at < INVITE_RESEND_COOLDOWN:
+        return Response(
+            {'error': 'resend_too_soon', 'message': 'An invitation was sent recently. You can resend it in an hour.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS
+        )
+
+    # Same rules as a new invitation: limited length and no links
+    try:
+        personal_message = clean_personal_message(request.data.get('personal_message', ''))
+    except drf_serializers.ValidationError as exc:
+        return Response({'error': 'Invalid data', 'details': {'personal_message': exc.detail}},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    capped = _invite_email_cap_reached(ai_owner)
+    if capped:
+        return capped
 
     # Generate new invitation token (revokes the previous pending one)
     token, invitation_link = generate_invitation_token(family_member, personal_message or '')

@@ -33,3 +33,17 @@ def check_ai_pricing_margins(app_configs, **kwargs):
             id="payments.W002",
         ))
     return warnings
+
+
+@register()
+def check_stripe_webhook_secret(app_configs, **kwargs):
+    """Without a valid secret every Stripe webhook is rejected, so payments are never confirmed by webhook."""
+    secret = getattr(settings, "STRIPE_WEBHOOK_SECRET", "") or ""
+    if settings.STRIPE_SECRET_KEY and not secret.startswith("whsec_"):
+        mode = getattr(settings, "STRIPE_MODE", "test").upper()
+        return [Warning(
+            "STRIPE_WEBHOOK_SECRET is missing or invalid, so Stripe webhooks are rejected.",
+            hint=f"Set STRIPE_{mode}_WEBHOOK_SECRET to the endpoint's signing secret (whsec_...).",
+            id="payments.W003",
+        )]
+    return []

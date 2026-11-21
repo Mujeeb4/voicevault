@@ -76,3 +76,46 @@ class AudioUploadFormatTests(TestCase):
     def test_native_formats_pass_through_unconverted(self):
         audio = SimpleUploadedFile('a.webm', b'\x1a\x45\xdf\xa3' + b'0' * 20, content_type='audio/webm')
         self.assertIs(normalize_audio_file(audio), audio)
+
+
+def make_mp3(seconds):
+    with tempfile.TemporaryDirectory() as directory:
+        target = Path(directory) / 'long.mp3'
+        subprocess.run(
+            ['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', f'sine=frequency=440:duration={seconds}',
+             '-ac', '1', '-ar', '8000', '-b:a', '8k', str(target)], check=True,
+        )
+        return target.read_bytes()
+
+
+@override_settings(MIDDLEWARE=['utils.supabase_auth.SupabaseAuthMiddleware'])
+class RecordingDurationLimitTests(TestCase):
+    """The free plan's recording minutes are measured on the server, not taken from the browser."""
+
+    def setUp(self):
+        self.user = User.objects.create(email='free@example.com', full_name='Free User')
+        self.client = APIClient()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + generate_jwt_token(self.user)['access'])
+
+    @skipUnless(shutil.which('ffmpeg'), 'ffmpeg not installed')
+    @patch('apps.recordings.views.upload_file_to_supabase', return_value='http://localhost/x.mp3')
+    def test_understated_duration_cannot_bypass_the_free_minutes_limit(self, upload):
+        audio = SimpleUploadedFile('long.mp3', make_mp3(16 * 60), content_type='audio/mpeg')
+        response = self.client.post('/api/recordings/upload/', {
+            'audio_file': audio, 'question_number': 1, 'question_text': 'Q', 'domain': 'childhood',
+            'duration_seconds': '1',
+        }, format='multipart')
+        self.assertEqual(response.status_code, 402, response.data)
+        self.assertEqual(response.data['limit_key'], 'recording_minutes')
+        upload.assert_not_called()
+
+    @skipUnless(shutil.which('ffmpeg'), 'ffmpeg not installed')
+    @patch('apps.recordings.views.upload_file_to_supabase', return_value='http://localhost/x.mp3')
+    def test_stored_duration_is_the_measured_length(self, upload):
+        audio = SimpleUploadedFile('short.mp3', make_mp3(3), content_type='audio/mpeg')
+        response = self.client.post('/api/recordings/upload/', {
+            'audio_file': audio, 'question_number': 1, 'question_text': 'Q', 'domain': 'childhood',
+            'duration_seconds': '999',
+        }, format='multipart')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertAlmostEqual(AudioRecording.objects.get(user=self.user).duration_seconds, 3, delta=0.5)

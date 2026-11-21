@@ -21,6 +21,7 @@ from apps.ai_processing.models import AIConfiguration, ProcessingQueue
 from apps.ai_processing.views import VoicePreviewView
 from apps.chat.models import Conversation
 from apps.users.models import FamilyMember, User
+from utils.supabase_auth import SupabaseUser
 from services.plan_limits import LimitResult
 from services.replicate_voice import generate_audio, prepare_reference, run_preview
 from services.speech import (
@@ -285,6 +286,7 @@ class ReplicateSpeechTests(TestCase):
         def post(text='I remember home'):
             request = RequestFactory().post('/preview/', data=json.dumps({'text': text}),
                                             content_type='application/json')
+            request.supabase_user = SupabaseUser(str(self.owner.id), self.owner.email, {})
             return VoicePreviewView.as_view()(request, user_id=self.owner.id)
 
         first = post()
@@ -308,6 +310,7 @@ class ReplicateSpeechTests(TestCase):
         queue.save()
         request = RequestFactory().post('/preview/', data=json.dumps({'text': 'I remember home'}),
                                         content_type='application/json')
+        request.supabase_user = SupabaseUser(str(self.owner.id), self.owner.email, {})
         response = VoicePreviewView.as_view()(request, user_id=self.owner.id)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['preview_id'], str(queue.id))
@@ -360,3 +363,29 @@ class ReplicateSpeechTests(TestCase):
         self.assertEqual(self.config.voice_reference_text, 'I remember home.')
         self.assertEqual(upload.call_args.args[2].getvalue(), b'complete reference')
         self.assertFalse(self.config.quality_approved)
+
+
+class DailyAICapTests(TestCase):
+    """Paid AI actions are capped per account per day; admins are not."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.user = User.objects.create(email='capped@example.com', full_name='Capped')
+
+    def request(self, user):
+        request = RequestFactory().post('/x/')
+        request.supabase_user = SupabaseUser(str(user.id), user.email, {})
+        return request
+
+    def test_cap_allows_up_to_the_limit_then_refuses(self):
+        from apps.ai_processing.views import daily_cap_reached
+        self.assertIsNone(daily_cap_reached(self.request(self.user), 'ai-clone', 2))
+        self.assertIsNone(daily_cap_reached(self.request(self.user), 'ai-clone', 2))
+        self.assertEqual(daily_cap_reached(self.request(self.user), 'ai-clone', 2).status_code, 429)
+
+    @override_settings(ADMIN_EMAILS='capped@example.com')
+    def test_admins_are_not_capped(self):
+        from apps.ai_processing.views import daily_cap_reached
+        for _ in range(3):
+            self.assertIsNone(daily_cap_reached(self.request(self.user), 'ai-clone', 1))

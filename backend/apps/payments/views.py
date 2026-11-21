@@ -255,8 +255,14 @@ def stripe_webhook(request):
     """
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '')
-    
+    webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '') or ''
+
+    # With an empty secret anyone could sign events, so refuse them all (Stripe retries
+    # once the secret is set) rather than verify against a blank key
+    if not webhook_secret.startswith('whsec_'):
+        logger.critical("STRIPE_WEBHOOK_SECRET is missing or invalid; rejecting Stripe webhooks")
+        return HttpResponse(status=500)
+
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, webhook_secret
@@ -268,19 +274,29 @@ def stripe_webhook(request):
         logger.error("Invalid webhook signature: %s", e.__class__.__name__)
         return HttpResponse(status=400)
     
-    # Handle events
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        handle_checkout_completed(session)
-    elif event['type'] == 'payment_intent.succeeded':
-        payment_intent = event['data']['object']
-        logger.info(f"Payment intent succeeded: {payment_intent['id']}")
-        handle_saved_card_payment_succeeded(payment_intent)
-    elif event['type'] == 'payment_intent.payment_failed':
-        payment_intent = event['data']['object']
-        logger.warning(f"Payment failed: {payment_intent['id']}")
-        handle_payment_failed(payment_intent)
-    
+    # Act only on Stripe's own copy of the object, fetched by id, never on the event
+    # body alone: even an event that passed verification can't grant anything unpaid
+    event_type = event['type']
+    try:
+        if event_type == 'checkout.session.completed':
+            session = stripe.checkout.Session.retrieve(event['data']['object']['id'])
+            if session.get('payment_status') == 'paid':
+                handle_checkout_completed(session)
+            else:
+                logger.info("Checkout session %s completed without payment; nothing granted", session.get('id'))
+        elif event_type in ('payment_intent.succeeded', 'payment_intent.payment_failed'):
+            payment_intent = stripe.PaymentIntent.retrieve(event['data']['object']['id'])
+            if event_type == 'payment_intent.succeeded' and payment_intent.get('status') == 'succeeded':
+                logger.info("Payment intent succeeded: %s", payment_intent['id'])
+                handle_saved_card_payment_succeeded(payment_intent)
+            elif event_type == 'payment_intent.payment_failed' and payment_intent.get('status') != 'succeeded':
+                logger.warning("Payment failed: %s", payment_intent['id'])
+                handle_payment_failed(payment_intent)
+    except stripe.error.StripeError as e:
+        # Stripe retries the webhook, so a temporary API failure loses nothing
+        logger.error("Could not fetch %s from Stripe: %s", event_type, e.__class__.__name__)
+        return HttpResponse(status=500)
+
     return HttpResponse(status=200)
 
 
@@ -660,9 +676,12 @@ def buy_credits_with_saved_card(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # The same request id never charges twice, even if the click is sent again
+    # The same request id never charges twice, even if the click is sent again. It is
+    # required: without one a retried request could charge the card a second time.
     request_id = str(request.data.get('request_id') or '')[:100]
-    idempotency = {'idempotency_key': f'credit-refill-{buyer.id}-{request_id}'} if request_id else {}
+    if not request_id:
+        return Response({'error': 'request_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    idempotency = {'idempotency_key': f'credit-refill-{buyer.id}-{request_id}'}
     try:
         intent = stripe.PaymentIntent.create(
             amount=credits * settings.CREDIT_UNIT_PRICE_CENTS,

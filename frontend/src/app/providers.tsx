@@ -31,17 +31,13 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const syncSession = () => {
-      const access = session.getAccessToken();
-      const refresh = session.getRefreshToken();
-      if (!access || !refresh) {
-        useAuthStore.setState({ user: null, tokens: null, isAuthenticated: false, isLoading: false });
-      } else {
-        useAuthStore.setState({ tokens: { access, refresh } });
+      if (!session.isSignedIn()) {
+        useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
       }
     };
     window.addEventListener(session.SESSION_CHANGED_EVENT, syncSession);
     const syncExternalSession = (event: StorageEvent) => {
-      if (event.key !== null && event.key !== 'voicevault_session') return;
+      if (event.key !== null && event.key !== session.SIGNED_IN_KEY) return;
       syncSession();
       void checkAuth();
     };
@@ -59,7 +55,7 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
 
     // Check for idle timeout periodically (every 5 minutes)
     const idleCheckInterval = setInterval(() => {
-      if (session.getAccessToken() && session.isSessionIdle()) {
+      if (session.isSignedIn() && session.isSessionIdle()) {
         // Session idle - logout user
         useAuthStore.getState().logout();
         window.location.href = '/login?reason=idle';

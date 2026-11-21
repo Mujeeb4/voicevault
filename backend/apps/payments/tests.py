@@ -147,3 +147,58 @@ class PaymentEmailTests(TestCase):
         self.assertIn('$149.99', mail.outbox[0].body)
         self.assertNotIn('<b>Two</b>', html)
         self.assertNotIn('<script>', mail.outbox[1].alternatives[0][0])
+
+
+class StripeWebhookSecurityTests(TestCase):
+    """The webhook grants nothing on its own word: it needs a real secret and Stripe's own copy of the payment."""
+
+    def setUp(self):
+        self.user = User.objects.create(email='buyer@example.com', full_name='Buyer')
+        self.factory = APIRequestFactory()
+
+    def post_event(self, event_type='checkout.session.completed', object_id='cs_1'):
+        request = self.factory.post('/api/payments/webhook/', data=b'{}', content_type='application/json',
+                                    HTTP_STRIPE_SIGNATURE='t=1,v1=x')
+        event = {'type': event_type, 'data': {'object': {'id': object_id}}}
+        with patch('apps.payments.views.stripe.Webhook.construct_event', return_value=event):
+            return views.stripe_webhook(request)
+
+    def stripe_session(self, payment_status):
+        return {'id': 'cs_1', 'payment_status': payment_status, 'payment_intent': 'pi_1', 'amount_total': 14999,
+                'currency': 'usd', 'customer': 'cus_1', 'metadata': {'user_id': str(self.user.id)}}
+
+    @override_settings(STRIPE_WEBHOOK_SECRET='')
+    @patch('apps.payments.views.stripe.checkout.Session.retrieve')
+    def test_missing_secret_rejects_every_event(self, retrieve):
+        response = self.post_event()
+        self.assertEqual(response.status_code, 500)
+        retrieve.assert_not_called()
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.has_premium_access)
+
+    @override_settings(STRIPE_WEBHOOK_SECRET='whsec_test')
+    @patch('apps.payments.views.stripe.checkout.Session.retrieve')
+    def test_event_for_an_unpaid_session_grants_nothing(self, retrieve):
+        retrieve.return_value = self.stripe_session('unpaid')
+        response = self.post_event()
+        self.assertEqual(response.status_code, 200)
+        retrieve.assert_called_once_with('cs_1')
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.has_premium_access)
+
+    @override_settings(STRIPE_WEBHOOK_SECRET='whsec_test')
+    @patch('apps.payments.views.send_premium_activated_email')
+    @patch('apps.payments.views.stripe.checkout.Session.retrieve')
+    def test_paid_session_fetched_from_stripe_activates_premium(self, retrieve, _email):
+        retrieve.return_value = self.stripe_session('paid')
+        response = self.post_event()
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.has_premium_access)
+
+    @override_settings(STRIPE_WEBHOOK_SECRET='whsec_test')
+    @patch('apps.payments.views.stripe.checkout.Session.retrieve')
+    def test_stripe_outage_asks_stripe_to_retry(self, retrieve):
+        import stripe
+        retrieve.side_effect = stripe.error.APIConnectionError('down')
+        self.assertEqual(self.post_event().status_code, 500)

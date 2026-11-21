@@ -2,6 +2,7 @@ import time
 from datetime import datetime, timedelta
 
 import jwt
+from utils.jwt_tokens import signing_key
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
@@ -117,12 +118,17 @@ class TokenRegressionTests(TestCase):
         login_response = LoginView.as_view()(login_request)
         self.assertEqual(login_response.status_code, 200)
 
-        refresh_request = self.factory.post('/api/users/refresh/', {
-            'refresh': login_response.data['tokens']['refresh'],
-        }, format='json')
+        # Tokens arrive only as httpOnly cookies, never in the body
+        self.assertNotIn('tokens', login_response.data)
+        self.assertTrue(login_response.cookies['vv_access']['httponly'])
+        self.assertEqual(login_response.cookies['vv_refresh']['path'], '/api/users/')
+
+        refresh_request = self.factory.post('/api/users/refresh/', {}, format='json')
+        refresh_request.COOKIES['vv_refresh'] = login_response.cookies['vv_refresh'].value
         refresh_response = RefreshTokenView.as_view()(refresh_request)
         self.assertEqual(refresh_response.status_code, 200)
-        self.assertIn('access', refresh_response.data)
+        self.assertNotIn('access', refresh_response.data)
+        self.assertNotEqual(refresh_response.cookies['vv_refresh'].value, login_response.cookies['vv_refresh'].value)
 
     def test_refresh_rejects_access_and_expired_tokens(self):
         tokens = generate_jwt_token(self.user)
@@ -139,7 +145,7 @@ class TokenRegressionTests(TestCase):
                 'iat': datetime.utcnow() - timedelta(days=8),
                 'exp': datetime.utcnow() - timedelta(days=1),
             },
-            getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY),
+            signing_key(),
             algorithm='HS256',
         )
         expired_request = self.factory.post('/api/users/refresh/', {

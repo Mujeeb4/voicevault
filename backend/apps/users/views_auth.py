@@ -15,8 +15,15 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from utils.throttling import AuthEndpointThrottle
+from utils.jwt_tokens import (
+    REFRESH_COOKIE, clear_auth_cookies, decode_token, issue_tokens, set_auth_cookies, token_digest,
+)
+import hashlib
+from functools import lru_cache
+from django.core.cache import cache
 from django.core import signing
 from utils.email_service import (
+    send_existing_account_email,
     send_account_welcome_email,
     send_account_deleted_email,
     send_password_changed_email,
@@ -34,42 +41,8 @@ logger = logging.getLogger(__name__)
 
 
 def generate_jwt_token(user: User) -> dict:
-    """
-    Generate JWT access and refresh tokens for a user.
-    Following .cursorrules patterns
-    """
-    now = datetime.utcnow()
-    
-    # Access token (expires in 1 hour)
-    access_payload = {
-        'sub': str(user.id),
-        'email': user.email,
-        'type': 'access',
-        'tv': user.token_version,
-        'iat': now,
-        'exp': now + timedelta(hours=1),
-    }
-    
-    # Refresh token (expires in 7 days)
-    refresh_payload = {
-        'sub': str(user.id),
-        'email': user.email,
-        'type': 'refresh',
-        'tv': user.token_version,
-        'iat': now,
-        'exp': now + timedelta(days=7),
-    }
-    
-    # Get JWT secret from settings (use SECRET_KEY as fallback)
-    jwt_secret = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
-    
-    access_token = jwt.encode(access_payload, jwt_secret, algorithm='HS256')
-    refresh_token = jwt.encode(refresh_payload, jwt_secret, algorithm='HS256')
-    
-    return {
-        'access': access_token,
-        'refresh': refresh_token,
-    }
+    """Access and refresh tokens for a user (see utils.jwt_tokens for claims and lifetimes)."""
+    return issue_tokens(user)
 
 
 VERIFY_SALT = 'voicevault.email-verification'
@@ -88,6 +61,30 @@ def send_verification_for(user: User) -> bool:
     token = make_verification_token(user)
     url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
     return send_verification_email(user.email, user.full_name, url)
+
+
+def _signup_response(email: str) -> Response:
+    return Response(
+        {
+            'verification_required': True,
+            'email': email,
+            'message': 'Check your email to verify your account.',
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+def _signup_for_existing_account(user: User) -> Response:
+    """
+    Same answer as a new signup. The owner gets a verification link (if still unverified)
+    or a "you already have an account" notice, at most once an hour.
+    """
+    if cache.add(f'signup-existing-notice:{user.id}', 1, 60 * 60):
+        if user.email_verified:
+            send_existing_account_email(user.email, user.full_name)
+        else:
+            send_verification_for(user)
+    return _signup_response(user.email)
 
 
 class SignupView(APIView):
@@ -146,13 +143,12 @@ class SignupView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             
-            # Check if user already exists
-            if User.objects.filter(email=email).exists():
-                return Response(
-                    {'error': 'email_exists', 'message': 'An account with this email already exists'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
+            # An existing email gets the same response as a new one, so signup can't be used
+            # to find out who has an account; the owner is emailed instead
+            existing = User.objects.filter(email=email).first()
+            if existing:
+                return _signup_for_existing_account(existing)
+
             # Create user
             try:
                 user = User.objects.create(
@@ -162,23 +158,14 @@ class SignupView(APIView):
                     password_hash=make_password(password),  # Store hashed password
                 )
             except IntegrityError:
-                return Response(
-                    {'error': 'email_exists', 'message': 'An account with this email already exists'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            
+                # Created by a concurrent request
+                return _signup_for_existing_account(User.objects.get(email=email))
+
             logger.info("New user signed up (pending verification): %s", user.id)
             # Best-effort: the helper logs and swallows delivery failures.
             send_verification_for(user)
 
-            return Response(
-                {
-                    'verification_required': True,
-                    'email': user.email,
-                    'message': 'Check your email to verify your account.',
-                },
-                status=status.HTTP_201_CREATED,
-            )
+            return _signup_response(user.email)
 
         except Exception as e:
             logger.error("Signup error: %s", e.__class__.__name__, exc_info=True)
@@ -250,6 +237,25 @@ class ResendVerificationView(APIView):
         )
 
 
+
+def _login_failure_key(email: str) -> str:
+    return 'login-failures:' + hashlib.sha256(email.encode()).hexdigest()
+
+
+def _record_login_failure(email: str) -> None:
+    """Count a failed sign-in for this email; enough of them lock the account for a while."""
+    key = _login_failure_key(email)
+    if not cache.add(key, 1, settings.LOGIN_LOCKOUT_SECONDS):
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 1, settings.LOGIN_LOCKOUT_SECONDS)
+
+
+@lru_cache(maxsize=1)
+def _dummy_password_hash() -> str:
+    return make_password('not-a-real-password')
+
 class LoginView(APIView):
     """
     POST /api/users/login/
@@ -271,7 +277,15 @@ class LoginView(APIView):
                 {'error': 'invalid_credentials', 'message': 'Email and password are required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
+        # Per-account lockout: changing IP doesn't help an attacker guessing one password
+        if (cache.get(_login_failure_key(email)) or 0) >= settings.LOGIN_MAX_FAILURES:
+            return Response(
+                {'error': 'too_many_attempts',
+                 'message': 'Too many failed sign-ins. Try again in 15 minutes, or reset your password.'},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         logger.debug("Login attempt received")
         
         # Retry logic for database connection issues
@@ -311,6 +325,9 @@ class LoginView(APIView):
                     
             except User.DoesNotExist:
                 logger.warning("Login failed: user not found")
+                # Hash anyway so an unknown email takes as long as a wrong password
+                check_password(password, _dummy_password_hash())
+                _record_login_failure(email)
                 return Response(
                     {'error': 'invalid_credentials', 'message': 'Invalid email or password'},
                     status=status.HTTP_401_UNAUTHORIZED
@@ -320,16 +337,20 @@ class LoginView(APIView):
             # Check password
             if not hasattr(user, 'password_hash') or not user.password_hash:
                 # User doesn't have password set (maybe created via Supabase)
+                check_password(password, _dummy_password_hash())
+                _record_login_failure(email)
                 return Response(
                     {'error': 'invalid_credentials', 'message': 'Invalid email or password'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
-            
+
             if not check_password(password, user.password_hash):
+                _record_login_failure(email)
                 return Response(
                     {'error': 'invalid_credentials', 'message': 'Invalid email or password'},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
+            cache.delete(_login_failure_key(email))
             
             if not user.email_verified:
                 return Response(
@@ -349,13 +370,9 @@ class LoginView(APIView):
             
             logger.info("User logged in: %s", user.id)
             
-            return Response(
-                {
-                    'user': serializer.data,
-                    'tokens': tokens,
-                },
-                status=status.HTTP_200_OK
-            )
+            # Tokens go only into httpOnly cookies, never the response body, so page
+            # scripts can't read them
+            return set_auth_cookies(Response({'user': serializer.data}, status=status.HTTP_200_OK), tokens)
             
         except Exception as e:
             logger.error("Login error: %s", e.__class__.__name__, exc_info=True)
@@ -415,9 +432,10 @@ class ChangePasswordView(APIView):
         send_password_changed_email(user.email, user.full_name)
 
         # Every older token is now revoked; hand this session fresh ones.
-        return Response(
-            {'message': 'Password changed successfully', 'tokens': generate_jwt_token(user)},
-            status=status.HTTP_200_OK,
+        # Every older session was revoked; this browser gets fresh cookies and stays signed in
+        return set_auth_cookies(
+            Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK),
+            generate_jwt_token(user),
         )
 
 
@@ -441,17 +459,24 @@ def _decode_refresh(token) -> dict | None:
     if not token or not isinstance(token, str):
         return None
     try:
-        payload = jwt.decode(
-            token, getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY), algorithms=['HS256']
-        )
+        return decode_token(token, 'refresh')
     except jwt.InvalidTokenError:
         return None
-    return payload if payload.get('type') == 'refresh' else None
 
 
 def _token_digest(token: str) -> str:
-    import hashlib
-    return hashlib.sha256(token.encode()).hexdigest()
+    return token_digest(token)
+
+
+def _refresh_from_request(request) -> str:
+    """The refresh token from its httpOnly cookie (browsers) or the request body (scripts)."""
+    body_token = request.data.get('refresh') if isinstance(request.data, dict) else None
+    return body_token or request.COOKIES.get(REFRESH_COOKIE, '')
+
+
+# A refresh token used again after it was rotated means it was copied: unless the reuse is
+# within this window (two tabs refreshing at once), every session of the account is ended
+REFRESH_REUSE_GRACE = timedelta(seconds=30)
 
 
 class LogoutView(APIView):
@@ -466,7 +491,7 @@ class LogoutView(APIView):
     throttle_classes = [AuthEndpointThrottle]
 
     def post(self, request):
-        refresh = request.data.get('refresh', '')
+        refresh = _refresh_from_request(request)
         payload = _decode_refresh(refresh)
         if payload:
             user = User.objects.filter(id=payload.get('sub')).first()
@@ -480,93 +505,85 @@ class LogoutView(APIView):
                     )
                     RevokedToken.objects.filter(expires_at__lt=timezone.now()).delete()
                 logger.info("User logged out: %s", user.id)
-        return Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK)
+        return clear_auth_cookies(Response({'message': 'Logged out successfully'}, status=status.HTTP_200_OK))
 
 
 class RefreshTokenView(APIView):
     """
     POST /api/users/refresh/
-    Refresh access token using refresh token.
+    Swap a refresh token (httpOnly cookie, or 'refresh' in the body) for new cookies.
+
+    Each refresh token works once: it is revoked as the new one is issued. Presenting a
+    revoked one again means it was stolen, so every session of that account is ended.
     """
     permission_classes = [AllowAny]
     throttle_classes = []  # No throttle - refresh is essential for auth flow
-    
+
+    def _reject(self, error, message, http_status=status.HTTP_401_UNAUTHORIZED):
+        return clear_auth_cookies(Response({'error': error, 'message': message}, status=http_status))
+
     def post(self, request):
         try:
-            refresh_token = request.data.get('refresh', '')
-            
+            refresh_token = _refresh_from_request(request)
             if not refresh_token:
                 return Response(
                     {'error': 'refresh_token_required', 'message': 'Refresh token is required'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
-            # Verify refresh token
-            jwt_secret = getattr(settings, 'JWT_SECRET_KEY', settings.SECRET_KEY)
-            
-            try:
-                payload = jwt.decode(refresh_token, jwt_secret, algorithms=['HS256'])
-            except jwt.ExpiredSignatureError:
-                return Response(
-                    {'error': 'token_expired', 'message': 'Refresh token has expired'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-            except jwt.InvalidTokenError:
-                return Response(
-                    {'error': 'invalid_token', 'message': 'Invalid refresh token'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-            
-            # Check token type
-            if payload.get('type') != 'refresh':
-                return Response(
-                    {'error': 'invalid_token', 'message': 'Invalid token type'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
-            
-            if RevokedToken.objects.filter(token_hash=_token_digest(refresh_token)).exists():
-                return Response(
-                    {'error': 'invalid_token', 'message': 'Invalid refresh token'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
 
-            # Get user
-            user_id = payload.get('sub')
             try:
-                user = User.objects.get(id=user_id)
+                payload = decode_token(refresh_token, 'refresh')
+            except jwt.ExpiredSignatureError:
+                return self._reject('token_expired', 'Refresh token has expired')
+            except jwt.InvalidTokenError:
+                return self._reject('invalid_token', 'Invalid refresh token')
+
+            try:
+                user = User.objects.get(id=payload.get('sub'))
             except User.DoesNotExist:
-                return Response(
-                    {'error': 'user_not_found', 'message': 'User not found'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-            
+                return self._reject('user_not_found', 'User not found', status.HTTP_404_NOT_FOUND)
+
             if int(payload.get('tv', 0)) != user.token_version:
-                return Response(
-                    {'error': 'invalid_token', 'message': 'Session is no longer valid. Please sign in again.'},
-                    status=status.HTTP_401_UNAUTHORIZED
-                )
+                return self._reject('invalid_token', 'Session is no longer valid. Please sign in again.')
+
+            digest = _token_digest(refresh_token)
+            revoked = RevokedToken.objects.filter(token_hash=digest).first()
+            if revoked:
+                if timezone.now() - revoked.created_at <= REFRESH_REUSE_GRACE:
+                    # Another tab refreshed with this token a moment ago and its new cookies
+                    # are already in the browser: the caller just retries its request
+                    return Response(
+                        {'error': 'refresh_superseded', 'message': 'Session was just refreshed'},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+                bump_token_version(user)
+                logger.warning("Refresh token reused for user %s; all sessions revoked", user.id)
+                return self._reject('invalid_token', 'Session is no longer valid. Please sign in again.')
 
             if not user.email_verified:
-                return Response(
-                    {'error': 'email_not_verified', 'message': 'Please verify your email before signing in.'},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                return self._reject('email_not_verified', 'Please verify your email before signing in.',
+                                    status.HTTP_403_FORBIDDEN)
 
-            # Generate new access token
-            tokens = generate_jwt_token(user)
-            
-            return Response(
-                tokens,
-                status=status.HTTP_200_OK
+            # Rotate: this refresh token can't be used again
+            expires_at = datetime.fromtimestamp(payload['exp'], tz=dt_timezone.utc)
+            _, created = RevokedToken.objects.get_or_create(token_hash=digest, defaults={'expires_at': expires_at})
+            if not created:
+                return Response(
+                    {'error': 'refresh_superseded', 'message': 'Session was just refreshed'},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            RevokedToken.objects.filter(expires_at__lt=timezone.now()).delete()
+
+            return set_auth_cookies(
+                Response({'message': 'Session refreshed'}, status=status.HTTP_200_OK), generate_jwt_token(user)
             )
-            
+
         except Exception as e:
             logger.error("Token refresh error: %s", e.__class__.__name__, exc_info=True)
             return Response(
                 {'error': 'refresh_failed', 'message': 'Failed to refresh token'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 
 
 RESET_SALT = 'voicevault.password-reset'
@@ -720,4 +737,4 @@ class DeleteAccountView(APIView):
                 delete_file_from_supabase(bucket=bucket, file_path=path)
             except Exception as exc:
                 logger.warning("Failed to delete stored file for deleted account: %s", exc.__class__.__name__)
-        return Response({'message': 'Account deleted'}, status=status.HTTP_200_OK)
+        return clear_auth_cookies(Response({'message': 'Account deleted'}, status=status.HTTP_200_OK))

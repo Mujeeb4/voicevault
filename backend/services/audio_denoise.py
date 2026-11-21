@@ -22,7 +22,7 @@ def denoise_for_cloning(source, target) -> Path:
     source, target = Path(source), Path(target)
     try:
         process = subprocess.run(
-            ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-i', str(source), '-vn',
+            ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-protocol_whitelist', 'file', '-i', str(source), '-vn',
              '-af', DENOISE_FILTER, '-c:a', 'libmp3lame', '-b:a', '192k', str(target)],
             capture_output=True, timeout=180, check=False,
         )

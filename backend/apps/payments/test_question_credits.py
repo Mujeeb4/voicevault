@@ -102,6 +102,24 @@ class QuestionAllowanceTests(TestCase):
         self.assertTrue(result.allowed)
         self.assertEqual(source, 'free_plan')
 
+    def test_free_messages_are_counted_when_reserved_and_refunded_on_failure(self):
+        free_owner = User.objects.create(email='free2@example.com', full_name='Free', ai_ready=True)
+        member = family_member(free_owner, email='free2-child@example.com')
+        limit = plan_limits.FREE_LIMITS['text_messages_monthly']
+
+        for _ in range(limit):
+            self.assertTrue(plan_limits.reserve_question(free_owner, member)[0].allowed)
+        refused, source = plan_limits.reserve_question(free_owner, member)
+        self.assertFalse(refused.allowed)
+        self.assertIsNone(source)
+
+        # A failed answer gives the message back, and recording a delivered answer doesn't count it twice
+        plan_limits.refund_question(member, 'free_plan', free_owner)
+        self.assertTrue(plan_limits.reserve_question(free_owner, member)[0].allowed)
+        plan_limits.record_chat_message(free_owner)
+        quota = plan_limits.get_or_create_quota(free_owner)
+        self.assertEqual(quota.text_messages_used_this_month, limit)
+
     def test_premium_voice_answer_is_part_of_the_question(self):
         self.assertTrue(plan_limits.can_generate_voice_response(self.owner).allowed)
 
@@ -296,6 +314,12 @@ class SavedCardRefillTests(ThrottleIsolationMixin, TestCase):
 
     def intent(self, status='succeeded'):
         return SimpleNamespace(id='pi_refill', status=status, amount=2000, currency='usd')
+
+    @patch('apps.payments.views.stripe.PaymentIntent.create')
+    def test_refill_without_a_request_id_is_refused_before_charging(self, create):
+        response = self.refill(request_id='')
+        self.assertEqual(response.status_code, 400)
+        create.assert_not_called()
 
     @patch('apps.payments.views.stripe.PaymentIntent.create')
     def test_refill_charges_the_saved_card_once_and_adds_credits(self, create):

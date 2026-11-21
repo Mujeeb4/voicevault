@@ -21,6 +21,8 @@ from .tasks import (
 )
 from services.plan_limits import can_clone_voice
 from utils.admin_auth import is_admin_email
+from utils.quotas import consume_daily_quota
+from utils.throttling import ProcessingThrottle
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,7 @@ def authorize_processing_access(request, user_id, action):
 
     requesting_user_id = str(request.supabase_user.id).lower().strip()
     target_user_id = str(user_id).lower().strip()
-    if requesting_user_id == target_user_id or is_admin_email(request.supabase_user.email):
+    if requesting_user_id == target_user_id or _is_admin(request):
         return None
 
     logger.warning(
@@ -49,6 +51,27 @@ def authorize_processing_access(request, user_id, action):
     )
 
 
+def _is_admin(request) -> bool:
+    """Admin status from the account's stored email, not the email claim in the token."""
+    email = User.objects.filter(id=request.supabase_user.id).values_list('email', flat=True).first()
+    return bool(email) and is_admin_email(email)
+
+
+def daily_cap_reached(request, action: str, limit: int):
+    """
+    Count one paid AI action for this account today; returns a 429 response once over `limit`.
+    Admins are not capped (they run these steps for support).
+    """
+    if _is_admin(request):
+        return None
+    if consume_daily_quota(request.supabase_user.id, action, limit):
+        return None
+    return Response(
+        {'error': 'daily_limit', 'message': 'You have reached today\'s limit for this action. Please try again tomorrow.'},
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )
+
+
 class TranscribeAudioView(APIView):
     """
     POST /api/admin/process/transcribe/<user_id>/
@@ -57,10 +80,15 @@ class TranscribeAudioView(APIView):
     """
     permission_classes = [AllowAny]  # We handle auth in the view itself
     
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'trigger transcription')
         if denied:
             return denied
+        capped = daily_cap_reached(request, 'ai-transcribe', settings.VOICE_PIPELINE_RUNS_PER_DAY)
+        if capped:
+            return capped
         """Trigger transcription task."""
         try:
             user = get_object_or_404(User, id=user_id)
@@ -125,10 +153,15 @@ class AnalyzePersonalityView(APIView):
     """
     permission_classes = [AllowAny]  # We handle auth in the view itself
     
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'trigger personality analysis')
         if denied:
             return denied
+        capped = daily_cap_reached(request, 'ai-analyze', settings.VOICE_PIPELINE_RUNS_PER_DAY)
+        if capped:
+            return capped
         """Trigger personality analysis task."""
         try:
             user = get_object_or_404(User, id=user_id)
@@ -194,10 +227,15 @@ class CloneVoiceView(APIView):
     """
     permission_classes = [AllowAny]  # We handle auth in the view itself
     
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'trigger voice cloning')
         if denied:
             return denied
+        capped = daily_cap_reached(request, 'ai-clone', settings.VOICE_PIPELINE_RUNS_PER_DAY)
+        if capped:
+            return capped
         """Trigger voice cloning task."""
         try:
             user = get_object_or_404(User, id=user_id)
@@ -283,10 +321,15 @@ class FinalizeAIView(APIView):
     """
     permission_classes = [AllowAny]  # We handle auth in the view itself
     
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'trigger finalization')
         if denied:
             return denied
+        capped = daily_cap_reached(request, 'ai-finalize', settings.VOICE_PIPELINE_RUNS_PER_DAY)
+        if capped:
+            return capped
         """Finalize AI for a user."""
         try:
             user = get_object_or_404(User, id=user_id)
@@ -548,10 +591,15 @@ class RunFullPipelineView(APIView):
     """
     permission_classes = [AllowAny]
     
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'trigger pipeline')
         if denied:
             return denied
+        capped = daily_cap_reached(request, 'ai-pipeline', settings.VOICE_PIPELINE_RUNS_PER_DAY)
+        if capped:
+            return capped
             
         """Run full processing pipeline."""
         try:
@@ -630,6 +678,8 @@ class VoicePreviewView(APIView):
     """Owner-started, paid Qwen3 voice preview using the saved reference."""
     permission_classes = [AllowAny]
 
+    throttle_classes = [ProcessingThrottle]  # paid AI calls: 5/minute per account
+
     def post(self, request, user_id):
         denied = authorize_processing_access(request, user_id, 'preview voice')
         if denied:
@@ -657,6 +707,10 @@ class VoicePreviewView(APIView):
         ).order_by('-created_at').first()
         if existing:
             return Response({'preview_id': str(existing.id), 'status': existing.status}, status=200)
+        # Only a new preview is a paid prediction, so only new ones count toward the daily cap
+        capped = daily_cap_reached(request, 'voice-preview', settings.VOICE_PREVIEWS_PER_DAY)
+        if capped:
+            return capped
         import uuid
         preview_id = uuid.uuid5(uuid.NAMESPACE_URL, f'voicevault-preview:{user.id}:{config.voice_clone_id}:{profile_id}:{text}')
         queue, created = ProcessingQueue.objects.get_or_create(
