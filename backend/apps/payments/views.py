@@ -49,6 +49,45 @@ def _configured_price_id(value):
     return price_id
 
 
+# Checkout shows "VoiceVault" instead of the Stripe account's public name (Sellaya), and card
+# statements read "<account prefix>* VOICEVAULT". Per-session branding needs a newer Stripe API
+# version than the SDK default, so it is requested for this one call only.
+CHECKOUT_BRAND_NAME = 'VoiceVault'
+CHECKOUT_BRANDING_API_VERSION = '2025-09-30.clover'
+CHECKOUT_STATEMENT_SUFFIX = 'VOICEVAULT'
+
+
+def _create_checkout_session(frontend_url, **params):
+    """Create a Checkout Session branded as VoiceVault; never let branding block a payment.
+
+    Tries name + logo, then name only, then the plain session. Only Stripe's parameter
+    rejections (InvalidRequestError) trigger the next attempt; any other error is raised.
+    """
+    base_intent = dict(params.pop('payment_intent_data', None) or {})
+    suffix = {'statement_descriptor_suffix': CHECKOUT_STATEMENT_SUFFIX}
+    logo = {'type': 'url', 'url': f'{frontend_url.rstrip("/")}/logo.png'}
+    attempts = [
+        ({'display_name': CHECKOUT_BRAND_NAME, 'logo': logo}, suffix),
+        ({'display_name': CHECKOUT_BRAND_NAME}, suffix),
+        (None, {}),
+    ]
+    last_error = None
+    for branding, extra_intent in attempts:
+        kwargs = dict(params)
+        intent = {**base_intent, **extra_intent}
+        if intent:
+            kwargs['payment_intent_data'] = intent
+        if branding:
+            kwargs['branding_settings'] = branding
+            kwargs['stripe_version'] = CHECKOUT_BRANDING_API_VERSION
+        try:
+            return stripe.checkout.Session.create(**kwargs)
+        except stripe.error.InvalidRequestError as e:
+            last_error = e
+            logger.warning("Checkout branding attempt rejected (%s); trying a simpler request", e.__class__.__name__)
+    raise last_error
+
+
 def _checkout_frontend_url(request):
     """Return the app origin that should receive Stripe's checkout redirect."""
     configured_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
@@ -132,7 +171,8 @@ def create_checkout_session(request):
             }
 
         # Create one-time Checkout Session
-        checkout_session = stripe.checkout.Session.create(
+        checkout_session = _create_checkout_session(
+            frontend_url,
             customer=customer_id,
             payment_method_types=['card'],
             mode='payment',
@@ -636,7 +676,8 @@ def create_credit_checkout_session(request):
 
     return_url = f'{_checkout_frontend_url(request)}/chat/{ai_owner.id}'
     try:
-        checkout_session = stripe.checkout.Session.create(
+        checkout_session = _create_checkout_session(
+            _checkout_frontend_url(request),
             mode='payment',
             payment_method_types=['card'],
             customer=_ensure_stripe_customer(buyer),
