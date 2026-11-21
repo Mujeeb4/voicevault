@@ -17,7 +17,15 @@ services:
       traefik.http.routers.voicevault-http.rule: ${TRAEFIK_RULE:-Host(`${TRAEFIK_HOST:-voicevault.localhost}`)}
       traefik.http.routers.voicevault-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}
       traefik.http.routers.voicevault-http.middlewares: voicevault-redirect-https
+      traefik.http.routers.voicevault-http.service: voicevault
       traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_HTTPS_ENTRYPOINT:-websecure}
       traefik.http.routers.voicevault.tls: "true"
       traefik.http.routers.voicevault.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}
       traefik.http.middlewares.voicevault-redirect-https.redirectscheme.scheme: https
+      traefik.http.routers.voicevault-admin-http.rule: ${TRAEFIK_ADMIN_RULE:-Host(`admin.${TRAEFIK_HOST:-voicevault.localhost}`)}
+      traefik.http.routers.voicevault-admin-http.entrypoints: ${TRAEFIK_HTTP_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault-admin-http.middlewares: voicevault-redirect-https
+      traefik.http.routers.voicevault-admin-http.service: voicevault
+      traefik.http.routers.voicevault-admin.entrypoints: ${TRAEFIK_HTTPS_ENTRYPOINT:-websecure}
+      traefik.http.routers.voicevault-admin.tls: "true"
+      traefik.http.routers.voicevault-admin.tls.certresolver: ${TRAEFIK_CERT_RESOLVER:-letsencrypt}

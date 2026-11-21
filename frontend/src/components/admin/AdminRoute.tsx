@@ -14,6 +14,7 @@ import { Loader2, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AdminShell } from './AdminShell';
+import { siteHref } from '@/config/site';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -89,10 +90,10 @@ export const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
               please contact support.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button onClick={() => router.push('/dashboard')} className="sm:flex-1">
+              <Button onClick={() => window.location.assign(siteHref('/dashboard'))} className="sm:flex-1">
                 Go to Dashboard
               </Button>
-              <Button onClick={() => router.push('/')} variant="outline" className="sm:flex-1">
+              <Button onClick={() => window.location.assign(siteHref('/'))} variant="outline" className="sm:flex-1">
                 Go to Homepage
               </Button>
             </div>

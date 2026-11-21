@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: 'Terms of Service',
   description:
     'VoiceVault Terms of Service: terms and conditions for using our AI voice preservation platform.',
+  alternates: { canonical: '/terms' },
 };
 
 export default function TermsLayout({

@@ -25,6 +25,12 @@ services:
       traefik.http.routers.voicevault.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
       traefik.http.routers.voicevault.tls: "${TRAEFIK_TLS:-false}"
       traefik.http.services.voicevault.loadbalancer.server.port: "3000"
+      # Admin dashboard on its own host (admin.<site>), with its own router and certificate
+      traefik.http.routers.voicevault-admin.rule: ${TRAEFIK_ADMIN_RULE:-Host(`admin.${TRAEFIK_HOST:-voicevault.localhost}`)}
+      traefik.http.routers.voicevault-admin.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
+      traefik.http.routers.voicevault-admin.tls: "${TRAEFIK_TLS:-false}"
+      traefik.http.routers.voicevault-admin.service: voicevault
+      traefik.http.routers.voicevault.service: voicevault
 
 networks:
   traefik:

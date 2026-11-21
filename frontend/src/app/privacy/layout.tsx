@@ -4,6 +4,7 @@ export const metadata: Metadata = {
   title: 'Privacy Policy',
   description:
     'VoiceVault Privacy Policy: how we collect, use, and protect your voice recordings and personal data.',
+  alternates: { canonical: '/privacy' },
 };
 
 export default function PrivacyLayout({

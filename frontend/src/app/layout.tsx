@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: siteUrl,
-    siteName: 'VoiceVault - Preserve Your Voice, Preserve Your Legacy',
+    siteName: 'VoiceVault',
     title: 'VoiceVault - Preserve Your Voice, Preserve Your Legacy',
     description:
       'One day, your voice will be the thing they miss most. Give your family a living memory that speaks back—forever.',
@@ -80,11 +80,6 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
-  },
-  verification: {
-    // Add verification codes when available
-    // google: 'your-google-verification-code',
-    // yandex: 'your-yandex-verification-code',
   },
 };
 

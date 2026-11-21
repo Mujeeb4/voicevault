@@ -14,6 +14,7 @@ import { Home, Mic, MessageSquare, Users, UserCircle, ShieldCheck, Lock, Sparkle
 import { useAuthStore } from '@/store/auth';
 import { familyApi } from '@/lib/api/family';
 import { cn } from '@/lib/utils';
+import { adminHref } from '@/config/site';
 
 interface AccessibleAI {
   id: string;
@@ -151,7 +152,7 @@ export function Sidebar() {
 
         {user?.is_admin && (
           <Link
-            href="/admin"
+            href={adminHref('/admin')}
             className="flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ShieldCheck className="h-5 w-5" />

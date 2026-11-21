@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminHasOwnHost, adminHost, adminUrl, siteHost, siteUrl } from '@/config/site';
 
 const LOCAL_API_ORIGINS = [
   'http://localhost:8000',
@@ -121,7 +122,53 @@ function buildContentSecurityPolicy(nonce: string): string {
   ]).join('; ');
 }
 
+// Pages the admin host serves besides /admin: signing in to it
+const ADMIN_HOST_AUTH_PATHS = ['/login', '/forgot-password', '/reset-password'];
+
+function requestHost(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  return (forwarded || request.headers.get('host') || '').toLowerCase();
+}
+
+function isUnder(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+type HostRoute = { redirect: URL; status: 307 | 308 } | { notFound: true } | null;
+
+/**
+ * Host-based routing in production:
+ * - admin.<site> serves only the admin dashboard (and sign-in for it)
+ * - the main site does not serve /admin at all (404)
+ * - www.<site> and the hosting provider's hostname redirect to the main site, so
+ *   search engines see one copy of each page
+ * Returns null when the request should be served as is.
+ */
+function routeByHost(request: NextRequest): HostRoute {
+  if (!adminHasOwnHost) return null;
+  const host = requestHost(request);
+  const { pathname, search } = request.nextUrl;
+
+  if (host === adminHost) {
+    const allowed = isUnder(pathname, '/admin')
+      || ADMIN_HOST_AUTH_PATHS.some((path) => isUnder(pathname, path))
+      // Icons, manifest, images and other public files
+      || /\.[a-z0-9]+$/i.test(pathname);
+    return allowed ? null : { redirect: new URL('/admin', adminUrl), status: 307 };
+  }
+  if (host === siteHost) {
+    return isUnder(pathname, '/admin') ? { notFound: true } : null;
+  }
+  if (host === `www.${siteHost}` || host.endsWith('.hstgr.cloud')) {
+    return { redirect: new URL(`${pathname}${search}`, siteUrl), status: 308 };
+  }
+  return null;
+}
+
 export function middleware(request: NextRequest): NextResponse {
+  const route = routeByHost(request);
+  if (route && 'redirect' in route) return NextResponse.redirect(route.redirect, route.status);
+
   const nonce = btoa(crypto.randomUUID());
   const contentSecurityPolicy = buildContentSecurityPolicy(nonce);
   const requestHeaders = new Headers(request.headers);
@@ -129,11 +176,14 @@ export function middleware(request: NextRequest): NextResponse {
   requestHeaders.set('x-nonce', nonce);
   requestHeaders.set('Content-Security-Policy', contentSecurityPolicy);
 
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  const response = route
+    // A path with no route renders the 404 page, so the main site shows no admin
+    ? NextResponse.rewrite(new URL('/admin-not-found', request.url), { request: { headers: requestHeaders } })
+    : NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
 
   response.headers.set('Content-Security-Policy', contentSecurityPolicy);
   return response;
@@ -148,5 +198,8 @@ export const config = {
         { type: 'header', key: 'purpose', value: 'prefetch' },
       ],
     },
+    // Always run for admin paths, prefetches included, so the main site never serves them
+    '/admin',
+    '/admin/:path*',
   ],
 };

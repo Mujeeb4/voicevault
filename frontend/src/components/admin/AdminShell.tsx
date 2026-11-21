@@ -13,6 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { siteHref } from '@/config/site';
 
 const adminLinks = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
@@ -72,7 +73,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <Link
-            href="/dashboard"
+            href={siteHref('/dashboard')}
             className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />

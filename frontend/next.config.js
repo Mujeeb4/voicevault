@@ -1,6 +1,12 @@
 const backendApiUrl = (process.env.BACKEND_API_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '');
 const backendBaseUrl = backendApiUrl.replace(/\/api$/, '');
 
+// Admin dashboard host (same rule as src/config/site.ts), kept out of search engines
+const siteUrl = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
+const adminHostname = process.env.NEXT_PUBLIC_ADMIN_URL
+  ? new URL(process.env.NEXT_PUBLIC_ADMIN_URL).hostname
+  : `admin.${siteUrl.hostname}`;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -48,6 +54,11 @@ const nextConfig = {
   // Headers for security and performance
   async headers() {
     return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: adminHostname }],
+        headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
       {
         source: '/:path*',
         headers: [
