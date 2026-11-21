@@ -23,6 +23,7 @@ import {
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/lib/utils';
+import { launchOffer, launchSavings, money } from '@/lib/launchOffer';
 
 const defaultPlans: Package[] = [
   {
@@ -196,8 +197,16 @@ export default function PricingPage() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-semibold text-foreground">{plan.price_display}</span>
+                      {premium && launchOffer.enabled && (
+                        <span className="text-lg text-muted-foreground line-through">{money(launchOffer.listPrice)}</span>
+                      )}
                       <span className="text-sm text-muted-foreground">{premium ? 'one time' : 'free'}</span>
                     </div>
+                    {premium && launchOffer.enabled && (
+                      <p className="mt-2 inline-block rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
+                        Founding Family: save {money(launchSavings())}, first {launchOffer.spots} buyers only
+                      </p>
+                    )}
                     {premium && (
                       <p className="mt-2 text-sm text-muted-foreground">Lifetime access. No subscription.</p>
                     )}
