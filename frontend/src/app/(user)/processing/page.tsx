@@ -5,6 +5,7 @@
 
 'use client';
 
+import { hasPremiumAccess } from '@/lib/premium';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { ProcessingStatusMonitor } from '@/components/processing/ProcessingStatusMonitor';
@@ -31,11 +32,7 @@ export default function ProcessingPage() {
   useEffect(() => () => {
     if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
   }, [previewAudioUrl]);
-  const isPremium = !!(
-    user?.is_premium ||
-    user?.payment_completed ||
-    user?.plan_type === 'premium'
-  );
+  const isPremium = hasPremiumAccess(user);
 
   const handleComplete = () => {
     setIsComplete(true);

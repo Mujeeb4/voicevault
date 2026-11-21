@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.users.models import User, FamilyMember
@@ -122,13 +122,7 @@ def invite_family_member(request):
     if not full_name:
         full_name = email.split('@')[0].replace('.', ' ').replace('_', ' ').title()
     
-    # Check if already invited
-    existing = FamilyMember.objects.filter(
-        ai_owner=ai_owner,
-        email__iexact=email
-    ).first()
-    
-    if existing:
+    def _already_invited(existing):
         return Response(
             {
                 'error': 'This email has already been invited',
@@ -137,16 +131,40 @@ def invite_family_member(request):
             },
             status=status.HTTP_409_CONFLICT
         )
-    
-    # Create family member record
-    family_member = FamilyMember.objects.create(
-        ai_owner=ai_owner,
-        email=email,
-        full_name=full_name,
-        relationship=relationship,
-        has_access=False
-    )
-    
+
+    # Serialize invites per vault: the limit and duplicate checks and the insert happen
+    # under one lock, so parallel requests can't exceed the limit or invite the same
+    # address twice.
+    try:
+        with transaction.atomic():
+            User.objects.select_for_update().get(pk=ai_owner.pk)
+
+            limit_check = can_invite_family_member(ai_owner)
+            if not limit_check.allowed:
+                return Response(limit_check.as_error(), status=status.HTTP_402_PAYMENT_REQUIRED)
+
+            # Check if already invited
+            existing = FamilyMember.objects.filter(
+                ai_owner=ai_owner,
+                email__iexact=email
+            ).first()
+            if existing:
+                return _already_invited(existing)
+
+            # Create family member record
+            family_member = FamilyMember.objects.create(
+                ai_owner=ai_owner,
+                email=email,
+                full_name=full_name,
+                relationship=relationship,
+                has_access=False
+            )
+    except IntegrityError:
+        existing = FamilyMember.objects.filter(ai_owner=ai_owner, email__iexact=email).first()
+        if existing:
+            return _already_invited(existing)
+        raise
+
     logger.info("Created family member invitation: %s", family_member.id)
     record_family_invite(ai_owner, str(family_member.id))
     

@@ -4,6 +4,7 @@
  * App top bar: page context on mobile, plan badge and account menu.
  */
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -23,7 +24,7 @@ import { Settings, LogOut, CreditCard } from 'lucide-react';
 export function Header() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const isPremium = !!(user?.is_premium || user?.payment_completed || user?.plan_type === 'premium');
+  const isPremium = hasPremiumAccess(user);
 
   const handleLogout = () => {
     logout();

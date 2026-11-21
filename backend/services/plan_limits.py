@@ -187,14 +187,17 @@ def can_upload_recording(
     duration_seconds: float | None = None,
     question_number: int | None = None,
     replacing_recording=None,
+    replacing_recordings=(),
 ) -> LimitResult:
     from apps.recordings.models import AudioRecording
 
     limits = get_limits(user)
     quota = sync_recording_usage(user)
 
-    replacement_minutes = ((getattr(replacing_recording, "duration_seconds", None) or 0) / 60)
-    replacement_storage = ((getattr(replacing_recording, "file_size_bytes", None) or 0) / (1024 * 1024))
+    # Recordings the new upload will replace (they free their minutes and storage)
+    replaced = [replacing_recording, *replacing_recordings] if replacing_recording else list(replacing_recordings)
+    replacement_minutes = sum((getattr(r, "duration_seconds", None) or 0) for r in replaced) / 60
+    replacement_storage = sum((getattr(r, "file_size_bytes", None) or 0) for r in replaced) / (1024 * 1024)
     new_minutes = (duration_seconds or 0) / 60
     new_storage = file_size_bytes / (1024 * 1024)
 
@@ -385,8 +388,10 @@ def can_generate_voice_response(ai_owner: User) -> LimitResult:
 
 def record_voice_response(ai_owner: User, conversation_id: str | None = None) -> None:
     quota = get_or_create_quota(ai_owner)
-    quota.voice_responses_used_this_month += 1
-    quota.save(update_fields=["voice_responses_used_this_month", "updated_at"])
+    # One UPDATE, so parallel responses don't overwrite each other's count
+    UsageQuota.objects.filter(pk=quota.pk).update(
+        voice_responses_used_this_month=F("voice_responses_used_this_month") + 1, updated_at=timezone.now()
+    )
     AuditLog.objects.create(
         user=ai_owner,
         action="voice_response",
@@ -440,8 +445,9 @@ def can_clone_voice(user: User) -> LimitResult:
 
 def record_ai_generation(user: User, target_id: str | None = None) -> None:
     quota = get_or_create_quota(user)
-    quota.ai_generations_used += 1
-    quota.save(update_fields=["ai_generations_used", "updated_at"])
+    UsageQuota.objects.filter(pk=quota.pk).update(
+        ai_generations_used=F("ai_generations_used") + 1, updated_at=timezone.now()
+    )
     AuditLog.objects.create(
         user=user,
         action="ai_generation",

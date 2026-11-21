@@ -5,6 +5,7 @@
 
 'use client';
 
+import { hasPremiumAccess } from '@/lib/premium';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
@@ -68,11 +69,7 @@ function DashboardContent() {
     loadSavedRecordings(user.id);
   }, [loadSavedRecordings, user?.id, user?.recording_completed]);
 
-  const isPremium = !!(
-    user?.is_premium ||
-    user?.payment_completed ||
-    user?.plan_type === 'premium'
-  );
+  const isPremium = hasPremiumAccess(user);
   const hasRecorded = user?.recording_completed;
   const hasAI = user?.ai_ready;
   const isFamilyMember = accessibleAIs.length > 0;

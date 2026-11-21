@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 from django.conf import settings
 from django.core import signing
+from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404, StreamingHttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -97,6 +98,34 @@ def _local_audio_file_path(audio_url: str) -> Path:
     return Path(settings.MEDIA_ROOT) / 'storage' / relative_path
 
 
+class _RefundIfNeverStarted:
+    """
+    Wraps an answer stream whose question was reserved before it started.
+
+    The stream's own `finally` gives the question back, but a generator that was never
+    started (the browser left before the first chunk) has no `finally` to run. Django
+    closes the response iterator in that case, so the question is returned from here.
+    """
+
+    def __init__(self, generator, refund):
+        self._generator = generator
+        self._refund = refund
+        self._started = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        self._started = True
+        return next(self._generator)
+
+    def close(self):
+        self._generator.close()
+        if not self._started:
+            self._started = True
+            self._refund()
+
+
 # ============================================================================
 # STREAMING CHAT ENDPOINT - Core Feature (Optimized for <1s response)
 # ============================================================================
@@ -141,10 +170,15 @@ def chat_streaming(request):
     else:
         try:
             body = json.loads(request.body)
-            ai_owner_id = body.get('ai_owner_id')
-            question = body.get('question', '').strip()
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+        if not isinstance(body, dict):
+            return JsonResponse({'error': 'Invalid JSON body'}, status=400)
+        ai_owner_id = body.get('ai_owner_id')
+        raw_question = body.get('question', '')
+        if not isinstance(ai_owner_id, (str, type(None))) or not isinstance(raw_question, str):
+            return JsonResponse({'error': 'ai_owner_id and question must be text'}, status=400)
+        question = raw_question.strip()
     
     # Validation
     if not ai_owner_id or not question:
@@ -162,7 +196,7 @@ def chat_streaming(request):
     # Get AI owner
     try:
         ai_owner = User.objects.select_related('ai_config', 'transcript').get(id=ai_owner_id)
-    except User.DoesNotExist:
+    except (User.DoesNotExist, ValidationError, ValueError):
         return JsonResponse(
             {'error': 'AI owner not found'},
             status=404
@@ -263,7 +297,10 @@ def chat_streaming(request):
                         pass
 
         response = StreamingHttpResponse(
-            generate_cached_response(),
+            _RefundIfNeverStarted(
+                generate_cached_response(),
+                lambda: refund_question(family_member, question_source, ai_owner),
+            ),
             content_type='text/event-stream'
         )
         response['Cache-Control'] = 'no-cache'
@@ -394,7 +431,8 @@ def chat_streaming(request):
             )
             
             # Update family member stats
-            family_member.increment_conversation_count()
+            if family_member:
+                family_member.increment_conversation_count()
             
             # STEP 6: Generate audio - Try async first, fall back to sync if Celery unavailable
             voice_limit = can_generate_voice_response(ai_owner)
@@ -485,7 +523,10 @@ def chat_streaming(request):
     
     # Return streaming response
     response = StreamingHttpResponse(
-        generate_response(),
+        _RefundIfNeverStarted(
+            generate_response(),
+            lambda: refund_question(family_member, question_source, ai_owner),
+        ),
         content_type='text/event-stream'
     )
     response['Cache-Control'] = 'no-cache'
@@ -546,7 +587,7 @@ def get_conversation_history(request):
     
     try:
         ai_owner = User.objects.get(id=ai_owner_id)
-    except User.DoesNotExist:
+    except (User.DoesNotExist, ValidationError, ValueError):
         return Response(
             {'error': 'AI owner not found'},
             status=status.HTTP_404_NOT_FOUND
@@ -582,12 +623,12 @@ def get_conversation_history(request):
         conversations = Conversation.objects.filter(
             ai_owner=ai_owner,
             family_member=family_member
-        ).order_by('-created_at')
+        ).select_related('ai_owner', 'family_member').order_by('-created_at')
     else:
         # Fallback: AI owner sees all conversations (only if 'self' member missing)
         conversations = Conversation.objects.filter(
             ai_owner=ai_owner
-        ).select_related('family_member').order_by('-created_at')
+        ).select_related('ai_owner', 'family_member').order_by('-created_at')
     
     # Paginate
     paginator = ConversationPagination()
@@ -642,7 +683,7 @@ def rate_conversation(request, conversation_id):
     feedback = request.data.get('feedback', '')
     
     # Validate rating
-    if not rating or not isinstance(rating, int) or rating < 1 or rating > 5:
+    if not rating or not isinstance(rating, int) or isinstance(rating, bool) or rating < 1 or rating > 5:
         return Response(
             {'error': 'Rating must be an integer between 1 and 5'},
             status=status.HTTP_400_BAD_REQUEST
@@ -837,7 +878,7 @@ def get_audio_status(request, task_id):
                 'audio_url',
                 'elevenlabs_characters_used',
             ).get(id=conversation_id)
-        except Conversation.DoesNotExist:
+        except (Conversation.DoesNotExist, ValidationError, ValueError):
             return None
 
         if not _user_can_access_conversation_audio(requesting_user, conversation):
