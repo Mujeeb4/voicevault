@@ -7,10 +7,12 @@ from .views import (
     AudioRecordingUploadView,
     AudioRecordingListView,
     AudioRecordingDeleteView,
+    RecordingResetView,
 )
 
 urlpatterns = [
     path('upload/', AudioRecordingUploadView.as_view(), name='recording-upload'),
+    path('reset/', RecordingResetView.as_view(), name='recording-reset'),
     path('', AudioRecordingListView.as_view(), name='recording-list'),
     path('<uuid:recording_id>/audio/', stream_recording_audio, name='recording-audio'),
     path('<uuid:recording_id>/', AudioRecordingDeleteView.as_view(), name='recording-delete'),

@@ -6,13 +6,15 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useProcessingStatus, useRetryStep, useTriggerStep } from '@/lib/hooks/useProcessingStatus';
 import { useAuthStore } from '@/store/auth';
 import { ProcessingTimeline } from './ProcessingTimeline';
 import { Button } from '@/components/ui/button';
+import { recordingsApi } from '@/lib/api/recordings';
 
 interface ProcessingStatusMonitorProps {
   userId: string;
@@ -36,6 +38,30 @@ export function ProcessingStatusMonitor({
   const retryStepMutation = useRetryStep();
   const triggerStepMutation = useTriggerStep();
   const refreshUser = useAuthStore((state) => state.refreshUser);
+  const updateUser = useAuthStore((state) => state.updateUser);
+  const router = useRouter();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const stepFailed =
+    status?.steps?.transcription?.status === 'failed' ||
+    status?.steps?.personality_analysis?.status === 'failed';
+  const tooShort = /too short/i.test(status?.steps?.personality_analysis?.error ?? '');
+
+  // Clear the failed attempt and go back to the guided recording
+  const handleRecordAgain = async () => {
+    setIsResetting(true);
+    try {
+      await recordingsApi.reset();
+      updateUser({ recording_completed: false });
+      await refreshUser();
+      toast.success('Ready for a fresh recording.');
+      router.push('/record');
+    } catch {
+      toast.error('Could not reset your recording. Please try again.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Check if all steps are complete (fallback for when overall_status isn't updated)
   const allStepsComplete =
@@ -130,6 +156,22 @@ export function ProcessingStatusMonitor({
           </Button>
         </div>
       </div>
+
+      {stepFailed && (
+        <div className="surface border-primary/25 p-6">
+          <h3 className="text-lg font-semibold text-foreground">
+            {tooShort ? 'We need a little more from you' : 'Something went wrong with your recording'}
+          </h3>
+          <p className="mt-2 text-muted-foreground">
+            {tooShort
+              ? 'Your answers were a bit short for us to understand your voice and personality. Try again and share a few more details or stories in each answer. A minute or so per question works well.'
+              : 'You can try the step again, or record your answers again from the start.'}
+          </p>
+          <Button className="mt-4" onClick={handleRecordAgain} disabled={isResetting}>
+            {isResetting ? 'Resetting...' : 'Record again'}
+          </Button>
+        </div>
+      )}
 
       {/* Timeline */}
       <ProcessingTimeline

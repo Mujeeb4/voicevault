@@ -74,6 +74,12 @@ export const recordingsApi = {
     };
   },
 
+  /** Clear uploaded recordings and processing history so the user can record again. */
+  reset: async (): Promise<{ success: boolean; recordings_removed: number }> => {
+    const { data } = await apiClient.post(`${baseUrl}/reset/`, {});
+    return data;
+  },
+
   delete: async (recordingId: string): Promise<void> => {
     await apiClient.delete(`${baseUrl}/${recordingId}/`);
   },

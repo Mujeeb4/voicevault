@@ -600,3 +600,75 @@ class AudioRecordingDeleteView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class RecordingResetView(APIView):
+    """
+    POST /api/recordings/reset/
+    Let a user start over when processing could not finish (for example, the
+    transcript was too short). Removes their uploaded recordings, transcript and
+    processing history so they can record again. Refused once the AI is ready,
+    so a working vault is never wiped by accident.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        if not hasattr(request, 'supabase_user') or not request.supabase_user:
+            return Response(
+                {'error': 'authentication_required', 'message': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        try:
+            user = User.objects.get(id=request.supabase_user.id)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'not_found', 'message': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if user.ai_ready:
+            return Response(
+                {'error': 'already_ready', 'message': 'Your AI is already ready, so your recordings are kept.'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        from django.db import transaction
+        from apps.ai_processing.models import ProcessingQueue
+        from .models import Transcript
+
+        # Stop any retry that is still waiting, so it cannot write a stale failure later.
+        queue_entries = list(ProcessingQueue.objects.filter(user=user))
+        for entry in queue_entries:
+            celery_id = (entry.task_data or {}).get('celery_task_id')
+            if celery_id:
+                try:
+                    from config.celery import app as celery_app
+                    celery_app.control.revoke(celery_id)
+                except Exception:
+                    logger.warning("Could not revoke task for user %s", user.id)
+
+        recordings = list(AudioRecording.objects.filter(user=user))
+        paths = [r.storage_path for r in recordings]
+
+        with transaction.atomic():
+            AudioRecording.objects.filter(user=user).delete()
+            Transcript.objects.filter(user=user).delete()
+            ProcessingQueue.objects.filter(user=user).delete()
+            user.recording_completed = False
+            user.ai_processing_started_at = None
+            user.save(update_fields=['recording_completed', 'ai_processing_started_at'])
+
+        for path in paths:
+            try:
+                delete_file_from_supabase(bucket='recordings', file_path=path)
+            except Exception:
+                logger.warning("Failed to delete stored file while resetting user %s", user.id)
+
+        record_recording_usage(
+            user,
+            action='recording_reset',
+            target_id=str(user.id),
+            metadata={'recordings_removed': len(recordings)},
+        )
+        logger.info("Recording reset for user %s (%s recordings)", user.id, len(recordings))
+        return Response({'success': True, 'recordings_removed': len(recordings)}, status=status.HTTP_200_OK)

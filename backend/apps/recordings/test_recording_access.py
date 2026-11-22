@@ -76,3 +76,49 @@ class RecordingAccessTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertFalse(AudioRecording.objects.filter(id=self.recording.id).exists())
         delete_file.assert_called_once()
+
+
+@override_settings(MIDDLEWARE=['utils.supabase_auth.SupabaseAuthMiddleware'])
+class RecordingResetTests(TestCase):
+    def setUp(self):
+        from apps.recordings.models import Transcript
+        from apps.ai_processing.models import ProcessingQueue
+        self.user = User.objects.create(email='reset@example.com', full_name='Reset', recording_completed=True)
+        self.other = User.objects.create(email='keep@example.com', full_name='Keep', recording_completed=True)
+        for u in (self.user, self.other):
+            AudioRecording.objects.create(
+                user=u, storage_path=f'{u.id}/a.mp3', public_url='http://localhost/a.mp3',
+                file_size_bytes=10, format='mp3', question_number=1, question_text='Q',
+                domain='combined', upload_status='complete',
+            )
+            Transcript.objects.create(user=u, full_transcript='too short', word_count=2)
+            ProcessingQueue.objects.create(user=u, task_type='analyze_personality', status='failed')
+        self.client = APIClient()
+
+    def auth(self, user):
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + generate_jwt_token(user)['access'])
+
+    @patch('apps.recordings.views.delete_file_from_supabase', return_value=True)
+    def test_reset_clears_only_the_callers_attempt(self, _delete):
+        from apps.recordings.models import Transcript
+        from apps.ai_processing.models import ProcessingQueue
+        self.auth(self.user)
+        response = self.client.post('/api/recordings/reset/', {}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertFalse(self.user.recording_completed)
+        self.assertEqual(AudioRecording.objects.filter(user=self.user).count(), 0)
+        self.assertFalse(Transcript.objects.filter(user=self.user).exists())
+        self.assertFalse(ProcessingQueue.objects.filter(user=self.user).exists())
+        self.assertEqual(AudioRecording.objects.filter(user=self.other).count(), 1)
+        self.assertTrue(Transcript.objects.filter(user=self.other).exists())
+
+    def test_reset_refused_when_ai_is_ready(self):
+        self.user.ai_ready = True
+        self.user.save()
+        self.auth(self.user)
+        self.assertEqual(self.client.post('/api/recordings/reset/', {}, format='json').status_code, 409)
+        self.assertEqual(AudioRecording.objects.filter(user=self.user).count(), 1)
+
+    def test_reset_requires_login(self):
+        self.assertEqual(self.client.post('/api/recordings/reset/', {}, format='json').status_code, 401)
