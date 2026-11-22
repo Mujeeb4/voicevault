@@ -22,7 +22,9 @@ import { Loader2, Search, Users, UserPlus, Info, Lock, ArrowRight } from 'lucide
 function FamilyManagementContent() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { familyMembers, loadFamilyMembers, isLoading, error } = useFamilyStore();
+  const { familyMembers: allMembers, loadFamilyMembers, isLoading, error } = useFamilyStore();
+  // The owner's own chat record is not an invitation, so it is not listed or counted
+  const familyMembers = allMembers.filter((member) => (member.relationship as string) !== 'self');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'accepted' | 'pending'>('all');
@@ -82,7 +84,7 @@ function FamilyManagementContent() {
     );
   }
 
-  if (isLoading && familyMembers.length === 0) {
+  if (isLoading && allMembers.length === 0) {
     return (
       <div className="container mx-auto py-12 px-4">
         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
