@@ -991,7 +991,7 @@ def get_packages(request):
                 'Basic AI personality',
                 '5 family chat messages',
                 f"{free_family} family invitation{'s' if free_family != 1 else ''}",
-                'Text-only chat',
+                'Text chat with your AI',
                 'No voice cloning',
             ],
             'highlighted': False,
