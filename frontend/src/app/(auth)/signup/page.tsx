@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthShell } from '@/components/layout';
 import { ResendVerificationButton } from '@/components/auth/resend-verification-button';
+import { trackEvent } from '@/lib/analytics';
 
 export default function SignupPage() {
   const signup = useAuthStore((state) => state.signup);
@@ -41,6 +42,7 @@ export default function SignupPage() {
     try {
       const { email, password, full_name, phone_number } = data;
       await signup({ email, password, full_name, phone_number });
+      trackEvent('sign_up', { method: 'email' }, { standard: 'CompleteRegistration' });
       setSentTo(email);
     } catch (err: unknown) {
       toast.error(getApiErrorMessage(err, 'Failed to create account'));

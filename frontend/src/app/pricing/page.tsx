@@ -24,6 +24,7 @@ import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/lib/utils';
 import { launchOffer, launchSavings, money } from '@/lib/launchOffer';
+import { trackEvent } from '@/lib/analytics';
 
 const defaultPlans: Package[] = [
   {
@@ -120,6 +121,7 @@ export default function PricingPage() {
     }
 
     setCheckoutLoading(true);
+    trackEvent('begin_checkout', { currency: 'USD', value: launchOffer.enabled ? launchOffer.price : launchOffer.listPrice }, { standard: 'InitiateCheckout' });
     paymentsApi
       .createCheckoutSession()
       .then((response) => {
