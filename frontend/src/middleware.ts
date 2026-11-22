@@ -11,6 +11,8 @@ const ANALYTICS_ORIGINS = [
   'https://www.googletagmanager.com',
   'https://www.google-analytics.com',
   'https://region1.google-analytics.com',
+  'https://connect.facebook.net',
+  'https://www.facebook.com',
 ];
 const FFMPEG_ORIGINS = ['https://unpkg.com'];
 

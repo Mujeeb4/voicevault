@@ -15,7 +15,8 @@ import { trackPageView, captureAttribution } from '@/lib/analytics';
 export const Analytics: React.FC = () => {
   const pathname = usePathname();
   const gaId = process.env.NEXT_PUBLIC_GA_TRACKING_ID;
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  // Pixel IDs are public; default to the VoiceVault Pixel so a missing build arg can't disable it.
+  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID || '1691088442808107';
   const [consent, setConsent] = useState<'granted' | 'denied' | 'unset' | 'loading'>('loading');
 
   useEffect(() => {
