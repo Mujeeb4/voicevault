@@ -22,7 +22,8 @@ def create_voice_clone(client, *, name: str, description: str, files) -> str:
 
 def delete_voice_clone(voice_id: str | None) -> bool:
     """Delete a stored cloned voice at the voice provider. Best effort; never raises."""
-    if not is_cloned_voice_id(voice_id):
+    if not is_cloned_voice_id(voice_id) or str(voice_id).startswith('replicate:'):
+        # replicate: voices are a stored reference recording, deleted with the account's files
         return False
     from django.conf import settings
     if not getattr(settings, 'ELEVENLABS_API_KEY', ''):

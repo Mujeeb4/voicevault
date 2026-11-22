@@ -306,6 +306,7 @@ class DeleteClonedVoiceTests(TestCase):
             client.return_value.voices.delete.assert_called_once_with('voice_abc')
             self.assertFalse(delete_voice_clone(LEGACY_FALLBACK_VOICE_ID))
             self.assertFalse(delete_voice_clone(None))
+            self.assertFalse(delete_voice_clone('replicate:abc'))
 
 
 class PurgeInactiveVoiceDataTests(TestCase):
