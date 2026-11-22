@@ -179,7 +179,8 @@ class AnalyzePersonalityView(APIView):
                 )
             
             # Check transcript length
-            minimum_words = settings.AI_MIN_WORDS_FOR_PERSONALITY
+            # Same bar the analysis task applies, so this check and the task agree
+            minimum_words = max(settings.AI_MIN_WORDS_FOR_PERSONALITY, settings.AI_PRODUCTION_MIN_WORDS)
             if transcript.word_count < minimum_words:
                 return Response(
                     {

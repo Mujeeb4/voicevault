@@ -6,6 +6,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/auth';
+import * as session from '@/lib/auth/session';
 import { paymentsApi, Package } from '@/lib/api/payments';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +25,7 @@ import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { toast } from 'sonner';
 import { getApiErrorMessage } from '@/lib/utils';
 import { launchOffer, launchSavings, money } from '@/lib/launchOffer';
+import { useFoundingOfferActive } from '@/lib/useFoundingOffer';
 import { trackEvent } from '@/lib/analytics';
 
 const defaultPlans: Package[] = [
@@ -76,6 +78,7 @@ export default function PricingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
+  const offerOn = useFoundingOfferActive();
   const [packages, setPackages] = useState<Package[]>(defaultPlans);
   const [isLoading, setIsLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -109,19 +112,27 @@ export default function PricingPage() {
     router.push(isAuthenticated ? '/dashboard' : '/signup');
   };
 
-  const handleUnlockPremium = () => {
-    if (!isAuthenticated) {
+  const handleUnlockPremium = async () => {
+    setCheckoutLoading(true);
+    // Right after the page loads the session check may still be running; wait for it
+    // so a signed-in visitor isn't sent to the signup form
+    if (!useAuthStore.getState().isAuthenticated && session.isSignedIn()) {
+      await useAuthStore.getState().checkAuth();
+    }
+    const { isAuthenticated: signedIn, user: currentUser } = useAuthStore.getState();
+    if (!signedIn) {
+      setCheckoutLoading(false);
       router.push('/signup?next=/pricing');
       return;
     }
-    if (isPremium) {
+    if (hasPremiumAccess(currentUser)) {
+      setCheckoutLoading(false);
       toast.info('VoiceVault Premium is already active.');
       router.push('/dashboard');
       return;
     }
 
-    setCheckoutLoading(true);
-    trackEvent('begin_checkout', { currency: 'USD', value: launchOffer.enabled ? launchOffer.price : launchOffer.listPrice }, { standard: 'InitiateCheckout' });
+    trackEvent('begin_checkout', { currency: 'USD', value: (plans[1].price_cents ? plans[1].price_cents / 100 : 0) || (offerOn ? launchOffer.price : launchOffer.listPrice) }, { standard: 'InitiateCheckout' });
     paymentsApi
       .createCheckoutSession()
       .then((response) => {
@@ -199,12 +210,12 @@ export default function PricingPage() {
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
                       <span className="text-5xl font-semibold text-foreground">{plan.price_display}</span>
-                      {premium && launchOffer.enabled && (
+                      {premium && offerOn && (
                         <span className="text-lg text-muted-foreground line-through">{money(launchOffer.listPrice)}</span>
                       )}
                       <span className="text-sm text-muted-foreground">{premium ? 'one time' : 'free'}</span>
                     </div>
-                    {premium && launchOffer.enabled && (
+                    {premium && offerOn && (
                       <p className="mt-2 inline-block rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
                         Founding Family: save {money(launchSavings())}, first {launchOffer.spots} buyers only
                       </p>

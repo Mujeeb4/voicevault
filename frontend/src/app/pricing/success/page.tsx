@@ -83,13 +83,18 @@ export default function PaymentSuccessPage() {
           return;
         }
 
+        // Report the purchase once per payment (localStorage survives new tabs and restarts),
+        // only for a session Stripe says was paid, with the amount actually charged
         try {
           const key = `vv_purchase_${sessionId}`;
-          if (!window.sessionStorage.getItem(key)) {
-            window.sessionStorage.setItem(key, '1');
+          if (result.payment_status === 'paid' && !window.localStorage.getItem(key)) {
+            window.localStorage.setItem(key, '1');
+            const value = typeof result.amount_total === 'number'
+              ? result.amount_total / 100
+              : launchOffer.enabled ? launchOffer.price : launchOffer.listPrice;
             trackEvent(
               'purchase',
-              { currency: 'USD', value: launchOffer.enabled ? launchOffer.price : launchOffer.listPrice, transaction_id: sessionId },
+              { currency: (result.currency || 'usd').toUpperCase(), value, transaction_id: sessionId },
               { standard: 'Purchase', eventId: sessionId }
             );
           }

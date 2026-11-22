@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { PersonAvatar } from '@/components/ui/person-avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useAuthStore } from '@/store/auth';
 import { BuyCreditsPanel, QuestionsLeftBadge, useQuestionCredits } from './QuestionCredits';
 
 interface ChatInterfaceProps {
@@ -54,6 +55,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isLoading, setIsLoading] = React.useState(true);
   // Refreshed after each answer so the remaining count stays current
   const { credits, setCredits } = useQuestionCredits(aiOwnerId, conversations.length);
+  // Only the owner can upgrade the vault's plan
+  const isOwner = useAuthStore((state) => state.user?.id) === aiOwnerId;
   const outOfQuestions = creditsRequired || credits?.questions_remaining === 0;
   // Members can open the panel to top up before running out
   const [showTopUp, setShowTopUp] = React.useState(false);
@@ -171,13 +174,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <AlertDescription className="flex items-center justify-between">
             <span>
               {/limit/i.test(error)
-                ? 'You have used your free messages. Upgrade to Premium to keep chatting, with voice replies too.'
+                ? isOwner
+                  ? 'You have used your free messages. Upgrade to Premium to keep chatting, with voice replies too.'
+                  // The limit belongs to the owner's free plan; a family member can't lift it by paying
+                  : `${aiOwnerName}'s vault has used its free messages for this month. ${aiOwnerName} can upgrade to Premium to keep the conversation going.`
                 : error}
             </span>
             {/limit/i.test(error) ? (
-              <Button asChild size="sm">
-                <a href="/pricing">Upgrade to Premium</a>
-              </Button>
+              isOwner && (
+                <Button asChild size="sm">
+                  <a href="/pricing">Upgrade to Premium</a>
+                </Button>
+              )
             ) : (
               <Button variant="outline" size="sm" onClick={handleRetry}>
                 Retry

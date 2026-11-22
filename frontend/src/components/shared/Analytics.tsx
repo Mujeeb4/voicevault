@@ -12,6 +12,13 @@ import Script from 'next/script';
 import { usePathname } from 'next/navigation';
 import { trackPageView, captureAttribution } from '@/lib/analytics';
 
+// Pages opened from emails whose URL carries a secret token (password reset, email
+// verification, family invitation). Trackers send the full URL, so nothing is loaded or
+// tracked on them; they're always fresh page loads from an email link.
+const TOKEN_PAGES = ['/reset-password', '/verify-email', '/accept-invite'];
+const isTokenPage = (pathname: string | null) =>
+  !!pathname && TOKEN_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
+
 export const Analytics: React.FC = () => {
   const pathname = usePathname();
   const gaId = process.env.NEXT_PUBLIC_GA_TRACKING_ID;
@@ -37,19 +44,22 @@ export const Analytics: React.FC = () => {
     setConsent(value);
   };
 
-  useEffect(() => {
-    if (consent === 'granted') captureAttribution();
-  }, [consent]);
+  const tokenPage = isTokenPage(pathname);
 
   useEffect(() => {
-    if (consent === 'granted' && pixelId && pathname && typeof window !== 'undefined' && window.fbq) {
+    if (consent === 'granted' && !tokenPage) captureAttribution();
+  }, [consent, tokenPage]);
+
+  // One PageView per page: the snippets below don't send their own
+  useEffect(() => {
+    if (consent === 'granted' && !tokenPage && pixelId && pathname && typeof window !== 'undefined' && window.fbq) {
       window.fbq('track', 'PageView');
     }
-  }, [pathname, pixelId, consent]);
+  }, [pathname, pixelId, consent, tokenPage]);
 
   // Track page views in useEffect to avoid render issues
   useEffect(() => {
-    if (consent === 'granted' && gaId && pathname && typeof window !== 'undefined') {
+    if (consent === 'granted' && !tokenPage && gaId && pathname && typeof window !== 'undefined') {
       // Use setTimeout to ensure this runs after render
       const timeoutId = setTimeout(() => {
         trackPageView(pathname);
@@ -57,7 +67,7 @@ export const Analytics: React.FC = () => {
       return () => clearTimeout(timeoutId);
     }
     return undefined;
-  }, [pathname, gaId, consent]);
+  }, [pathname, gaId, consent, tokenPage]);
 
   if (!gaId && !pixelId) {
     return null;
@@ -96,7 +106,7 @@ export const Analytics: React.FC = () => {
       </div>
     ) : null;
 
-  if (consent !== 'granted') {
+  if (consent !== 'granted' || tokenPage) {
     return banner;
   }
 
@@ -116,9 +126,7 @@ export const Analytics: React.FC = () => {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${gaId}', {
-              page_path: window.location.pathname,
-            });
+            gtag('config', '${gaId}', { send_page_view: false });
           `,
             }}
           />
@@ -131,8 +139,8 @@ export const Analytics: React.FC = () => {
           dangerouslySetInnerHTML={{
             __html: `
             !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+            fbq('set', 'autoConfig', false, '${pixelId}');
             fbq('init', '${pixelId}');
-            fbq('track', 'PageView');
           `,
           }}
         />

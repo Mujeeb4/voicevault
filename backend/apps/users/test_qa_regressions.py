@@ -29,6 +29,7 @@ class MalformedInputTests(TestCase):
         with mock.patch.object(views_auth, 'send_verification_email', return_value=True):
             response = post(views_auth.SignupView, {
                 'email': 'new@example.com', 'password': PASSWORD, 'full_name': 'New Person', 'phone_number': None,
+                'accepted_terms': True,
             })
         self.assertEqual(response.status_code, 201)
         self.assertIsNone(User.objects.get(email='new@example.com').phone_number)

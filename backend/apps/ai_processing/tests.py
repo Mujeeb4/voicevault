@@ -102,19 +102,27 @@ class AIProcessingViewsTestCase(TestCase):
     @patch('apps.ai_processing.views.analyze_personality_task')
     def test_personality_retry_uses_configured_transcript_minimum(self, mock_personality_task):
         """The retry endpoint must use the same transcript threshold as the worker."""
-        Transcript.objects.create(
+        from django.conf import settings as django_settings
+        minimum = max(django_settings.AI_MIN_WORDS_FOR_PERSONALITY, django_settings.AI_PRODUCTION_MIN_WORDS)
+        transcript = Transcript.objects.create(
             user=self.user,
-            full_transcript='word ' * 50,
-            word_count=50,
+            full_transcript='word ' * (minimum - 1),
+            word_count=minimum - 1,
         )
         mock_personality_task.delay.return_value.id = 'personality-task-id'
 
-        request = self.factory.post(f'/api/admin/process/personality/{self.user.id}/')
-        request.supabase_user = self.supabase_user
+        def retry():
+            request = self.factory.post(f'/api/admin/process/personality/{self.user.id}/')
+            request.supabase_user = self.supabase_user
+            return AnalyzePersonalityView.as_view()(request, user_id=self.user.id)
 
-        response = AnalyzePersonalityView.as_view()(request, user_id=self.user.id)
+        # One word short of what the worker needs: refused here instead of failing in the worker
+        self.assertNotEqual(retry().status_code, status.HTTP_202_ACCEPTED)
+        mock_personality_task.delay.assert_not_called()
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        transcript.word_count = minimum
+        transcript.save(update_fields=['word_count'])
+        self.assertEqual(retry().status_code, status.HTTP_202_ACCEPTED)
         mock_personality_task.delay.assert_called_once_with(str(self.user.id))
 
     @patch('apps.ai_processing.views.transcribe_audio_task')

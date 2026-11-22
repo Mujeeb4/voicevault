@@ -69,6 +69,20 @@ def send_verification_for(user: User) -> bool:
     return send_verification_email(user.email, user.full_name, url)
 
 
+def _record_signup_consent(user: User, request) -> None:
+    """Dated record that this account confirmed 18+ and accepted the Terms and Privacy Policy."""
+    from apps.users.models import ConsentRecord
+    from utils.request_ip import client_ip
+    now = timezone.now()
+    ip_address = client_ip(request) or None
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:500]
+    for consent_type in ('terms_of_service', 'privacy_policy'):
+        ConsentRecord.objects.create(
+            user=user, consent_type=consent_type, accepted=True, accepted_at=now,
+            ip_address=ip_address, user_agent=user_agent,
+        )
+
+
 def _signup_response(email: str) -> Response:
     return Response(
         {
@@ -148,7 +162,15 @@ class SignupView(APIView):
                     {'error': 'invalid_phone_number', 'message': 'Phone number must be 20 characters or fewer'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
+            # The signup form's "I am 18 or older and agree to the Terms and Privacy" box
+            if request.data.get('accepted_terms') is not True:
+                return Response(
+                    {'error': 'terms_required',
+                     'message': 'Please confirm you are 18 or older and agree to the Terms and Privacy Policy.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             # An existing email gets the same response as a new one, so signup can't be used
             # to find out who has an account; the owner is emailed instead
             existing = User.objects.filter(email=email).first()
@@ -168,6 +190,23 @@ class SignupView(APIView):
                 return _signup_for_existing_account(User.objects.get(email=email))
 
             logger.info("New user signed up (pending verification): %s", user.id)
+            _record_signup_consent(user, request)
+
+            # Signing up from a family invitation: the invite link was emailed to this exact
+            # address, which proves the person owns it, so the account is verified now and the
+            # invite page can sign them in and accept straight away
+            invite_token = request.data.get('invitation_token')
+            if isinstance(invite_token, str) and invite_token:
+                from utils.invitation_tokens import validate_invitation_token
+                member = validate_invitation_token(invite_token)
+                if member is not None and (member.email or '').strip().lower() == email:
+                    User.objects.filter(id=user.id).update(email_verified=True)
+                    logger.info("Invited user verified by invitation link: %s", user.id)
+                    return Response(
+                        {'verification_required': False, 'email': user.email, 'message': 'Account created.'},
+                        status=status.HTTP_201_CREATED,
+                    )
+
             # Best-effort: the helper logs and swallows delivery failures.
             send_verification_for(user)
             send_new_signup_alert(user)

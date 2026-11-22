@@ -428,11 +428,14 @@ def record_family_invite(ai_owner: User, family_member_id: str) -> None:
 
 
 def has_accepted_consent(user: User, consent_type: str) -> bool:
-    return ConsentRecord.objects.filter(
-        user=user,
-        consent_type=consent_type,
-        accepted=True,
-    ).exists()
+    """The user's most recent decision for this consent wins, so withdrawing it takes effect."""
+    latest = (
+        ConsentRecord.objects.filter(user=user, consent_type=consent_type)
+        .order_by('-created_at')
+        .values_list('accepted', flat=True)
+        .first()
+    )
+    return bool(latest)
 
 
 def can_clone_voice(user: User) -> LimitResult:

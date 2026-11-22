@@ -121,7 +121,9 @@ class ConsentRecordView(APIView):
             )
 
         consent_type = request.data.get('consent_type')
-        accepted = bool(request.data.get('accepted', False))
+        # Only a real true counts as consent; the string "false" must not
+        raw_accepted = request.data.get('accepted', False)
+        accepted = raw_accepted is True or (isinstance(raw_accepted, str) and raw_accepted.lower() == 'true')
         valid_types = {choice[0] for choice in ConsentRecord.CONSENT_TYPES}
         if consent_type not in valid_types:
             return Response(

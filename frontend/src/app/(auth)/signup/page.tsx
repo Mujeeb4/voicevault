@@ -5,8 +5,9 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Loader2, Check, MailCheck } from 'lucide-react';
@@ -15,7 +16,9 @@ import { toast } from 'sonner';
 
 import { useAuthStore } from '@/store/auth';
 import { signupSchema, type SignupFormData } from '@/lib/validations/auth';
-import { getApiErrorMessage } from '@/lib/utils';
+import { getApiErrorMessage, safeRedirectPath } from '@/lib/utils';
+import { rememberAfterSignIn } from '@/lib/auth/afterSignIn';
+import * as session from '@/lib/auth/session';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +27,21 @@ import { ResendVerificationButton } from '@/components/auth/resend-verification-
 import { trackEvent } from '@/lib/analytics';
 
 export default function SignupPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Where they were heading (e.g. ?next=/pricing from "Unlock Premium"), kept for after sign-in
+  const next = safeRedirectPath(searchParams.get('next'), '');
   const signup = useAuthStore((state) => state.signup);
+
+  useEffect(() => {
+    // Someone already signed in has no reason to be here: send them where they were going
+    if (session.isSignedIn()) {
+      router.replace(next || '/dashboard');
+      return;
+    }
+    rememberAfterSignIn(next);
+  }, [next, router]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -41,7 +58,8 @@ export default function SignupPage() {
   const onSubmit = async (data: SignupFormData) => {
     try {
       const { email, password, full_name, phone_number } = data;
-      await signup({ email, password, full_name, phone_number });
+      // The form can't submit without the 18+/Terms box ticked
+      await signup({ email, password, full_name, phone_number, accepted_terms: true });
       trackEvent('sign_up', { method: 'email' }, { standard: 'CompleteRegistration' });
       setSentTo(email);
     } catch (err: unknown) {
@@ -69,7 +87,7 @@ export default function SignupPage() {
             <div className="mt-6 space-y-3">
               <ResendVerificationButton email={sentTo} startCooldown />
               <Button asChild variant="ghost" className="h-11 w-full">
-                <Link href="/login">Go to sign in</Link>
+                <Link href={next ? `/login?redirect=${encodeURIComponent(next)}` : '/login'}>Go to sign in</Link>
               </Button>
             </div>
           </div>

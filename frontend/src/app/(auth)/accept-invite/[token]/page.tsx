@@ -110,10 +110,22 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
     try {
       setIsLoading(true);
 
-      // 1. Signup
-      await signup({ email, password, full_name: fullName });
+      // 1. Sign up. The invite link proves this email, so the account is verified at once
+      const created = await signup({
+        email, password, full_name: fullName, accepted_terms: true, invitation_token: token,
+      });
+      if (created.verification_required) {
+        // The email already has an account (or doesn't match the invitation)
+        setIsNewUser(false);
+        setLoginEmail(email);
+        toast.info('This email already has an account. Sign in to accept the invitation.');
+        return;
+      }
 
-      // 2. Accept invitation
+      // 2. Sign in, so the invitation can be accepted as this account
+      await login({ email, password });
+
+      // 3. Accept invitation
       const accepted = await familyApi.acceptInvitation(token);
       await recordFamilyConsent();
 

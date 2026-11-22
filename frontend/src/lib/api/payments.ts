@@ -15,6 +15,9 @@ export interface Package {
   family_members?: number;
   questions_per_family_member?: number;
   credit_unit_price_cents?: number;
+  /** Founding offer still on (false once its spots are sold) */
+  founding_active?: boolean;
+  founding_spots_left?: number | null;
 }
 
 interface ApiPackage {
@@ -27,6 +30,9 @@ interface ApiPackage {
   family_members?: number;
   questions_per_family_member?: number;
   credit_unit_price_cents?: number;
+  /** Founding offer still on (false once its spots are sold) */
+  founding_active?: boolean;
+  founding_spots_left?: number | null;
 }
 
 /** Questions left for the signed-in family member in one vault. */
@@ -68,6 +74,8 @@ function normalizePackage(raw: ApiPackage): Package {
     family_members: raw.family_members,
     questions_per_family_member: raw.questions_per_family_member,
     credit_unit_price_cents: raw.credit_unit_price_cents,
+    founding_active: raw.founding_active,
+    founding_spots_left: raw.founding_spots_left,
   };
 }
 
@@ -90,7 +98,13 @@ export const paymentsApi = {
 
   confirmCheckoutSession: async (
     sessionId: string
-  ): Promise<{ payment_completed: boolean; is_premium: boolean; payment_status?: string }> => {
+  ): Promise<{
+    payment_completed: boolean;
+    is_premium: boolean;
+    payment_status?: string;
+    amount_total?: number | null;
+    currency?: string | null;
+  }> => {
     const { data } = await apiClient.post('/payments/confirm-checkout/', { session_id: sessionId });
     return data;
   },

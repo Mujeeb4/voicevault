@@ -7,10 +7,16 @@ const LOCAL_API_ORIGINS = [
   'http://localhost:18000',
   'http://127.0.0.1:18000',
 ];
+// GA4 (with Google Signals) sends hits to analytics.google.com, www.google.com and
+// stats.g.doubleclick.net as well as google-analytics.com; Google's documented CSP for
+// GA4 allows these wildcards. Loaded only after the visitor accepts the consent banner.
 const ANALYTICS_ORIGINS = [
-  'https://www.googletagmanager.com',
-  'https://www.google-analytics.com',
-  'https://region1.google-analytics.com',
+  'https://*.googletagmanager.com',
+  'https://*.google-analytics.com',
+  'https://analytics.google.com',
+  'https://*.analytics.google.com',
+  'https://*.g.doubleclick.net',
+  'https://www.google.com',
   'https://connect.facebook.net',
   'https://www.facebook.com',
 ];

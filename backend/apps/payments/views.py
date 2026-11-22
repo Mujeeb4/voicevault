@@ -3,6 +3,7 @@ Stripe payment views for VoiceVault.
 Handles checkout sessions, webhooks, and payment status.
 """
 import logging
+import time
 import stripe
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -55,6 +56,32 @@ def _configured_price_id(value):
 CHECKOUT_BRAND_NAME = 'VoiceVault'
 CHECKOUT_BRANDING_API_VERSION = '2025-09-30.clover'
 CHECKOUT_STATEMENT_SUFFIX = 'VOICEVAULT'
+
+
+# A founding-price checkout stays open this long (Stripe's minimum), so sessions opened
+# just before the offer sells out can't keep selling it for Stripe's default 24 hours
+FOUNDING_CHECKOUT_MINUTES = 30
+
+
+def premium_offer() -> dict:
+    """
+    The Premium price right now, shared by checkout and the pricing API so the price people
+    see is the price Stripe charges. While Founding spots remain (FOUNDING_OFFER_SPOTS > 0 and
+    the configured amount is below PREMIUM_LIST_PRICE_CENTS) it's the founding amount; after
+    that, the list price.
+    """
+    amount = PREMIUM_PRICE['amount']
+    list_cents = getattr(settings, 'PREMIUM_LIST_PRICE_CENTS', 14999)
+    spots = getattr(settings, 'FOUNDING_OFFER_SPOTS', 0)
+    founding = spots > 0 and amount < list_cents
+    spots_left = None
+    if founding:
+        sold = Payment.objects.filter(package_tier='premium', status='succeeded', amount_cents=amount).count()
+        spots_left = max(spots - sold, 0)
+        if not spots_left:
+            founding = False
+            amount = list_cents
+    return {'amount_cents': amount, 'list_cents': list_cents, 'founding_active': founding, 'spots_left': spots_left}
 
 
 def _create_checkout_session(frontend_url, **params):
@@ -158,17 +185,15 @@ def create_checkout_session(request):
             'quantity': 1,
         }
         price_id = _configured_price_id(package['price_id'])
-        amount_cents = package['amount']
-        spots = getattr(settings, 'FOUNDING_OFFER_SPOTS', 0)
-        list_cents = getattr(settings, 'PREMIUM_LIST_PRICE_CENTS', 14999)
-        if spots > 0 and amount_cents < list_cents:
-            sold = Payment.objects.filter(
-                package_tier='premium', status='succeeded', amount_cents=amount_cents
-            ).count()
-            if sold >= spots:
-                logger.info('Founding offer sold out (%s/%s); using list price', sold, spots)
-                amount_cents = list_cents
-                price_id = ''
+        offer = premium_offer()
+        amount_cents = offer['amount_cents']
+        if amount_cents != package['amount']:
+            # Founding offer sold out: charge the list price, not the configured price ID
+            logger.info('Founding offer sold out; using list price')
+            price_id = ''
+        session_limits = {}
+        if offer['founding_active']:
+            session_limits['expires_at'] = int(time.time()) + FOUNDING_CHECKOUT_MINUTES * 60
         if price_id:
             line_item['price'] = price_id
         else:
@@ -197,6 +222,7 @@ def create_checkout_session(request):
             },
             success_url=f'{frontend_url}/pricing/success?session_id={{CHECKOUT_SESSION_ID}}',
             cancel_url=f'{frontend_url}/pricing?canceled=true',
+            **session_limits,
         )
         
         logger.info(f"Checkout session created for user {user_id}: {checkout_session.id}")
@@ -291,6 +317,9 @@ def confirm_checkout_session(request):
             'is_premium': user.has_premium_access,
             'payment_status': payment_status,
             'session_status': session.get('status'),
+            # What was actually charged, for the purchase analytics event
+            'amount_total': session.get('amount_total'),
+            'currency': session.get('currency'),
         }, status=status.HTTP_200_OK)
 
     return Response({
@@ -972,7 +1001,8 @@ def get_packages(request):
             ]
         }
     """
-    premium_amount_cents = PREMIUM_PRICE['amount']
+    offer = premium_offer()
+    premium_amount_cents = offer['amount_cents']
     premium_price = premium_amount_cents / 100
     currency = PREMIUM_PRICE['currency'].upper()
     currency_symbols = {'USD': '$', 'CAD': 'C$', 'GBP': '£', 'EUR': '€'}
@@ -1020,6 +1050,10 @@ def get_packages(request):
             'family_members': max_family,
             'questions_per_family_member': included_questions,
             'credit_unit_price_cents': settings.CREDIT_UNIT_PRICE_CENTS,
+            # The page shows the Founding offer only while these say it's still on
+            'list_price': offer['list_cents'] / 100,
+            'founding_active': offer['founding_active'],
+            'founding_spots_left': offer['spots_left'],
         },
     ]
     

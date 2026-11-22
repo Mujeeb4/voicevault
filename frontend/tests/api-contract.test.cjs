@@ -207,3 +207,14 @@ test('post-auth redirects reject absolute, protocol-relative, backslash, and con
   }
   assert.equal(safeRedirectPath('/chat/owner?from=invite', '/dashboard'), '/chat/owner?from=invite');
 });
+
+test('after-sign-in destination survives the signup round trip, once, and only for same-site paths', () => {
+  const { rememberAfterSignIn, takeAfterSignIn } = createRuntime().load('lib/auth/afterSignIn.ts');
+  rememberAfterSignIn('/pricing');
+  assert.equal(takeAfterSignIn('/dashboard'), '/pricing');
+  assert.equal(takeAfterSignIn('/dashboard'), '/dashboard');
+  for (const unsafe of ['https://elsewhere.example', '//elsewhere.example', '/\\elsewhere.example']) {
+    rememberAfterSignIn(unsafe);
+    assert.equal(takeAfterSignIn('/dashboard'), '/dashboard');
+  }
+});

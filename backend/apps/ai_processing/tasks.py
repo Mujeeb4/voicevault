@@ -340,6 +340,10 @@ def transcribe_single_file(recording_id: str) -> Dict:
             http_client.close()
 
 
+class TranscriptNotUsable(ValueError):
+    """The transcript is missing or too short; retrying the analysis can't fix that."""
+
+
 @shared_task(bind=True, max_retries=3)
 def analyze_personality_task(self, previous_result=None, user_id: str = None) -> Dict:
     """
@@ -390,14 +394,14 @@ def analyze_personality_task(self, previous_result=None, user_id: str = None) ->
         try:
             transcript = Transcript.objects.get(user=user)
         except Transcript.DoesNotExist:
-            raise ValueError("No transcript found. Run transcription first.")
+            raise TranscriptNotUsable("No transcript found. Run transcription first.")
         
         # Verify transcript has enough content (lowered for testing)
         # Use the same bar as the final readiness check, so a transcript that passes
         # analysis can never fail later without the user seeing why.
         MIN_WORDS = max(settings.AI_MIN_WORDS_FOR_PERSONALITY, settings.AI_PRODUCTION_MIN_WORDS)
         if transcript.word_count < MIN_WORDS:
-            raise ValueError(f"Transcript too short: {transcript.word_count} words (minimum {MIN_WORDS})")
+            raise TranscriptNotUsable(f"Transcript too short: {transcript.word_count} words (minimum {MIN_WORDS})")
         
         logger.info(f"Analyzing transcript with {transcript.word_count} words")
         
@@ -549,8 +553,9 @@ Be specific and quote exact phrases they use. Capture their unique voice."""
         queue_entry.completed_at = timezone.now()
         queue_entry.save()
         
-        # Retry logic
-        if self.request.retries < self.max_retries:
+        # Retry provider/network failures; a missing or too-short transcript fails at once so
+        # the user is offered "Record again" instead of waiting through retries
+        if self.request.retries < self.max_retries and not isinstance(e, TranscriptNotUsable):
             raise self.retry(exc=e, countdown=120 * (2 ** self.request.retries))
         
         return {'success': False, 'error': failure_message}

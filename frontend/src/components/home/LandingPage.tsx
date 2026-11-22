@@ -27,6 +27,7 @@ import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { ProgressRing } from '@/components/ui/progress-ring';
 import { useAuthStore } from '@/store/auth';
 import { launchOffer, launchSavings, money } from '@/lib/launchOffer';
+import { useFoundingOfferActive } from '@/lib/useFoundingOffer';
 
 const trustBar = [
   { icon: Lock, label: '256-bit encryption' },
@@ -108,12 +109,13 @@ function Check2({ ok }: { ok: boolean }) {
 
 export function LandingPage() {
   const { isAuthenticated } = useAuthStore();
+  const offerOn = useFoundingOfferActive();
   const startHref = isAuthenticated ? '/dashboard' : '/signup';
   const startLabel = isAuthenticated ? 'Open my vault' : 'Start free';
 
   return (
     <div className="min-h-dvh bg-background">
-      {launchOffer.enabled && (
+      {offerOn && (
         <div className="bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground">
           <Link href="#pricing" className="flex min-h-11 flex-wrap items-center justify-center gap-x-1 hover:underline">
             Founding Family offer: Premium for {money(launchOffer.price)} one time for the first {launchOffer.spots} buyers.
@@ -155,7 +157,7 @@ export function LandingPage() {
                 </Link>
               </div>
               <p className="mt-4 text-sm text-muted-foreground">Free to start. No card needed.</p>
-              {launchOffer.enabled && (
+              {offerOn && (
                 <p className="mt-2 text-sm font-medium text-foreground">
                   Founding Family price: <span className="text-primary">{money(launchOffer.price)}</span> for Premium, first {launchOffer.spots} buyers only.
                 </p>
@@ -404,9 +406,9 @@ export function LandingPage() {
         <section id="pricing" className="scroll-mt-20 py-14 md:py-20">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
             <div className="mx-auto max-w-2xl text-center">
-              <p className="eyebrow mb-3">{launchOffer.enabled ? `Founding Family offer · first ${launchOffer.spots} buyers` : 'Pricing'}</p>
+              <p className="eyebrow mb-3">{offerOn ? `Founding Family offer · first ${launchOffer.spots} buyers` : 'Pricing'}</p>
               <h2 className="text-3xl font-semibold text-foreground sm:text-4xl">Start free. Pay once to keep it forever.</h2>
-              {launchOffer.enabled && (
+              {offerOn && (
                 <p className="mt-3 text-muted-foreground">
                   Be one of the first {launchOffer.spots} families to preserve a voice and lock in {money(launchOffer.price)}, instead of {money(launchOffer.listPrice)}.
                 </p>
@@ -429,10 +431,10 @@ export function LandingPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-foreground">VoiceVault Premium</h3>
                   <span className="rounded-full bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground">
-                    {launchOffer.enabled ? 'Founding Family' : 'Recommended'}
+                    {offerOn ? 'Founding Family' : 'Recommended'}
                   </span>
                 </div>
-                {launchOffer.enabled ? (
+                {offerOn ? (
                   <>
                     <p className="num mt-3 flex flex-wrap items-baseline gap-x-3 text-4xl font-semibold text-foreground">
                       {money(launchOffer.price)}
@@ -460,7 +462,7 @@ export function LandingPage() {
                   href={startHref}
                   className="mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[10px] bg-primary px-7 text-base font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90"
                 >
-                  {launchOffer.enabled ? `Claim my ${money(launchOffer.price)} spot` : startLabel}
+                  {offerOn ? `Claim my ${money(launchOffer.price)} spot` : startLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <p className="mt-3 text-center text-xs text-muted-foreground">
@@ -481,7 +483,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-3xl px-4 sm:px-6">
             <h2 className="text-center text-3xl font-semibold text-foreground sm:text-4xl">Questions</h2>
             <div className="surface mt-10 divide-y divide-border">
-              {(launchOffer.enabled ? [foundingFaq, ...faqs] : faqs).map((f) => (
+              {(offerOn ? [foundingFaq, ...faqs] : faqs).map((f) => (
                 <details key={f.q} className="group px-5 py-4">
                   <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-3 text-base font-medium text-foreground">
                     {f.q}
@@ -500,7 +502,7 @@ export function LandingPage() {
             <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(white_1px,transparent_1px)] [background-size:22px_22px]" aria-hidden />
             <h2 className="relative text-3xl font-semibold text-balance sm:text-4xl">Don&apos;t wait until it&apos;s too late.</h2>
             <p className="relative mx-auto mt-3 max-w-xl text-primary-foreground/85">Give your family something no photo or video can.</p>
-            {launchOffer.enabled && (
+            {offerOn && (
               <p className="relative mx-auto mt-2 max-w-xl text-sm font-semibold text-primary-foreground">
                 Founding Family price {money(launchOffer.price)}, first {launchOffer.spots} buyers only.
               </p>

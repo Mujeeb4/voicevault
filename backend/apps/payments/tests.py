@@ -202,3 +202,57 @@ class StripeWebhookSecurityTests(TestCase):
         import stripe
         retrieve.side_effect = stripe.error.APIConnectionError('down')
         self.assertEqual(self.post_event().status_code, 500)
+
+
+@override_settings(FOUNDING_OFFER_SPOTS=2, PREMIUM_LIST_PRICE_CENTS=14999)
+class FoundingOfferTests(TestCase):
+    """The price shown and the price charged agree, and founding checkouts expire quickly."""
+
+    def setUp(self):
+        self.factory = APIRequestFactory()
+        self.user = User.objects.create(email='founder@example.com', full_name='Founder')
+        self.price = patch.dict(views.PREMIUM_PRICE, {'amount': 11900, 'price_id': '', 'currency': 'usd'})
+        self.price.start()
+        self.addCleanup(self.price.stop)
+
+    def checkout(self):
+        request = self.factory.post('/api/payments/create-checkout/', {'package_tier': 'premium'}, format='json')
+        request.supabase_user = SupabaseUser(str(self.user.id), self.user.email, {})
+        with patch('apps.payments.views.stripe.Customer.create') as customer, \
+                patch('apps.payments.views.stripe.checkout.Session.create') as create:
+            customer.return_value.id = 'cus_1'
+            create.return_value.id = 'cs_1'
+            create.return_value.url = 'https://checkout.stripe.test/cs_1'
+            response = views.create_checkout_session(request)
+        self.assertEqual(response.status_code, 200)
+        return create.call_args.kwargs
+
+    def premium_package(self):
+        response = views.get_packages(self.factory.get('/api/payments/packages/'))
+        return [p for p in response.data['packages'] if p['tier'] == 'premium'][0]
+
+    def sell(self, count):
+        from apps.payments.models import Payment
+        for i in range(count):
+            buyer = User.objects.create(email=f'paid{i}@example.com', full_name='Paid')
+            Payment.objects.create(user=buyer, stripe_payment_intent_id=f'pi_{i}', amount_cents=11900,
+                                   currency='usd', status='succeeded', package_tier='premium')
+
+    def test_founding_price_while_spots_remain_with_a_short_checkout(self):
+        self.sell(1)
+        kwargs = self.checkout()
+        self.assertEqual(kwargs['line_items'][0]['price_data']['unit_amount'], 11900)
+        self.assertIn('expires_at', kwargs)
+        package = self.premium_package()
+        self.assertEqual(package['price'], 119.0)
+        self.assertTrue(package['founding_active'])
+        self.assertEqual(package['founding_spots_left'], 1)
+
+    def test_list_price_everywhere_once_sold_out(self):
+        self.sell(2)
+        kwargs = self.checkout()
+        self.assertEqual(kwargs['line_items'][0]['price_data']['unit_amount'], 14999)
+        self.assertNotIn('expires_at', kwargs)
+        package = self.premium_package()
+        self.assertEqual(package['price'], 149.99)
+        self.assertFalse(package['founding_active'])

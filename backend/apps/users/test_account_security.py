@@ -144,7 +144,7 @@ class SignupEnumerationTests(ApiCase):
 class PasswordPolicyTests(ApiCase):
     def test_signup_rejects_weak_passwords(self):
         for weak in ['password', '12345678', 'owner@example.com', 'short1']:
-            response = self.post('/api/users/signup/', {
+            response = self.post('/api/users/signup/', { 'accepted_terms': True,
                 'email': 'owner@example.com', 'password': weak, 'full_name': 'Owner'})
             self.assertEqual(response.status_code, 400, weak)
             body = response.json()
@@ -154,7 +154,7 @@ class PasswordPolicyTests(ApiCase):
 
     @patch('apps.users.views_auth.send_verification_email')
     def test_signup_accepts_strong_password(self, _):
-        response = self.post('/api/users/signup/', {
+        response = self.post('/api/users/signup/', { 'accepted_terms': True,
             'email': 'owner@example.com', 'password': PW, 'full_name': 'Owner'})
         self.assertEqual(response.status_code, 201)
 
@@ -280,3 +280,47 @@ class DeleteAccountTests(ApiCase):
         self.assertIn('deleted', mail.outbox[0].subject)
         self.assertEqual(self.client.get('/api/users/profile/', **bearer(token)).status_code, 401)
         self.assertTrue(User.objects.filter(id=other.id).exists())
+
+
+class SignupAgreementAndInviteTests(ApiCase):
+    """Signup needs the 18+/Terms agreement (recorded), and an invitation link verifies the email."""
+
+    def signup(self, email='invitee@example.com', **extra):
+        return self.post('/api/users/signup/', {'email': email, 'password': NEW_PW, 'full_name': 'Invitee', **extra})
+
+    def test_signup_without_the_agreement_is_refused(self):
+        response = self.signup(accepted_terms=False)
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()['error'], 'terms_required')
+        self.assertFalse(User.objects.filter(email='invitee@example.com').exists())
+
+    def test_agreement_is_recorded_with_a_date(self):
+        from apps.users.models import ConsentRecord
+        self.assertEqual(self.signup(accepted_terms=True).status_code, 201)
+        user = User.objects.get(email='invitee@example.com')
+        records = ConsentRecord.objects.filter(user=user, accepted=True)
+        self.assertEqual(set(records.values_list('consent_type', flat=True)), {'terms_of_service', 'privacy_policy'})
+        self.assertTrue(all(r.accepted_at for r in records))
+
+    def test_signup_from_an_invitation_verifies_the_invited_email(self):
+        from utils.invitation_tokens import generate_invitation_token
+        owner = make_user('vault-owner@example.com', ai_ready=True)
+        member = FamilyMember.objects.create(ai_owner=owner, email='invitee@example.com', relationship='child')
+        token, _ = generate_invitation_token(member)
+        mail.outbox.clear()
+        response = self.signup(accepted_terms=True, invitation_token=token)
+        self.assertEqual(response.status_code, 201)
+        self.assertFalse(response.json()['verification_required'])
+        self.assertTrue(User.objects.get(email='invitee@example.com').email_verified)
+        self.assertEqual(len(mail.outbox), 0)
+        # Signing in now works without the verification email
+        self.assertEqual(self.post('/api/users/login/', {'email': 'invitee@example.com', 'password': NEW_PW}).status_code, 200)
+
+    def test_an_invitation_for_another_email_does_not_verify(self):
+        from utils.invitation_tokens import generate_invitation_token
+        owner = make_user('vault-owner@example.com', ai_ready=True)
+        member = FamilyMember.objects.create(ai_owner=owner, email='someone-else@example.com', relationship='child')
+        token, _ = generate_invitation_token(member)
+        response = self.signup(accepted_terms=True, invitation_token=token)
+        self.assertTrue(response.json()['verification_required'])
+        self.assertFalse(User.objects.get(email='invitee@example.com').email_verified)

@@ -24,3 +24,4 @@ export const money = (value: number) =>
   `$${Number.isInteger(value) ? value : value.toFixed(2)}`;
 
 export const launchSavings = () => Math.round(launchOffer.listPrice - launchOffer.price);
+

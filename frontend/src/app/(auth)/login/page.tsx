@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { loginSchema, type LoginFormData } from '@/lib/validations/auth';
 import { getApiErrorMessage, safeRedirectPath } from '@/lib/utils';
+import { takeAfterSignIn } from '@/lib/auth/afterSignIn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -55,9 +56,9 @@ export default function LoginPage() {
     try {
       await login(data);
       toast.success('Signed in successfully.');
-      const redirect = searchParams.get('redirect');
-      const safeRedirect = safeRedirectPath(redirect, '/dashboard');
-      router.replace(safeRedirect);
+      // An explicit ?redirect wins; otherwise where they were heading before signing up
+      const remembered = takeAfterSignIn('/dashboard');
+      router.replace(safeRedirectPath(searchParams.get('redirect'), remembered));
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       if (code === 'email_not_verified') {

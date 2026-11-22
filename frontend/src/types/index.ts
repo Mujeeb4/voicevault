@@ -61,6 +61,10 @@ export interface SignupRequest {
   password: string;
   full_name: string;
   phone_number?: string;
+  /** The "18 or older and agree to the Terms and Privacy" box; required by the API */
+  accepted_terms: true;
+  /** Signing up from a family invitation: the invite proves the email, so no verification email */
+  invitation_token?: string;
 }
 
 export interface SignupResponse {

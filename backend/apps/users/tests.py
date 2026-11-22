@@ -40,7 +40,7 @@ class SignupRegressionTests(TestCase):
         cache.clear()
 
     def test_signup_persists_optional_phone_number(self):
-        request = APIRequestFactory().post('/api/users/signup/', {
+        request = APIRequestFactory().post('/api/users/signup/', { 'accepted_terms': True,
             'email': 'new-owner@example.com',
             'password': 'strong-pass-123',
             'full_name': 'New Owner',
@@ -58,7 +58,7 @@ class SignupRegressionTests(TestCase):
     @patch('apps.users.views_auth.send_verification_email')
     @patch('apps.users.views_auth.send_account_welcome_email')
     def test_signup_requires_verification_and_issues_no_tokens(self, welcome, verify):
-        request = APIRequestFactory().post('/api/users/signup/', {
+        request = APIRequestFactory().post('/api/users/signup/', { 'accepted_terms': True,
             'email': 'welcome@example.com',
             'password': 'strong-pass-123',
             'full_name': 'Welcome Owner',
@@ -91,7 +91,7 @@ class SignupRegressionTests(TestCase):
         self.assertEqual(len(alerts), 1)
 
     def test_signup_rejects_malformed_email(self):
-        request = APIRequestFactory().post('/api/users/signup/', {
+        request = APIRequestFactory().post('/api/users/signup/', { 'accepted_terms': True,
             'email': 'not-an-email',
             'password': 'strong-pass-123',
             'full_name': 'New Owner',
@@ -104,7 +104,7 @@ class SignupRegressionTests(TestCase):
         self.assertFalse(User.objects.exists())
 
     def test_signup_rejects_oversized_phone_number(self):
-        request = APIRequestFactory().post('/api/users/signup/', {
+        request = APIRequestFactory().post('/api/users/signup/', { 'accepted_terms': True,
             'email': 'new-owner@example.com',
             'password': 'strong-pass-123',
             'full_name': 'New Owner',
