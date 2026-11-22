@@ -16,6 +16,8 @@ import { CheckCircle2, Loader2, ArrowRight, Mic, AlertCircle } from 'lucide-reac
 import confetti from 'canvas-confetti';
 import { OnboardingHeader, SiteFooter } from '@/components/layout';
 import { getApiErrorMessage } from '@/lib/utils';
+import { trackEvent } from '@/lib/analytics';
+import { launchOffer } from '@/lib/launchOffer';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
@@ -79,6 +81,20 @@ export default function PaymentSuccessPage() {
           );
           setIsVerifying(false);
           return;
+        }
+
+        try {
+          const key = `vv_purchase_${sessionId}`;
+          if (!window.sessionStorage.getItem(key)) {
+            window.sessionStorage.setItem(key, '1');
+            trackEvent(
+              'purchase',
+              { currency: 'USD', value: launchOffer.enabled ? launchOffer.price : launchOffer.listPrice, transaction_id: sessionId },
+              { standard: 'Purchase', eventId: sessionId }
+            );
+          }
+        } catch {
+          // ignore
         }
 
         await refreshUser();
