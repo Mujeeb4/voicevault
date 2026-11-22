@@ -150,10 +150,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
         {/* Actions */}
         {!isUser && !isStreaming && (
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2">
             <Tooltip content="Copy message">
-              <Button variant="ghost" size="icon" onClick={handleCopy} className="h-8 w-8" aria-label="Copy message">
-                <Copy className="h-3 w-3" />
+              <Button variant="ghost" size="icon" onClick={handleCopy} className="h-10 w-10" aria-label="Copy message">
+                <Copy className="h-4 w-4" />
               </Button>
             </Tooltip>
 
@@ -165,10 +165,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={() => handleQuickRate(star)}
-                  className={cn('h-8 w-8', rating >= star && 'text-yellow-500')}
+                  className={cn('h-10 w-10', rating >= star && 'text-yellow-500')}
                   aria-label={`Rate ${star} stars`}
                 >
-                  <Star className={cn('h-3 w-3', rating >= star && 'fill-current')} />
+                  <Star className={cn('h-4 w-4', rating >= star && 'fill-current')} />
                 </Button>
               ))}
             </div>
@@ -176,7 +176,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             {/* Detailed Feedback */}
             <Dialog open={isRatingDialogOpen} onOpenChange={setIsRatingDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-8 text-xs">
+                <Button variant="ghost" size="sm" className="h-10 text-sm">
                   Add Feedback
                 </Button>
               </DialogTrigger>

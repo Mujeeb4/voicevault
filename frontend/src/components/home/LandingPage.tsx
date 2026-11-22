@@ -115,7 +115,7 @@ export function LandingPage() {
     <div className="min-h-dvh bg-background">
       {launchOffer.enabled && (
         <div className="bg-primary px-4 py-2.5 text-center text-sm font-medium text-primary-foreground">
-          <Link href="#pricing" className="hover:underline">
+          <Link href="#pricing" className="flex min-h-11 flex-wrap items-center justify-center gap-x-1 hover:underline">
             Founding Family offer: Premium for {money(launchOffer.price)} one time for the first {launchOffer.spots} buyers.
             <span className="ml-1 font-semibold underline underline-offset-2">See the offer</span>
           </Link>

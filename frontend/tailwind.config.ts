@@ -15,6 +15,11 @@ const config: Config = {
       screens: { '2xl': '1120px' },
     },
     extend: {
+      // Readable for older users: nothing below 14px, small copy at 15px
+      fontSize: {
+        xs: ['0.875rem', { lineHeight: '1.25rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.4rem' }],
+      },
       fontFamily: {
         sans: ['var(--font-body)', 'system-ui', 'sans-serif'],
         logo: ['var(--font-body)', 'system-ui', 'sans-serif'],

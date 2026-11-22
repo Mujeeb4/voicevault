@@ -198,7 +198,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
             variant="outline"
             size="icon"
             onClick={handlePlayPause}
-            className="h-8 w-8"
+            className="h-11 w-11 sm:h-9 sm:w-9"
             aria-label={isPlaying ? 'Pause' : 'Play'}
             disabled={isRetrying}
           >
@@ -211,7 +211,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
               variant="ghost"
               size="icon"
               onClick={handleMuteToggle}
-              className="h-8 w-8"
+              className="h-11 w-11 sm:h-9 sm:w-9"
               aria-label={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -233,7 +233,7 @@ export const VoicePlayerComponent: React.FC<VoicePlayerComponentProps> = ({
           variant="ghost"
           size="icon"
           onClick={handleDownload}
-          className="h-8 w-8"
+          className="h-11 w-11 sm:h-9 sm:w-9"
           aria-label="Download audio"
         >
           <Download className="h-4 w-4" />
