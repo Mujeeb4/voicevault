@@ -159,7 +159,7 @@ export default function ProcessingPage() {
                         type="checkbox"
                         checked={voiceConsentChecked}
                         onChange={(e) => setVoiceConsentChecked(e.target.checked)}
-                        className="mt-1 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-primary/40"
+                        className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
                       />
                       <span>
                         I confirm this is my own voice. I consent to VoiceVault and its AI service

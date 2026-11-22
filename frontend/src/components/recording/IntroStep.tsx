@@ -257,14 +257,14 @@ export function IntroStep({ onStart }: IntroStepProps) {
       </div>
 
       {/* Recording consent */}
-      <div className="mt-6 rounded-lg border border-border bg-background p-4">
+      <div className="mt-6 mb-20 rounded-lg border border-border bg-background p-4 sm:mb-0">
         <label className="flex cursor-pointer items-start gap-3">
           <input
             id="recording-consent"
             type="checkbox"
             checked={consentChecked}
             onChange={(e) => setConsentChecked(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+            className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
           />
           <span className="text-sm text-muted-foreground">
             I am 18 or older and this is my own voice. I agree that VoiceVault may record my

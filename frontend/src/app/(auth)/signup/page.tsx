@@ -211,7 +211,7 @@ export default function SignupPage() {
                     {...register('acceptedTerms')}
                     aria-invalid={errors.acceptedTerms ? true : undefined}
                     aria-describedby={errors.acceptedTerms ? 'terms-error' : undefined}
-                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                    className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
                   />
                   <span className="text-sm text-muted-foreground">
                     I am 18 or older and I agree to the{' '}

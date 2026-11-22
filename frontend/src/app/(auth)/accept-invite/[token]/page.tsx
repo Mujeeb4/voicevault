@@ -290,7 +290,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                   type="checkbox"
                   checked={ackChecked}
                   onChange={(e) => setAckChecked(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
                 />
                 <span>
                   I am 18 or older. I understand I will be chatting with an AI recreation built from
@@ -391,7 +391,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                   type="checkbox"
                   checked={ackChecked}
                   onChange={(e) => setAckChecked(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
                 />
                 <span>
                   I am 18 or older. I understand I will be chatting with an AI recreation built from
@@ -448,7 +448,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                   type="checkbox"
                   checked={ackChecked}
                   onChange={(e) => setAckChecked(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                  className="mt-0.5 h-5 w-5 shrink-0 rounded border-input text-primary focus:ring-primary/40"
                 />
                 <span>
                   I am 18 or older. I understand I will be chatting with an AI recreation built from
