@@ -127,6 +127,7 @@ export default function ProcessingPage() {
           userName={user.full_name}
           onChatNow={() => router.push('/chat')}
           onInviteFamily={() => router.push('/family')}
+          hasVoice={isPremium}
         />
       ) : (
         <div className="space-y-6">

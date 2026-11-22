@@ -162,10 +162,20 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         <Alert variant="destructive" className="m-4">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={handleRetry}>
-              Retry
-            </Button>
+            <span>
+              {/limit/i.test(error)
+                ? 'You have used your free messages. Upgrade to Premium to keep chatting, with voice replies too.'
+                : error}
+            </span>
+            {/limit/i.test(error) ? (
+              <Button asChild size="sm">
+                <a href="/pricing">Upgrade to Premium</a>
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" onClick={handleRetry}>
+                Retry
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}

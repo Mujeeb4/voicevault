@@ -16,12 +16,15 @@ interface ProcessingCompleteProps {
   userName: string;
   onChatNow?: () => void;
   onInviteFamily?: () => void;
+  /** Voice cloning is Premium-only; free vaults get a text preview. */
+  hasVoice?: boolean;
 }
 
 export function ProcessingComplete({
   userName,
   onChatNow,
   onInviteFamily,
+  hasVoice = false,
 }: ProcessingCompleteProps) {
   const [showConfetti, setShowConfetti] = useState(true);
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
@@ -97,8 +100,9 @@ export function ProcessingComplete({
           transition={{ delay: 0.4 }}
           className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto"
         >
-          {userName}, your AI voice clone has been created successfully! Your loved ones can now
-          chat with you anytime, anywhere.
+          {hasVoice
+            ? `${userName}, your AI voice clone has been created successfully! Your loved ones can now chat with you anytime, anywhere.`
+            : `${userName}, your text preview is ready. Your loved ones can now chat with you in your own words. Upgrade to Premium to add your cloned voice.`}
         </motion.p>
 
         {/* Stats */}
@@ -117,8 +121,8 @@ export function ProcessingComplete({
             <div className="text-sm text-primary-100">Personality</div>
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-3xl font-bold mb-1">✓</div>
-            <div className="text-sm text-primary-100">Voice Clone</div>
+            <div className="text-3xl font-bold mb-1">{hasVoice ? '✓' : '🔒'}</div>
+            <div className="text-sm text-primary-100">{hasVoice ? 'Voice Clone' : 'Voice (Premium)'}</div>
           </div>
         </motion.div>
 
