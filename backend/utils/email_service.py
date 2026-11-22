@@ -281,7 +281,7 @@ def send_premium_activated_email(
             ],
             cta_label="Go to your vault",
             cta_url=f"{FRONTEND_URL}/dashboard",
-            link_note=("Need your receipt?", "View your Stripe receipt", receipt_url) if receipt_url else None,
+            link_note=("Need your receipt?", "View your receipt", receipt_url) if receipt_url else None,
         )
         logger.info(f"Premium activated email sent to {to_email}")
         return True

@@ -144,6 +144,13 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </div>
       </div>
 
+      <div className="border-b bg-accent px-4 py-2 text-xs text-foreground" role="note">
+        <strong>AI recreation.</strong> You are talking with an AI built from {aiOwnerName}&apos;s
+        recorded answers, not with the real person. It can be wrong or say things they never said.
+        {voiceEnabled && ' Voice replies are AI-generated.'} If you are struggling, call or text 988
+        (US and Canada).
+      </div>
+
       {(outOfQuestions || showTopUp) && (
         <BuyCreditsPanel
           aiOwnerId={aiOwnerId}

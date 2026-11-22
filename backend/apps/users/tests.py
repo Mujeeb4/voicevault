@@ -1,5 +1,7 @@
 import time
+import uuid
 from datetime import datetime, timedelta
+from django.utils import timezone
 
 import jwt
 from utils.jwt_tokens import signing_key
@@ -280,3 +282,44 @@ class EmailVerificationTests(TestCase):
         User.objects.filter(id=self.user.id).update(email_verified=True)
         call('verify@example.com')
         self.assertEqual(verify.call_count, 1)
+
+
+class VoiceRecordingConsentTests(TestCase):
+    """Uploading a voice recording needs the user's explicit recording consent first."""
+
+    def test_consent_records_the_current_version(self):
+        from apps.users.models import CONSENT_VERSION, ConsentRecord
+        user = User.objects.create(id=uuid.uuid4(), email='consent@example.com', full_name='Consent')
+        record = ConsentRecord.objects.create(user=user, consent_type='voice_recording', accepted=True)
+        self.assertEqual(record.consent_version, CONSENT_VERSION)
+
+    def test_voice_recording_is_a_valid_consent_type(self):
+        from apps.users.models import ConsentRecord
+        self.assertIn('voice_recording', {c[0] for c in ConsentRecord.CONSENT_TYPES})
+
+
+class DeleteClonedVoiceTests(TestCase):
+    def test_provider_voice_is_deleted_and_legacy_preset_is_not(self):
+        from services.voice_cloning import LEGACY_FALLBACK_VOICE_ID, delete_voice_clone
+        with self.settings(ELEVENLABS_API_KEY='k'), patch('elevenlabs.client.ElevenLabs') as client:
+            self.assertTrue(delete_voice_clone('voice_abc'))
+            client.return_value.voices.delete.assert_called_once_with('voice_abc')
+            self.assertFalse(delete_voice_clone(LEGACY_FALLBACK_VOICE_ID))
+            self.assertFalse(delete_voice_clone(None))
+
+
+class PurgeInactiveVoiceDataTests(TestCase):
+    @patch('apps.users.management.commands.purge_inactive_voice_data.delete_voice_clone')
+    @patch('apps.users.management.commands.purge_inactive_voice_data.delete_file_from_supabase')
+    def test_old_inactive_voice_data_is_destroyed_but_active_users_are_kept(self, _file, delete_voice):
+        from django.core.management import call_command
+        from apps.ai_processing.models import AIConfiguration
+        from apps.recordings.models import AudioRecording
+        old = User.objects.create(email='old@example.com', full_name='Old', last_login_at=timezone.now() - timedelta(days=365 * 3 + 5))
+        new = User.objects.create(email='new@example.com', full_name='New', last_login_at=timezone.now())
+        AIConfiguration.objects.create(user=old, voice_clone_id='voice_old')
+        AIConfiguration.objects.create(user=new, voice_clone_id='voice_new')
+        call_command('purge_inactive_voice_data')
+        self.assertEqual(AIConfiguration.objects.get(user=old).voice_clone_id, '')
+        self.assertEqual(AIConfiguration.objects.get(user=new).voice_clone_id, 'voice_new')
+        delete_voice.assert_called_once_with('voice_old')

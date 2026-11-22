@@ -745,10 +745,15 @@ class DeleteAccountView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         files = _stored_files_for(user)
+        from apps.ai_processing.models import AIConfiguration
+        from services.voice_cloning import delete_voice_clone
+        voice_clone_id = AIConfiguration.objects.filter(user=user).values_list('voice_clone_id', flat=True).first()
         email, name, user_id = user.email, user.full_name, user.id
         send_account_deleted_email(email, name)
         user.delete()
         logger.info("Account deleted: %s", user_id)
+        # The cloned voice is biometric-style data held by the voice provider: remove it too
+        delete_voice_clone(voice_clone_id)
 
         from utils.supabase_client import delete_file_from_supabase
         for bucket, path in files:

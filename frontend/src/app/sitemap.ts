@@ -9,6 +9,7 @@ const PAGES: Array<{ path: string; changeFrequency: 'weekly' | 'monthly' | 'year
   { path: '/login', changeFrequency: 'yearly', priority: 0.4 },
   { path: '/privacy', changeFrequency: 'yearly', priority: 0.3 },
   { path: '/terms', changeFrequency: 'yearly', priority: 0.3 },
+  { path: '/refund-policy', changeFrequency: 'yearly', priority: 0.3 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

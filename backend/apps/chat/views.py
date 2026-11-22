@@ -6,6 +6,7 @@ Handles graceful fallback when Celery/Redis is unavailable.
 import json
 import logging
 import time
+from .safety import CRISIS_MESSAGE, is_crisis_message
 from typing import Generator
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -237,6 +238,19 @@ def chat_streaming(request):
             {'error': error_msg},
             status=403
         )
+
+    # Someone who may be in crisis gets a caring message with resources, not a recreated voice.
+    # This costs nothing and is not counted against their questions.
+    if is_crisis_message(question):
+        def crisis_events():
+            yield f"data: {json.dumps({'type': 'text_chunk', 'content': CRISIS_MESSAGE, 'timestamp': 0, 'safety': True})}\n\n"
+            yield f"data: {json.dumps({'type': 'text_complete', 'full_text': CRISIS_MESSAGE, 'tokens': 0, 'stream_time_ms': 0, 'safety': True})}\n\n"
+            yield f"data: {json.dumps({'type': 'audio_unavailable', 'message': 'No voice for safety messages', 'safety': True})}\n\n"
+            yield f"data: {json.dumps({'type': 'complete', 'total_time_ms': 0, 'safety': True})}\n\n"
+        response = StreamingHttpResponse(crisis_events(), content_type='text/event-stream')
+        response['Cache-Control'] = 'no-cache'
+        response['X-Accel-Buffering'] = 'no'
+        return response
 
     # Reserved before answering (cached answers count too); refunded if no answer is saved
     chat_limit, question_source = reserve_question(ai_owner, family_member)

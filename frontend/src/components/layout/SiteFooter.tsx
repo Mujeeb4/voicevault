@@ -21,6 +21,7 @@ const columns = [
     title: 'Company',
     links: [
       { href: '/terms', label: 'Terms' },
+      { href: '/refund-policy', label: 'Refunds' },
       { href: '/privacy', label: 'Privacy' },
       { href: `mailto:${SUPPORT_EMAIL}`, label: 'Contact' },
     ],

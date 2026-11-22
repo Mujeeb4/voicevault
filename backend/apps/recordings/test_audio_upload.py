@@ -7,10 +7,11 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APIRequestFactory
+from apps.recordings.views import AudioRecordingUploadView
 
 from apps.recordings.models import AudioRecording
-from apps.users.models import User
+from apps.users.models import ConsentRecord, User
 from apps.users.views_auth import generate_jwt_token
 from services.audio_normalize import AudioConversionError, normalize_audio_file
 
@@ -29,6 +30,7 @@ def make_m4a():
 class AudioUploadFormatTests(TestCase):
     def setUp(self):
         self.user = User.objects.create(email='safari@example.com', full_name='Safari User')
+        ConsentRecord.objects.create(user=self.user, consent_type='voice_recording', accepted=True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + generate_jwt_token(self.user)['access'])
 
@@ -94,6 +96,7 @@ class RecordingDurationLimitTests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create(email='free@example.com', full_name='Free User')
+        ConsentRecord.objects.create(user=self.user, consent_type='voice_recording', accepted=True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + generate_jwt_token(self.user)['access'])
 
@@ -119,3 +122,13 @@ class RecordingDurationLimitTests(TestCase):
         }, format='multipart')
         self.assertEqual(response.status_code, 201, response.data)
         self.assertAlmostEqual(AudioRecording.objects.get(user=self.user).duration_seconds, 3, delta=0.5)
+
+
+class RecordingConsentRequiredTests(TestCase):
+    def test_upload_is_refused_without_recording_consent(self):
+        user = User.objects.create(email='noconsent@example.com', full_name='No Consent')
+        request = APIRequestFactory().post('/api/recordings/upload/', {'audio_file': SimpleUploadedFile('a.mp3', b'x')}, format='multipart')
+        request.supabase_user = type('U', (), {'id': user.id, 'email': user.email})()
+        response = AudioRecordingUploadView.as_view()(request)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.data['error'], 'recording_consent_required')

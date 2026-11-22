@@ -20,6 +20,23 @@ def create_voice_clone(client, *, name: str, description: str, files) -> str:
     return voice.voice_id
 
 
+def delete_voice_clone(voice_id: str | None) -> bool:
+    """Delete a stored cloned voice at the voice provider. Best effort; never raises."""
+    if not is_cloned_voice_id(voice_id):
+        return False
+    from django.conf import settings
+    if not getattr(settings, 'ELEVENLABS_API_KEY', ''):
+        return False
+    try:
+        from elevenlabs.client import ElevenLabs
+        ElevenLabs(api_key=settings.ELEVENLABS_API_KEY).voices.delete(voice_id)
+        return True
+    except Exception as exc:  # noqa: BLE001 - deletion must not block account removal
+        import logging
+        logging.getLogger(__name__).warning('Could not delete cloned voice at provider: %s', exc.__class__.__name__)
+        return False
+
+
 def voice_cloning_failure_message(exc: Exception) -> str:
     """Expose actionable failures without echoing provider bodies or credentials."""
     if isinstance(exc, ValueError):

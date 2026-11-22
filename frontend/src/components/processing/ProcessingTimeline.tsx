@@ -57,7 +57,7 @@ export function ProcessingTimeline({ status, onRetryStep, onTriggerStep }: Proce
     {
       key: 'personality_analysis' as const,
       title: 'Personality analysis',
-      description: 'Analyzing your speech patterns and personality with GPT-4',
+      description: 'Analyzing your speech patterns and personality with AI',
       icon: <Brain className="w-6 h-6 text-primary-600" />,
       stepData: stepsData.personality_analysis || { status: 'pending' },
     },

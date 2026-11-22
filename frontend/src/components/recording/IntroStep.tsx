@@ -12,6 +12,9 @@ import { Mic, Check, X, Loader2, AlertCircle, Volume2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip } from '@/components/ui/tooltip';
 import { AudioRecorder } from '@/lib/audio/recorder';
+import { authApi } from '@/lib/api/auth';
+import { toast } from 'sonner';
+import Link from 'next/link';
 
 interface IntroStepProps {
   onStart: () => void;
@@ -26,6 +29,8 @@ export function IntroStep({ onStart }: IntroStepProps) {
   const [isTestingMic, setIsTestingMic] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [testResult, setTestResult] = useState<MicrophoneTestResult>('idle');
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [isSavingConsent, setIsSavingConsent] = useState(false);
 
   const checkMicrophone = useCallback(async () => {
     try {
@@ -99,7 +104,19 @@ export function IntroStep({ onStart }: IntroStepProps) {
     }
   };
 
-  const canStart = micStatus === 'granted';
+  const canStart = micStatus === 'granted' && consentChecked;
+
+  const handleStart = async () => {
+    try {
+      setIsSavingConsent(true);
+      await authApi.recordConsent('voice_recording', true);
+      onStart();
+    } catch {
+      toast.error('We could not save your consent. Please try again.');
+    } finally {
+      setIsSavingConsent(false);
+    }
+  };
 
   return (
     <motion.div
@@ -239,16 +256,39 @@ export function IntroStep({ onStart }: IntroStepProps) {
         </ul>
       </div>
 
+      {/* Recording consent */}
+      <div className="mt-6 rounded-lg border border-border bg-background p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            id="recording-consent"
+            type="checkbox"
+            checked={consentChecked}
+            onChange={(e) => setConsentChecked(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+          />
+          <span className="text-sm text-muted-foreground">
+            I am 18 or older and this is my own voice. I agree that VoiceVault may record my
+            answers, store them securely, and have them transcribed and analyzed by AI to build my
+            AI personality. I understand I can delete my recordings or my whole account at any time.
+            Read the{' '}
+            <Link href="/privacy#voice-recordings" className="font-medium text-primary underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+      </div>
+
       {/* Start Button */}
       <div className="sticky bottom-4 z-20 mt-6 rounded-lg border border-border bg-background/86 p-3 backdrop-blur-xl sm:static sm:border-0 sm:bg-transparent sm:p-0">
         <Tooltip
           disabled
           className="w-full sm:mx-auto sm:flex sm:max-w-md"
-          content={canStart ? null : 'Allow microphone access in your browser, then use "Test microphone" to continue'}
+          content={canStart ? null : 'Allow microphone access and tick the consent box to continue'}
         >
         <Button
-          onClick={onStart}
-          disabled={!canStart}
+          onClick={handleStart}
+          disabled={!canStart || isSavingConsent}
           size="lg"
           className="w-full"
         >
@@ -258,7 +298,7 @@ export function IntroStep({ onStart }: IntroStepProps) {
               Start Recording
             </>
           ) : (
-            'Please allow microphone access'
+            micStatus === 'granted' ? 'Tick the box above to continue' : 'Please allow microphone access'
           )}
         </Button>
         </Tooltip>

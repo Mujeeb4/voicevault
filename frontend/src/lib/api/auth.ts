@@ -94,6 +94,7 @@ export const authApi = {
 
   recordConsent: async (
     consentType:
+      | 'voice_recording'
       | 'voice_cloning'
       | 'ai_personality_generation'
       | 'family_access'

@@ -25,6 +25,7 @@ export default function ProcessingPage() {
   const { user } = useAuthStore();
   const [isComplete, setIsComplete] = useState(false);
   const [voiceConsentAccepted, setVoiceConsentAccepted] = useState(false);
+  const [voiceConsentChecked, setVoiceConsentChecked] = useState(false);
   const [isSavingConsent, setIsSavingConsent] = useState(false);
   const [previewText, setPreviewText] = useState('I remember sitting on the front steps with my family, feeling completely safe and happy.');
   const [isPreviewing, setIsPreviewing] = useState(false);
@@ -151,13 +152,30 @@ export default function ProcessingPage() {
               <div className="mb-4 rounded-lg border border-primary/25 bg-accent p-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-start gap-3">
-                    <ShieldCheck className="mt-0.5 h-5 w-5 text-primary" />
-                    <p className="text-sm text-foreground">
-                      I confirm this is my voice, or I have legal permission to create this voice
-                      clone.
-                    </p>
+                    <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <label className="flex cursor-pointer items-start gap-3 text-sm text-foreground">
+                      <input
+                        id="voice-clone-consent"
+                        type="checkbox"
+                        checked={voiceConsentChecked}
+                        onChange={(e) => setVoiceConsentChecked(e.target.checked)}
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-input text-primary focus:ring-primary/40"
+                      />
+                      <span>
+                        I confirm this is my own voice. I consent to VoiceVault and its AI service
+                        providers creating a digital voice model (a voiceprint) from my recordings,
+                        and using it only to speak AI replies to the family members I invite. Replies
+                        are AI-generated and clearly labelled as AI. I can delete my voice model at
+                        any time by deleting my account, and it is deleted when my account is
+                        deleted. See the{' '}
+                        <a href="/privacy#voice-recordings" className="font-medium text-primary underline">
+                          Privacy Policy
+                        </a>
+                        .
+                      </span>
+                    </label>
                   </div>
-                  <Button onClick={handleVoiceConsent} disabled={isSavingConsent} size="sm">
+                  <Button onClick={handleVoiceConsent} disabled={isSavingConsent || !voiceConsentChecked} size="sm">
                     {isSavingConsent ? 'Saving...' : 'Confirm consent'}
                   </Button>
                 </div>
@@ -191,7 +209,7 @@ export default function ProcessingPage() {
             <div className="surface p-6">
               <h2 className="mb-2 text-lg font-semibold text-foreground">Hear your voice</h2>
               <p className="mb-3 text-sm text-muted-foreground">
-                A preview uses your saved recording and matching transcript. Replicate charges for a new request when you press Generate; repeating the same text reuses its result.
+                A preview uses your saved recording and matching transcript. Each new preview uses part of your allowance when you press Generate; repeating the same text reuses its result.
               </p>
               <textarea
                 value={previewText}

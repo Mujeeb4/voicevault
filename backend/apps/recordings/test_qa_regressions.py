@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.recordings.models import AudioRecording
-from apps.users.models import User
+from apps.users.models import ConsentRecord, User
 from apps.users.views_auth import generate_jwt_token
 from services.plan_limits import LimitResult
 
@@ -16,6 +16,7 @@ from services.plan_limits import LimitResult
 class CombinedUploadReplacementTests(TestCase):
     def setUp(self):
         self.user = User.objects.create(email='uploader@example.com', full_name='Uploader')
+        ConsentRecord.objects.create(user=self.user, consent_type='voice_recording', accepted=True)
         self.client = APIClient()
         self.client.credentials(HTTP_AUTHORIZATION='Bearer ' + generate_jwt_token(self.user)['access'])
         # A previous upload: one single combined file and a stale second part

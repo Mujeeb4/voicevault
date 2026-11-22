@@ -3,7 +3,7 @@
 /**
  * Questions left for this family member, and buying more as credits.
  * Each family member of a Premium vault gets included questions, then buys credits (1 credit = 1 question).
- * The first purchase saves the card at Stripe, so later refills are one click.
+ * The first purchase saves the card with the payment processor, so later refills are one click.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -219,7 +219,7 @@ export function BuyCreditsPanel({
         </div>
       ) : (
         <p className="mt-3 text-xs text-muted-foreground">
-          Your card is saved securely with Stripe so next time is one click.
+          Your card is saved securely with our payment processor so next time is one click.
         </p>
       )}
     </div>

@@ -157,9 +157,13 @@ class UsageQuota(models.Model):
         return f"Usage quota for {self.user.email}"
 
 
+CONSENT_VERSION = '2026-11'
+
+
 class ConsentRecord(models.Model):
     """Stores explicit user consent for sensitive AI and voice actions."""
     CONSENT_TYPES = [
+        ('voice_recording', 'Voice Recording and Processing'),
         ('voice_cloning', 'Voice Cloning'),
         ('ai_personality_generation', 'AI Personality Generation'),
         ('family_access', 'Family Access'),
@@ -173,7 +177,7 @@ class ConsentRecord(models.Model):
     accepted_at = models.DateTimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
-    consent_version = models.CharField(max_length=50, default='2026-05')
+    consent_version = models.CharField(max_length=50, default=CONSENT_VERSION)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

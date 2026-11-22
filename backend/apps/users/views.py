@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.utils import timezone
-from .models import ConsentRecord, User
+from .models import CONSENT_VERSION, ConsentRecord, User
 from .serializers import UserSerializer
 from django.db import connection
 import logging
@@ -146,6 +146,7 @@ class ConsentRecordView(APIView):
             accepted_at=timezone.now() if accepted else None,
             ip_address=ip_address or None,
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            consent_version=CONSENT_VERSION,
         )
 
         if consent_type == 'voice_cloning' and accepted and user.is_premium:

@@ -57,6 +57,17 @@ class AudioRecordingUploadView(APIView):
             }
         )
         
+        # Voice is personal data: recording and processing need the user's explicit consent first
+        from services.plan_limits import has_accepted_consent
+        if not has_accepted_consent(user, 'voice_recording'):
+            return Response(
+                {
+                    'error': 'recording_consent_required',
+                    'message': 'Please confirm your consent to record and process your voice before uploading.',
+                },
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         # Check if this is a combined upload (new format) or individual question (old format)
         audio_file = request.FILES.get('audio_file')
         if not audio_file:

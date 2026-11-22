@@ -214,7 +214,7 @@ export default function SignupPage() {
                     className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
                   />
                   <span className="text-sm text-muted-foreground">
-                    I agree to the{' '}
+                    I am 18 or older and I agree to the{' '}
                     <Link
                       href="/terms"
                       className="font-medium text-primary hover:text-primary transition-colors"

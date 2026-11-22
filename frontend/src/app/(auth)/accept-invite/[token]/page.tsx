@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import { familyApi } from '@/lib/api/family';
+import { authApi } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/utils';
 import {
   Card,
@@ -37,6 +38,15 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
   > | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAccepted, setIsAccepted] = useState(false);
+  const [ackChecked, setAckChecked] = useState(false);
+
+  const recordFamilyConsent = async () => {
+    try {
+      await authApi.recordConsent('family_access', true);
+    } catch {
+      // The invitation itself is already accepted; the record is a best-effort audit trail.
+    }
+  };
 
   // Form state for new users
   const [fullName, setFullName] = useState('');
@@ -76,6 +86,10 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
   const handleAcceptAsNewUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ackChecked) {
+      toast.error('Please confirm the statement above to continue');
+      return;
+    }
 
     // Validation
     if (!fullName || !email || !password || !confirmPassword) {
@@ -101,6 +115,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
       // 2. Accept invitation
       const accepted = await familyApi.acceptInvitation(token);
+      await recordFamilyConsent();
 
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
@@ -119,6 +134,10 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
   const handleAcceptAsExistingUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!ackChecked) {
+      toast.error('Please confirm the statement above to continue');
+      return;
+    }
 
     // Validation
     if (!loginEmail || !loginPassword) {
@@ -134,6 +153,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
 
       // 2. Accept invitation
       const accepted = await familyApi.acceptInvitation(token);
+      await recordFamilyConsent();
 
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
@@ -151,6 +171,10 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
   };
 
   const acceptInvitation = async () => {
+    if (!ackChecked) {
+      toast.error('Please confirm the statement above to continue');
+      return;
+    }
     if (user?.email.toLowerCase() !== invitationDetails?.invitee_email.toLowerCase()) {
       setError('Sign in with the email address this invitation was sent to.');
       return;
@@ -158,6 +182,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
     try {
       setIsLoading(true);
       const accepted = await familyApi.acceptInvitation(token);
+      await recordFamilyConsent();
       setIsAccepted(true);
       toast.success('Invitation accepted! You can now chat with their AI.');
       setTimeout(() => {
@@ -259,9 +284,25 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">Signed in as {user?.email}.</p>
               {user?.email.toLowerCase() === invitationDetails?.invitee_email.toLowerCase() ? (
-                <Button className="w-full" disabled={isLoading} onClick={acceptInvitation}>
+                <>
+                <label className="flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={ackChecked}
+                  onChange={(e) => setAckChecked(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                />
+                <span>
+                  I am 18 or older. I understand I will be chatting with an AI recreation built from
+                  recordings made by the vault owner, not with the real person, and I agree to the{' '}
+                  <a href="/terms" className="font-medium text-primary underline">Terms</a> and{' '}
+                  <a href="/privacy" className="font-medium text-primary underline">Privacy Policy</a>.
+                </span>
+              </label>
+              <Button className="w-full" disabled={isLoading || !ackChecked} onClick={acceptInvitation}>
                   {isLoading ? 'Accepting...' : 'Accept invitation'}
                 </Button>
+                </>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">This invitation was sent to {invitationDetails?.invitee_email}.</p>
@@ -345,7 +386,21 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={ackChecked}
+                  onChange={(e) => setAckChecked(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                />
+                <span>
+                  I am 18 or older. I understand I will be chatting with an AI recreation built from
+                  recordings made by the vault owner, not with the real person, and I agree to the{' '}
+                  <a href="/terms" className="font-medium text-primary underline">Terms</a> and{' '}
+                  <a href="/privacy" className="font-medium text-primary underline">Privacy Policy</a>.
+                </span>
+              </label>
+              <Button type="submit" className="w-full" disabled={isLoading || !ackChecked}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -388,7 +443,21 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
                 />
               </div>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={ackChecked}
+                  onChange={(e) => setAckChecked(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+                />
+                <span>
+                  I am 18 or older. I understand I will be chatting with an AI recreation built from
+                  recordings made by the vault owner, not with the real person, and I agree to the{' '}
+                  <a href="/terms" className="font-medium text-primary underline">Terms</a> and{' '}
+                  <a href="/privacy" className="font-medium text-primary underline">Privacy Policy</a>.
+                </span>
+              </label>
+              <Button type="submit" className="w-full" disabled={isLoading || !ackChecked}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />

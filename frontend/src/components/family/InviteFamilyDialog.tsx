@@ -46,6 +46,7 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
   const [fullName, setFullName] = useState('');
   const [relationship, setRelationship] = useState<RelationshipType>('friend');
   const [message, setMessage] = useState('');
+  const [ackChecked, setAckChecked] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const { inviteMember, isLoading, lastInvitation, error } = useFamilyStore();
@@ -56,6 +57,10 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
     // Validate
     if (!email || !fullName || !relationship) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    if (!ackChecked) {
+      toast.error('Please confirm the statement before sending the invitation');
       return;
     }
 
@@ -90,6 +95,7 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
     setFullName('');
     setRelationship('friend');
     setMessage('');
+    setAckChecked(false);
     setIsCopied(false);
     useFamilyStore.setState({ lastInvitation: null, error: null });
   };
@@ -180,6 +186,20 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
               <p className="text-xs text-muted-foreground text-right">{message.length}/500</p>
             </div>
 
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={ackChecked}
+                onChange={(e) => setAckChecked(e.target.checked)}
+                disabled={isLoading}
+                className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary/40"
+              />
+              <span>
+                This person is 18 or older, and they know they will be chatting with an AI
+                recreation of me, not with me. I am inviting them with my own consent.
+              </span>
+            </label>
+
             {/* Error Alert */}
             {error && (
               <Alert variant="destructive">
@@ -193,7 +213,7 @@ export const InviteFamilyDialog: React.FC<InviteFamilyDialogProps> = ({ trigger 
               <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || !ackChecked}>
                 {isLoading ? 'Sending…' : 'Send invitation'}
               </Button>
             </DialogFooter>
