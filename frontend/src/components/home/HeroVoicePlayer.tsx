@@ -39,7 +39,7 @@ export function HeroVoicePlayer() {
         onClick={toggle}
         aria-label={playing ? 'Pause voice sample' : 'Play voice sample'}
         aria-pressed={playing}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-11 w-11 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {playing ? (
           <Pause className="h-3.5 w-3.5" fill="currentColor" />
