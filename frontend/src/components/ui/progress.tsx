@@ -15,7 +15,7 @@ const Progress = React.forwardRef<
     ref={ref}
     aria-label="Progress"
     className={cn('relative h-2.5 w-full overflow-hidden rounded-full bg-muted', className)}
-    value={value}
+    value={typeof value === 'number' && Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0}
     {...props}
   >
     <ProgressPrimitive.Indicator

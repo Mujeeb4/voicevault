@@ -124,7 +124,10 @@ async function loadFFmpeg(onProgress?: (progress: number) => void) {
   const ffmpeg = new FFmpeg();
   const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
 
-  ffmpeg.on('progress', ({ progress }) => onProgress?.(progress));
+  // ffmpeg.wasm can report values outside 0..1 (even hugely negative); keep the UI sane.
+  ffmpeg.on('progress', ({ progress }) =>
+    onProgress?.(Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0)
+  );
   await ffmpeg.load({
     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
