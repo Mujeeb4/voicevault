@@ -51,6 +51,19 @@ const nextConfig = {
     middlewareClientMaxBodySize: '110mb',
   },
 
+  // Consolidate www onto the apex domain so Google sees one canonical host
+  async redirects() {
+    if (siteUrl.hostname.startsWith('localhost')) return [];
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: `www.${siteUrl.hostname}` }],
+        destination: `${siteUrl.origin}/:path*`,
+        permanent: true,
+      },
+    ];
+  },
+
   // Headers for security and performance
   async headers() {
     return [
