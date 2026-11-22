@@ -53,6 +53,22 @@ class AIProcessingViewsTestCase(TestCase):
         self.assertFalse(self.user.recording_completed)
         self.assertIsNone(self.user.recording_started_at)
 
+    def test_status_finalizes_a_free_vault_that_finished_analysis(self):
+        from apps.ai_processing.models import AIConfiguration
+        Transcript.objects.create(user=self.user, full_transcript='word ' * 348, word_count=348)
+        AIConfiguration.objects.create(
+            user=self.user, personality_data={'traits': ['kind']},
+            system_prompt='You are a warm, thoughtful person who speaks plainly. ' * 5,
+        )
+        request = self.factory.get(f'/api/admin/process/status/{self.user.id}/')
+        request.supabase_user = self.supabase_user
+
+        response = ProcessingStatusView.as_view()(request, user_id=self.user.id)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.ai_ready)
+
     @patch('apps.ai_processing.views.transcribe_audio_task')
     def test_transcribe_audio_view_allowed_for_free_user(self, mock_transcribe_task):
         """Verify that free users can trigger transcription (can_clone_voice limit bypassed)."""

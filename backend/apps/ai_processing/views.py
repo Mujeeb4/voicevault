@@ -19,7 +19,7 @@ from .tasks import (
     test_ai_quality_task,
     finalize_ai_task
 )
-from services.plan_limits import can_clone_voice
+from services.plan_limits import can_clone_voice, has_accepted_consent
 from utils.admin_auth import is_admin_email
 from utils.quotas import consume_daily_quota
 from utils.throttling import ProcessingThrottle
@@ -430,6 +430,23 @@ class ProcessingStatusView(APIView):
                         'retry_count': task.retry_count
                     }
             
+            # Self-heal: a free (text preview) vault whose transcript and personality are
+            # done but was never marked ready (for example the old 500-word gate refused it)
+            # is finalized here, so the user is not left waiting forever.
+            if (
+                not user.ai_ready
+                and has_transcript
+                and has_personality
+                and not any(t.get('status') in ('processing', 'pending') for t in latest_tasks.values())
+                and not (user.has_premium_access and has_accepted_consent(user, 'voice_cloning'))
+            ):
+                try:
+                    finalize_result = finalize_ai_task(user_id=str(user.id))
+                    if finalize_result.get('success'):
+                        user.refresh_from_db()
+                except Exception:
+                    logger.warning("Self-heal finalize failed for user %s", user.id)
+
             # Determine overall status
             # Check if all processing is actually complete (even if ai_ready hasn't been set)
             all_processing_complete = False
