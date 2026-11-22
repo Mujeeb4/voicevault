@@ -402,6 +402,10 @@ else:
     )
 
 STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS = config('STRIPE_PREMIUM_ONE_TIME_AMOUNT_CENTS', default=14999, cast=int)
+# Founding offer cap: once this many Premium payments succeeded at the founding price, new checkouts
+# fall back to the list price. 0 disables the cap.
+FOUNDING_OFFER_SPOTS = config('FOUNDING_OFFER_SPOTS', default=0, cast=int)
+PREMIUM_LIST_PRICE_CENTS = config('PREMIUM_LIST_PRICE_CENTS', default=14999, cast=int)
 STRIPE_PREMIUM_CURRENCY = config('STRIPE_PREMIUM_CURRENCY', default='usd')
 # Stripe's card fee, used only to check that prices stay above AI costs
 STRIPE_FEE_PERCENT = config('STRIPE_FEE_PERCENT', default=2.9, cast=float)

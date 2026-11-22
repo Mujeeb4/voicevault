@@ -158,6 +158,17 @@ def create_checkout_session(request):
             'quantity': 1,
         }
         price_id = _configured_price_id(package['price_id'])
+        amount_cents = package['amount']
+        spots = getattr(settings, 'FOUNDING_OFFER_SPOTS', 0)
+        list_cents = getattr(settings, 'PREMIUM_LIST_PRICE_CENTS', 14999)
+        if spots > 0 and amount_cents < list_cents:
+            sold = Payment.objects.filter(
+                package_tier='premium', status='succeeded', amount_cents=amount_cents
+            ).count()
+            if sold >= spots:
+                logger.info('Founding offer sold out (%s/%s); using list price', sold, spots)
+                amount_cents = list_cents
+                price_id = ''
         if price_id:
             line_item['price'] = price_id
         else:
@@ -167,7 +178,7 @@ def create_checkout_session(request):
                     'name': package['name'],
                     'description': 'One-time lifetime Premium access for one VoiceVault vault',
                 },
-                'unit_amount': package['amount'],
+                'unit_amount': amount_cents,
             }
 
         # Create one-time Checkout Session
