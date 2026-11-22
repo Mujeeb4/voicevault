@@ -143,9 +143,13 @@ export const useChatStore = create<ChatState>()(
           );
           if (get().aiOwnerId !== aiOwnerId || get().familyMemberId !== familyMemberId) return;
           set(state => ({
-            conversations: response.results.map(c => ({
-              ...c, audio_url: c.audio_url || state.readyAudioUrls[c.id],
-            })),
+            conversations: [
+              // Keep this session's safety replies (never stored on the server) at the top
+              ...state.conversations.filter(c => c.id.startsWith('local-')),
+              ...response.results.map(c => ({
+                ...c, audio_url: c.audio_url || state.readyAudioUrls[c.id],
+              })),
+            ],
             error: null,
           }));
         } catch (error) {
@@ -252,7 +256,8 @@ export const useChatStore = create<ChatState>()(
             (conversationId) => {
               // Streaming complete
               const { streamingText } = get();
-              const realId = conversationId || Date.now().toString();
+              // Safety replies are not saved on the server, so they get a local-only id
+              const realId = conversationId || `local-${Date.now()}`;
 
               // Add to conversations (optimistic update turned real)
               set((state) => ({
