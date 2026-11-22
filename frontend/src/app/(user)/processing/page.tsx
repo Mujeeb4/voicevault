@@ -17,6 +17,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/ui/page-header';
 import { authApi } from '@/lib/api/auth';
 import { processingApi } from '@/lib/api/processing';
+import { useProcessingStatus } from '@/lib/hooks/useProcessingStatus';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function ProcessingPage() {
@@ -33,6 +34,11 @@ export default function ProcessingPage() {
     if (previewAudioUrl) URL.revokeObjectURL(previewAudioUrl);
   }, [previewAudioUrl]);
   const isPremium = hasPremiumAccess(user);
+  // A Premium vault is only "done" once the cloned voice exists. Someone who upgrades after
+  // their text preview was ready still needs to give consent and start voice cloning here.
+  const { data: processingStatus } = useProcessingStatus(user?.id ?? '', isPremium);
+  const voiceReady = processingStatus?.steps?.voice_cloning?.status === 'complete';
+  const showComplete = isComplete && (!isPremium || voiceReady);
 
   const handleComplete = () => {
     setIsComplete(true);
@@ -119,10 +125,10 @@ export default function ProcessingPage() {
       <PageHeader
         eyebrow="My voice"
         title="Building your AI"
-        description={isComplete ? 'Your AI is ready.' : 'We are processing your voice and memories.'}
+        description={showComplete ? 'Your AI is ready.' : 'We are processing your voice and memories.'}
       />
 
-      {isComplete ? (
+      {showComplete ? (
         <ProcessingComplete
           userName={user.full_name}
           onChatNow={() => router.push('/chat')}
