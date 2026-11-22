@@ -38,7 +38,7 @@ const defaultPlans: Package[] = [
       'Basic AI personality',
       '5 family chat messages',
       '1 family invitation',
-      'Text-only chat',
+      'Text chat with your AI',
       'No voice cloning',
     ],
   },

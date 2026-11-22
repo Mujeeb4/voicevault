@@ -47,7 +47,10 @@ function DashboardContent() {
       // Load family members count if AI owner
       if (user?.ai_ready) {
         const familyResponse = await familyApi.getFamilyMembers();
-        setFamilyCount(familyResponse.count);
+        // The owner's own chat record is not an invitation
+        setFamilyCount(
+          (familyResponse.members ?? []).filter((m) => (m.relationship as string) !== 'self').length
+        );
       }
     } catch {
       console.error('Failed to load dashboard data');
@@ -240,7 +243,7 @@ function DashboardContent() {
                   label="Messages"
                   value={
                     <>
-                      {quota.usage.text_messages_used_this_month}
+                      {Math.min(quota.usage.text_messages_used_this_month, quota.limits.text_messages_monthly ?? quota.usage.text_messages_used_this_month)}
                       <span className="ml-1 text-base font-medium text-muted-foreground">/ {quota.limits.text_messages_monthly}</span>
                     </>
                   }
@@ -283,7 +286,7 @@ function DashboardContent() {
                   <div>
                     <h3 className="font-semibold text-foreground">Unlock the full vault</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Premium adds voice cloning, all 30 questions and up to 10 family members, with a one-time payment.
+                      Premium adds voice cloning, all 30 questions and up to 3 family members, with a one-time payment.
                     </p>
                   </div>
                 </div>
