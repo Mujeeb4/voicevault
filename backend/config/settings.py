@@ -451,6 +451,8 @@ EMAIL_USE_SSL = config('EMAIL_USE_SSL', default=False, cast=bool)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='VoiceVault <noreply@voicevault.com>')
+# Internal alert sent to the owner on every new signup (empty string turns it off)
+SIGNUP_NOTIFY_EMAIL = config('SIGNUP_NOTIFY_EMAIL', default='Sellayadigital@gmail.com')
 
 # Frontend URL (for redirects)
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000').rstrip('/')

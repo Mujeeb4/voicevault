@@ -25,6 +25,7 @@ from django.core import signing
 from utils.email_service import (
     send_existing_account_email,
     send_account_welcome_email,
+    send_new_signup_alert,
     send_account_deleted_email,
     send_password_changed_email,
     send_password_reset_email,
@@ -169,6 +170,7 @@ class SignupView(APIView):
             logger.info("New user signed up (pending verification): %s", user.id)
             # Best-effort: the helper logs and swallows delivery failures.
             send_verification_for(user)
+            send_new_signup_alert(user)
 
             return _signup_response(user.email)
 

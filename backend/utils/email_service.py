@@ -223,6 +223,33 @@ def send_verification_email(to_email: str, to_name: str, verify_url: str) -> boo
         return False
 
 
+def send_new_signup_alert(user) -> bool:
+    """Tell the owner that a new person signed up. Internal; never raises."""
+    to_email = getattr(settings, "SIGNUP_NOTIFY_EMAIL", "")
+    if not to_email:
+        return False
+    try:
+        total = type(user).objects.count()
+        _send_branded_email(
+            to_email,
+            f"New VoiceVault signup: {user.full_name}",
+            "New signup",
+            [f"{user.full_name} just created a VoiceVault account."],
+            details=[
+                ("Name", user.full_name),
+                ("Email", user.email),
+                ("Phone", user.phone_number or "Not provided"),
+                ("Signed up", user.created_at.strftime("%Y-%m-%d %H:%M UTC")),
+                ("Total users", str(total)),
+            ],
+            footer_note="Internal notification sent to the VoiceVault owner.",
+        )
+        return True
+    except Exception as e:
+        _log_email_failure("signup alert", e)
+        return False
+
+
 def send_account_welcome_email(to_email: str, to_name: str) -> bool:
     """Welcome a user right after they create an account."""
     try:

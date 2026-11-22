@@ -74,6 +74,22 @@ class SignupRegressionTests(TestCase):
         verify.assert_called_once()
         self.assertIn('/verify-email?token=', verify.call_args[0][2])
 
+    @patch('apps.users.views_auth.send_verification_email')
+    def test_signup_alerts_owner_once(self, verify):
+        from django.core import mail
+        mail.outbox = []
+        body = {'email': 'alert@example.com', 'password': 'strong-pass-123', 'full_name': 'Alert Person'}
+        SignupView.as_view()(APIRequestFactory().post('/api/users/signup/', body, format='json'))
+        alerts = [m for m in mail.outbox if 'sellayadigital@gmail.com' in [t.lower() for t in m.to]]
+        self.assertEqual(len(alerts), 1)
+        self.assertIn('Alert Person', alerts[0].subject)
+        self.assertIn('alert@example.com', alerts[0].body)
+        self.assertNotIn('strong-pass-123', alerts[0].body)
+        # A repeat signup with the same email is not a new user, so no second alert
+        SignupView.as_view()(APIRequestFactory().post('/api/users/signup/', body, format='json'))
+        alerts = [m for m in mail.outbox if 'sellayadigital@gmail.com' in [t.lower() for t in m.to]]
+        self.assertEqual(len(alerts), 1)
+
     def test_signup_rejects_malformed_email(self):
         request = APIRequestFactory().post('/api/users/signup/', {
             'email': 'not-an-email',
