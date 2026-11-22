@@ -393,7 +393,9 @@ def analyze_personality_task(self, previous_result=None, user_id: str = None) ->
             raise ValueError("No transcript found. Run transcription first.")
         
         # Verify transcript has enough content (lowered for testing)
-        MIN_WORDS = settings.AI_MIN_WORDS_FOR_PERSONALITY
+        # Use the same bar as the final readiness check, so a transcript that passes
+        # analysis can never fail later without the user seeing why.
+        MIN_WORDS = max(settings.AI_MIN_WORDS_FOR_PERSONALITY, settings.AI_PRODUCTION_MIN_WORDS)
         if transcript.word_count < MIN_WORDS:
             raise ValueError(f"Transcript too short: {transcript.word_count} words (minimum {MIN_WORDS})")
         

@@ -464,7 +464,7 @@ STRIPE_FAMILY_PRICE_ID = config('STRIPE_FAMILY_PRICE_ID', default='')
 # AI Processing Settings
 AI_MIN_WORDS_FOR_PERSONALITY = 50  # Minimum words to extract personality
 AI_VOICE_QUALITY_THRESHOLD = 0.85  # Minimum quality score to auto-approve
-AI_PRODUCTION_MIN_WORDS = 500  # Minimum words for production-ready AI
+AI_PRODUCTION_MIN_WORDS = config('AI_PRODUCTION_MIN_WORDS', default=150, cast=int)  # Minimum transcript words before the AI is marked ready (was 500, which left free users with ~350 words stuck forever)
 AI_SYSTEM_PROMPT_MIN_LENGTH = 100  # Minimum length of generated system prompt
 
 
