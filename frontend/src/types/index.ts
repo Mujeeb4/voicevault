@@ -65,6 +65,8 @@ export interface SignupRequest {
   accepted_terms: true;
   /** Signing up from a family invitation: the invite proves the email, so no verification email */
   invitation_token?: string;
+  /** First-touch UTM tags / referrer, if the visitor accepted tracking */
+  attribution?: Record<string, string>;
 }
 
 export interface SignupResponse {
@@ -341,6 +343,8 @@ export interface AdminStats {
 }
 
 export interface AdminUser extends User {
+  /** utm_source, utm_medium, utm_campaign, utm_content, utm_term, referrer (when known) */
+  signup_attribution?: Record<string, string>;
   family_members_count: number;
   conversations_count: number;
   ai_processing_started_at: string | null;

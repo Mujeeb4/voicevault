@@ -23,6 +23,8 @@ class User(models.Model):
     email = models.EmailField(unique=True, db_index=True)
     full_name = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
+    # Where the person came from when they signed up (utm_* tags and referrer), if they allowed tracking
+    signup_attribution = models.JSONField(default=dict, blank=True)
     email_verified = models.BooleanField(default=False)
     password_hash = models.CharField(max_length=255, null=True, blank=True, help_text="Hashed password")
     token_version = models.PositiveIntegerField(

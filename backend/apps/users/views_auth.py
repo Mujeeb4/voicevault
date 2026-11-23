@@ -69,6 +69,21 @@ def send_verification_for(user: User) -> bool:
     return send_verification_email(user.email, user.full_name, url)
 
 
+ATTRIBUTION_KEYS = ('utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'referrer')
+
+
+def clean_attribution(raw) -> dict:
+    """Keep only known UTM keys and the referrer, as short strings (it's client-supplied)."""
+    if not isinstance(raw, dict):
+        return {}
+    limits = {'referrer': 200}
+    return {
+        key: raw[key].strip()[:limits.get(key, 100)]
+        for key in ATTRIBUTION_KEYS
+        if isinstance(raw.get(key), str) and raw[key].strip()
+    }
+
+
 def _record_signup_consent(user: User, request) -> None:
     """Dated record that this account confirmed 18+ and accepted the Terms and Privacy Policy."""
     from apps.users.models import ConsentRecord
@@ -184,6 +199,7 @@ class SignupView(APIView):
                     full_name=full_name,
                     phone_number=phone_number or None,
                     password_hash=make_password(password),  # Store hashed password
+                    signup_attribution=clean_attribution(request.data.get('attribution')),
                 )
             except IntegrityError:
                 # Created by a concurrent request
@@ -191,6 +207,8 @@ class SignupView(APIView):
 
             logger.info("New user signed up (pending verification): %s", user.id)
             _record_signup_consent(user, request)
+            # Every new account alerts the owner, including family members joining from an invite
+            send_new_signup_alert(user)
 
             # Signing up from a family invitation: the invite link was emailed to this exact
             # address, which proves the person owns it, so the account is verified now and the
@@ -209,7 +227,6 @@ class SignupView(APIView):
 
             # Best-effort: the helper logs and swallows delivery failures.
             send_verification_for(user)
-            send_new_signup_alert(user)
 
             return _signup_response(user.email)
 

@@ -74,6 +74,7 @@ def serialize_user(user):
         'id': str(user.id),
         'email': user.email,
         'full_name': user.full_name,
+        'signup_attribution': user.signup_attribution or {},
         'package_tier': user.package_tier,
         'plan_type': user.plan_type,
         'is_premium': user.is_premium,

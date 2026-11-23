@@ -312,7 +312,8 @@ class SignupAgreementAndInviteTests(ApiCase):
         self.assertEqual(response.status_code, 201)
         self.assertFalse(response.json()['verification_required'])
         self.assertTrue(User.objects.get(email='invitee@example.com').email_verified)
-        self.assertEqual(len(mail.outbox), 0)
+        # No verification email to the invitee (the owner's new-signup alert still goes out)
+        self.assertFalse([m for m in mail.outbox if 'invitee@example.com' in m.to])
         # Signing in now works without the verification email
         self.assertEqual(self.post('/api/users/login/', {'email': 'invitee@example.com', 'password': NEW_PW}).status_code, 200)
 
@@ -324,3 +325,29 @@ class SignupAgreementAndInviteTests(ApiCase):
         response = self.signup(accepted_terms=True, invitation_token=token)
         self.assertTrue(response.json()['verification_required'])
         self.assertFalse(User.objects.get(email='invitee@example.com').email_verified)
+
+
+@override_settings(SIGNUP_NOTIFY_EMAIL='owner-alerts@example.com')
+class SignupAttributionTests(ApiCase):
+    """The ad / referrer a person came from is kept on their account and shown to the owner."""
+
+    def test_utm_tags_are_stored_cleaned_and_reported(self):
+        response = self.post('/api/users/signup/', {
+            'email': 'from-ad@example.com', 'password': NEW_PW, 'full_name': 'From Ad', 'accepted_terms': True,
+            'attribution': {'utm_source': 'facebook', 'utm_medium': 'paid', 'utm_campaign': 'x' * 500,
+                            'evil': '<script>', 'referrer': 'https://facebook.com/'},
+        })
+        self.assertEqual(response.status_code, 201)
+        stored = User.objects.get(email='from-ad@example.com').signup_attribution
+        self.assertEqual(set(stored), {'utm_source', 'utm_medium', 'utm_campaign', 'referrer'})
+        self.assertEqual(len(stored['utm_campaign']), 100)
+        alert = [m for m in mail.outbox if 'owner-alerts@example.com' in m.to][0]
+        self.assertIn('facebook / paid', alert.body)
+
+    def test_signup_without_attribution_still_works(self):
+        response = self.post('/api/users/signup/', {
+            'email': 'direct@example.com', 'password': NEW_PW, 'full_name': 'Direct', 'accepted_terms': True,
+            'attribution': 'not-a-dict',
+        })
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(User.objects.get(email='direct@example.com').signup_attribution, {})

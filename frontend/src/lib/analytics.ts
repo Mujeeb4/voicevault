@@ -57,3 +57,15 @@ export function captureAttribution(): void {
     // storage may be unavailable
   }
 }
+
+/** The saved first-touch UTM tags / referrer (only present if the visitor accepted tracking). */
+export function getAttribution(): Record<string, string> | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const saved = window.localStorage.getItem('vv_first_touch');
+    const parsed = saved ? JSON.parse(saved) : null;
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}

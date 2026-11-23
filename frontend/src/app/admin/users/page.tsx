@@ -31,6 +31,7 @@ import {
 import { Search, Loader2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import type { AdminUser } from '@/types';
 
 function AdminUsersContent() {
   const router = useRouter();
@@ -113,7 +114,10 @@ function AdminUsersContent() {
               users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.full_name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    {user.email}
+                    <div className="text-xs text-muted-foreground">Source: {signupSource(user)}</div>
+                  </TableCell>
                   <TableCell>{format(new Date(user.created_at), 'MMM d, yyyy')}</TableCell>
                   <TableCell>
                     <Badge variant={user.recording_completed ? 'default' : 'secondary'}>
@@ -166,6 +170,14 @@ function AdminUsersContent() {
       )}
     </div>
   );
+}
+
+/** Where the person came from at signup: "facebook / paid / campaign", a referrer, or unknown. */
+function signupSource(user: AdminUser): string {
+  const a = user.signup_attribution || {};
+  const tags = [a.utm_source, a.utm_medium, a.utm_campaign].filter(Boolean);
+  if (tags.length) return tags.join(' / ');
+  return a.referrer || 'Direct or unknown';
 }
 
 export default function AdminUsersPage() {

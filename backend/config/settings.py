@@ -505,3 +505,7 @@ LOGIN_MAX_FAILURES = config('LOGIN_MAX_FAILURES', default=10, cast=int)
 LOGIN_LOCKOUT_SECONDS = config('LOGIN_LOCKOUT_SECONDS', default=900, cast=int)
 # Invitation emails (new invites + resends) per account per day
 FAMILY_INVITE_EMAILS_PER_DAY = config('FAMILY_INVITE_EMAILS_PER_DAY', default=20, cast=int)
+
+# Voice data of a vault with no owner sign-in and no conversations for this many years may be
+# purged (manage.py purge_inactive_voice_data, run by hand). Never less than 5.
+VOICE_DATA_INACTIVE_YEARS = config('VOICE_DATA_INACTIVE_YEARS', default=5, cast=int)

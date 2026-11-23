@@ -24,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthShell } from '@/components/layout';
 import { ResendVerificationButton } from '@/components/auth/resend-verification-button';
-import { trackEvent } from '@/lib/analytics';
+import { getAttribution, trackEvent } from '@/lib/analytics';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -59,7 +59,7 @@ export default function SignupPage() {
     try {
       const { email, password, full_name, phone_number } = data;
       // The form can't submit without the 18+/Terms box ticked
-      await signup({ email, password, full_name, phone_number, accepted_terms: true });
+      await signup({ email, password, full_name, phone_number, accepted_terms: true, attribution: getAttribution() });
       trackEvent('sign_up', { method: 'email' }, { standard: 'CompleteRegistration' });
       setSentTo(email);
     } catch (err: unknown) {

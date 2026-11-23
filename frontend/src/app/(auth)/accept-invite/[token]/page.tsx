@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
+import { getAttribution } from '@/lib/analytics';
 import { familyApi } from '@/lib/api/family';
 import { authApi } from '@/lib/api/auth';
 import { getApiErrorMessage } from '@/lib/utils';
@@ -113,6 +114,7 @@ export default function AcceptInvitationPage({ params }: { params: Promise<{ tok
       // 1. Sign up. The invite link proves this email, so the account is verified at once
       const created = await signup({
         email, password, full_name: fullName, accepted_terms: true, invitation_token: token,
+        attribution: getAttribution(),
       });
       if (created.verification_required) {
         // The email already has an account (or doesn't match the invitation)

@@ -9,10 +9,10 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from unittest.mock import patch
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIRequestFactory
 
-from apps.users.models import User
+from apps.users.models import FamilyMember, User
 from apps.users.views import UserProfileView
 from apps.users.views_auth import ChangePasswordView, LoginView, RefreshTokenView, SignupView, generate_jwt_token
 from utils.supabase_auth import SupabaseUser
@@ -78,7 +78,7 @@ class SignupRegressionTests(TestCase):
     def test_signup_alerts_owner_once(self, verify):
         from django.core import mail
         mail.outbox = []
-        body = {'email': 'alert@example.com', 'password': 'strong-pass-123', 'full_name': 'Alert Person'}
+        body = {'email': 'alert@example.com', 'password': 'strong-pass-123', 'full_name': 'Alert Person', 'accepted_terms': True}
         SignupView.as_view()(APIRequestFactory().post('/api/users/signup/', body, format='json'))
         alerts = [m for m in mail.outbox if 'sellayadigital@gmail.com' in [t.lower() for t in m.to]]
         self.assertEqual(len(alerts), 1)
@@ -325,18 +325,49 @@ class DeleteClonedVoiceTests(TestCase):
             self.assertFalse(delete_voice_clone('replicate:abc'))
 
 
+@patch('apps.users.management.commands.purge_inactive_voice_data.delete_voice_clone')
+@patch('apps.users.management.commands.purge_inactive_voice_data.delete_file_from_supabase')
 class PurgeInactiveVoiceDataTests(TestCase):
-    @patch('apps.users.management.commands.purge_inactive_voice_data.delete_voice_clone')
-    @patch('apps.users.management.commands.purge_inactive_voice_data.delete_file_from_supabase')
-    def test_old_inactive_voice_data_is_destroyed_but_active_users_are_kept(self, _file, delete_voice):
-        from django.core.management import call_command
+    """Voice data goes only after 5+ years with no sign-in and nobody using the vault."""
+
+    def vault(self, email, idle_days):
         from apps.ai_processing.models import AIConfiguration
-        from apps.recordings.models import AudioRecording
-        old = User.objects.create(email='old@example.com', full_name='Old', last_login_at=timezone.now() - timedelta(days=365 * 3 + 5))
-        new = User.objects.create(email='new@example.com', full_name='New', last_login_at=timezone.now())
-        AIConfiguration.objects.create(user=old, voice_clone_id='voice_old')
-        AIConfiguration.objects.create(user=new, voice_clone_id='voice_new')
-        call_command('purge_inactive_voice_data')
-        self.assertEqual(AIConfiguration.objects.get(user=old).voice_clone_id, '')
-        self.assertEqual(AIConfiguration.objects.get(user=new).voice_clone_id, 'voice_new')
-        delete_voice.assert_called_once_with('voice_old')
+        moment = timezone.now() - timedelta(days=idle_days)
+        user = User.objects.create(email=email, full_name=email, last_login_at=moment)
+        User.objects.filter(id=user.id).update(created_at=moment)
+        AIConfiguration.objects.create(user=user, voice_clone_id=f'voice_{email}')
+        return user
+
+    def voice(self, user):
+        from apps.ai_processing.models import AIConfiguration
+        return AIConfiguration.objects.get(user=user).voice_clone_id
+
+    def purge(self):
+        from django.core.management import call_command
+        call_command('purge_inactive_voice_data', stdout=__import__('io').StringIO())
+
+    def test_only_vaults_idle_for_five_years_lose_their_voice(self, _file, delete_voice):
+        gone = self.vault('six-years', 365 * 6)
+        kept = self.vault('four-years', 365 * 4)
+        self.purge()
+        self.assertEqual(self.voice(gone), '')
+        self.assertEqual(self.voice(kept), 'voice_four-years')
+        delete_voice.assert_called_once_with('voice_six-years')
+
+    def test_a_vault_the_family_still_talks_to_is_kept(self, _file, delete_voice):
+        from apps.chat.models import Conversation
+        owner = self.vault('late-owner', 365 * 8)
+        member = FamilyMember.objects.create(ai_owner=owner, email='kid@example.com', relationship='child',
+                                             has_access=True, last_conversation_at=timezone.now())
+        Conversation.objects.create(ai_owner=owner, family_member=member, question_text='Hi', response_text='Hello',
+                                    response_time_ms=100)
+        self.purge()
+        self.assertEqual(self.voice(owner), 'voice_late-owner')
+        delete_voice.assert_not_called()
+
+    @override_settings(VOICE_DATA_INACTIVE_YEARS=3)
+    def test_a_shorter_setting_still_means_five_years(self, _file, delete_voice):
+        kept = self.vault('four-years', 365 * 4)
+        self.purge()
+        self.assertEqual(self.voice(kept), 'voice_four-years')
+        delete_voice.assert_not_called()

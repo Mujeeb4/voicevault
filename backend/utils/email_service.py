@@ -223,6 +223,15 @@ def send_verification_email(to_email: str, to_name: str, verify_url: str) -> boo
         return False
 
 
+def _attribution_summary(attribution) -> str:
+    """e.g. "facebook / paid / spring_launch", or the referrer, or "Direct or unknown"."""
+    attribution = attribution or {}
+    parts = [attribution.get(k) for k in ("utm_source", "utm_medium", "utm_campaign") if attribution.get(k)]
+    if parts:
+        return " / ".join(parts)
+    return attribution.get("referrer") or "Direct or unknown (or tracking declined)"
+
+
 def send_new_signup_alert(user) -> bool:
     """Tell the owner that a new person signed up. Internal; never raises."""
     to_email = getattr(settings, "SIGNUP_NOTIFY_EMAIL", "")
@@ -240,6 +249,7 @@ def send_new_signup_alert(user) -> bool:
                 ("Email", user.email),
                 ("Phone", user.phone_number or "Not provided"),
                 ("Signed up", user.created_at.strftime("%Y-%m-%d %H:%M UTC")),
+                ("Came from", _attribution_summary(getattr(user, "signup_attribution", None))),
                 ("Total users", str(total)),
             ],
             footer_note="Internal notification sent to the VoiceVault owner.",

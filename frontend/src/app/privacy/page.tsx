@@ -184,7 +184,7 @@ export default function PrivacyPage() {
                 <li><strong>Recordings, transcripts, personality profile, conversations and voice model:</strong> kept while your account is active so the service can work.</li>
                 <li><strong>If you delete your account:</strong> we delete these from our systems right away, and we delete your voice model at our voice provider. Backups are overwritten within 30 days.</li>
                 <li><strong>If you withdraw voice consent or ask us to delete your voice model or any recording:</strong> email us and we will do it within 30 days. You can also use Record again in the app to replace recordings.</li>
-                <li><strong>Inactive accounts:</strong> if you do not sign in for 3 years, we will destroy your voice recordings and voice model.</li>
+                <li><strong>Inactive vaults:</strong> if, for at least 5 years, you do not sign in and nobody uses your vault (including the family members you invited), we may destroy your voice recordings and voice model. A vault your family still talks to is not affected.</li>
                 <li><strong>Legal records:</strong> payment and tax records are kept as the law requires (generally up to 7 years). Consent records are kept for as long as needed to prove your consent.</li>
               </ul><p>If you pass away, your executor or estate may ask us to delete your vault by emailing us with proof of authority. Until then, the family members you invited keep their access unless you remove it.</p>
 
