@@ -317,6 +317,45 @@ def send_premium_activated_email(
         return False
 
 
+def send_refund_email(
+    to_email: str,
+    to_name: str,
+    amount_cents: Optional[int] = None,
+    currency: str = "usd",
+    premium: bool = True,
+) -> bool:
+    """Confirm a refund to the customer."""
+    try:
+        details = []
+        if amount_cents is not None:
+            details.append(("Refunded", _format_amount(amount_cents, currency)))
+        paragraphs = [
+            f"Hi {to_name or 'there'},",
+            "Your refund has been issued to your original payment method. Your bank may take 5 to 10 "
+            "business days to show it.",
+        ]
+        if premium:
+            paragraphs.append(
+                "VoiceVault Premium has been turned off on your account, including your voice model. "
+                "Your free account and recordings stay unless you ask us to delete them."
+            )
+        else:
+            paragraphs.append("The unused question credits from this purchase have been removed.")
+        _send_branded_email(
+            to_email,
+            "Your VoiceVault refund",
+            "Refund issued",
+            paragraphs,
+            details=details,
+            note="Questions? Reply to this email or write to Info@voicevault.life.",
+        )
+        logger.info("Refund email sent")
+        return True
+    except Exception as e:
+        _log_email_failure("refund", e)
+        return False
+
+
 def send_payment_failed_email(to_email: str, to_name: str) -> bool:
     """Tell a user their payment did not go through."""
     try:

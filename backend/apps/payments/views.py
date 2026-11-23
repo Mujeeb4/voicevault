@@ -312,6 +312,7 @@ def stripe_webhook(request):
         - checkout.session.completed
         - payment_intent.succeeded
         - payment_intent.payment_failed
+        - charge.refunded
     """
     payload = request.body
     sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
@@ -352,6 +353,9 @@ def stripe_webhook(request):
             elif event_type == 'payment_intent.payment_failed' and payment_intent.get('status') != 'succeeded':
                 logger.warning("Payment failed: %s", payment_intent['id'])
                 handle_payment_failed(payment_intent)
+        elif event_type == 'charge.refunded':
+            from apps.payments.refunds import handle_charge_refunded
+            handle_charge_refunded(stripe.Charge.retrieve(event['data']['object']['id']))
     except stripe.error.StripeError as e:
         # Stripe retries the webhook, so a temporary API failure loses nothing
         logger.error("Could not fetch %s from Stripe: %s", event_type, e.__class__.__name__)

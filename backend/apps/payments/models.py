@@ -83,6 +83,7 @@ class CreditPurchase(models.Model):
     amount_cents = models.IntegerField(help_text="Amount in cents")
     currency = models.CharField(max_length=3, default='usd')
     receipt_url = models.URLField(max_length=1000, null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
